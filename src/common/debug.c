@@ -272,7 +272,8 @@ internal_error(enum debug_component comp,
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vdebug_out(1, FATAL, comp, func_name, line_no, fmt, ap);
+	vdebug_out(1, FATAL, comp, func_name, line_no, "INTERNAL ERROR ", ap);
+	vdebug_out(0, FATAL, comp, func_name, line_no, fmt, ap);
 	va_end(ap);
 	raise(SIGABRT);
 	/* We shouldn't be here! */
@@ -325,7 +326,7 @@ void show_mem_info()
 }
 #endif /* show_mem_info */
 
-void * yaavg_malloc(size_t size)
+void * __wrap_malloc(size_t size)
 {
 	void * res;
 	res = malloc(size);
@@ -336,7 +337,7 @@ void * yaavg_malloc(size_t size)
 }
 
 
-void yaavg_free(void * ptr)
+void __wrap_free(void * ptr)
 {
 	MEM_TRACE("free %p\n", ptr);
 	free(ptr);
@@ -344,7 +345,7 @@ void yaavg_free(void * ptr)
 	return;
 }
 
-void * yaavg_calloc(size_t count, size_t eltsize)
+void * __wrap_calloc(size_t count, size_t eltsize)
 {
 	void * res = NULL;
 	res = calloc (count, eltsize);
@@ -355,7 +356,7 @@ void * yaavg_calloc(size_t count, size_t eltsize)
 	return res;
 }
 
-char * yaavg_strdup(const char * S)
+char * __wrap_strdup(const char * S)
 {
 	char * res = NULL;
 	res = strdup (S);
@@ -365,9 +366,23 @@ char * yaavg_strdup(const char * S)
 	return res;
 }
 
+void * __wrap_realloc(void * ptr, size_t newsize)
+{
+	void * res;
+	res = realloc(ptr, newsize);
+	assert(res != NULL);
+	MEM_TRACE("realloc %p with new size %d, res=%p\n",
+			ptr, newsize, res);
+	if (ptr == NULL) {
+		malloc_times ++;
+	}
+	return res;
+}
+
+
 #ifdef YAAVG_DEBUG_OFF
 static void
-vmessage_out(enum debug_level l, enum debug_component c, char * fmt, va_list ap)
+vmessage_out(int prefix, enum debug_level l, enum debug_component c, char * fmt, va_list ap)
 {
 	/* output to stdout if haven't init */
 	if (fdebug_out == NULL)
@@ -375,7 +390,8 @@ vmessage_out(enum debug_level l, enum debug_component c, char * fmt, va_list ap)
 	if (l >= WARNING)
 		turn_red();
 
-	fprintf(fdebug_out, "%s: ", get_level_name(l));
+	if (prefix)
+		fprintf(fdebug_out, "%s: ", get_level_name(l));
 	vfprintf(fdebug_out, fmt, ap);
 
 	if (l >= WARNING)
@@ -384,11 +400,11 @@ vmessage_out(enum debug_level l, enum debug_component c, char * fmt, va_list ap)
 }
 
 void
-message_out(enum debug_level l, enum debug_component c, char * fmt, ...)
+message_out(int prefix, enum debug_level l, enum debug_component c, char * fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vmessage_out(l, c, fmt, ap);
+	vmessage_out(prefix, l, c, fmt, ap);
 	va_end(ap);
 }
 #endif

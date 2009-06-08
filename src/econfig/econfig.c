@@ -12,8 +12,8 @@
 
 #define vcast(x)	(union _conf_value)(x)
 static struct conf_entry entries[] = {
-//	{"video.resolution.w", TypeInteger, vcast(1280)},
-//	{"video.resolution.h", TypeInteger, vcast(800)},
+//	{"video.resolution.w", TypeInteger, vcast(1024)},
+//	{"video.resolution.h", TypeInteger, vcast(768)},
 	{"video.resolution.w", TypeInteger, vcast(800)},
 	{"video.resolution.h", TypeInteger, vcast(600)},
 	{"video.viewport.w", TypeInteger, vcast(800)},
@@ -23,18 +23,27 @@ static struct conf_entry entries[] = {
 	{"video.mspf.fallback", TypeInteger, vcast(100)},
 //	{"video.mspf", TypeInteger, vcast(0)},
 	{"video.mspf", TypeInteger, vcast(17)},	/* 17ms: 60fps */
-//	{"video.fullscreen", TypeBool, vcast(TRUE)},
+//	{"video.fullscreen", TypeBool, vcast(FALSE)},
 	{"video.fullscreen", TypeBool, vcast(FALSE)},
+	/* full screen engine,
+	 * 0 is default (XRANDR),
+	 * 1 is XRandR
+	 * 2 is XF86VidMode,
+	 * 3 is trival */
+	{"video.gl.glx.fullscreen.engine", TypeInteger, vcast(3)},
+//	{"video.fullscreen", TypeBool, vcast(FALSE)},
 //	{"video.resizable", TypeBool, vcast(TRUE)},
 	{"video.resizable", TypeBool, vcast(FALSE)},
-//	{"video.opengl.driver.gllibrary", TypeString, vcast((const char*)"/home/wn/src/Mesa-7.0.1/lib/libGL.so")},
-	{"video.opengl.driver.gllibrary", TypeString, vcast((const char*)NULL)},
-//	{"video.opengl.driver.gllibrary", TypeString, vcast((const char*)"/usr/local/lib/libGL.so")},
-	{"video.opengl.driver.bpp", TypeInteger, vcast(32)},
-	{"video.opengl.driver.vsync", TypeBool, vcast(FALSE)},
-//	{"video.opengl.driver.vsync", TypeBool, vcast(TRUE)},
-//	{"video.opengl.driver.multisample", TypeInteger, vcast(0)},
-//	{"video.opengl.driver.multisample", TypeInteger, vcast(4)},
+//	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/home/wn/src/Mesa-7.0.1/lib/libGL.so")},
+	{"video.opengl.gllibrary", TypeString, vcast((const char*)NULL)},
+//	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/usr/local/lib/libGL.so")},
+//	{"video.opengl.gl3context", TypeBool, vcast(FALSE)},
+	{"video.opengl.gl3context", TypeBool, vcast(TRUE)},
+	{"video.opengl.bpp", TypeInteger, vcast(32)},
+	/* vsync related */
+	{"video.opengl.swapcontrol", TypeInteger, vcast(0)},
+	{"video.opengl.multisample", TypeInteger, vcast(0)},
+//	{"video.opengl.multisample", TypeInteger, vcast(4)},
 	{"video.screenshotdir", TypeString, vcast((const char *)"/tmp")},
 	{"video.caption", TypeString, vcast((const char *)"test")},
 	/* If the SIGINT is raised during SwapBuffer, the SDL cleanup
@@ -48,6 +57,10 @@ static struct conf_entry entries[] = {
 	{"video.opengl.texture.enableCOMPRESSION", TypeBool, vcast(TRUE)},
 	{"video.opengl.texture.enableNPOT", TypeBool, vcast(TRUE)},
 	{"video.opengl.texture.enableRECT", TypeBool, vcast(TRUE)},
+	{"video.opengl.glx.confinemouse", TypeBool, vcast(FALSE)},
+//	{"video.opengl.glx.confinemouse", TypeBool, vcast(TRUE)},
+	/* Don't set it to TRUE unless you're sure what you're doing */
+	{"video.opengl.glx.grabkeyboard", TypeBool, vcast(FALSE)},
 	{NULL, TypeNone, vcast(0)},
 };
 

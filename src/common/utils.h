@@ -7,8 +7,8 @@
 
 #include <common/defs.h>
 #include <common/exception.h>
+#include <signal.h>
 #include <stdint.h>
-
 
 /* Some utils needed to be implentmented */
 __BEGIN_DECLS
@@ -18,8 +18,11 @@ __BEGIN_DECLS
 void delay(tick_t ms);
 tick_t get_ticks(void);
 
+/* specially used for GLX */
+extern bool_t sigpipe_arised;
+
 /* for posix system, unlock SIGINT with this func */
-void unblock_sigint(void);
+void intercept_signal(int signum);
 
 /* solve multi reinit problem */
 /* I put this func here, not in exception.h, because
@@ -79,6 +82,11 @@ count_1s_64(uint64_t c1)
 #ifndef min
 # define min(a, b)	(((a) < (b)) ? (a) : (b))
 #endif
+
+#ifndef diff
+# define diff(a, b)	(max((a), (b)) - min((a), (b)))
+#endif
+
 static inline int
 pow2roundup (int x)
 {
@@ -99,6 +107,8 @@ pow2rounddown (int x)
 	return pow2roundup(x) >> 1;
 }
 
+bool_t
+match_word(const char * word, const char * string);
 
 __END_DECLS
 

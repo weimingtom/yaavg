@@ -12,9 +12,7 @@
 
 #include <video/video.h>
 #include <video/video_gl.h>
-
 #include <video/texture_gl.h>
-
 #include <event/event.h>
 
 /* Define 2 rcommands: 1. draw a line; 2. rotate */
@@ -429,7 +427,7 @@ entry:
 					conf_set_integer("video.resolution.h", 800);
 					conf_set_bool("video.fullscreen", TRUE);
 				}
-				conf_set_string("video.opengl.driver.gllibrary", NULL);
+				conf_set_string("video.opengl.gllibrary", NULL);
 				THROW(EXCEPTION_SYS_REINIT, "normal reinit");
 			}
 			if (event == 3)
@@ -464,6 +462,7 @@ entry:
 				video_reinit();
 				break;
 			default:
+				print_exception(FATAL, SYSTEM, exp);
 				INTERNAL_ERROR(SYSTEM, "@!#!@$%\n");
 				break;
 		}
@@ -484,6 +483,7 @@ entry:
 int main(int argc, char * argv[])
 {
 	DEBUG_INIT(NULL);
+//	DEBUG_INIT("/tmp/debug");
 	VERBOSE(SYSTEM, "Start!!!\n");
 
 	struct video_context * video_ctx = NULL;
@@ -544,7 +544,7 @@ int main(int argc, char * argv[])
 			VERBOSE(SYSTEM, "User quit: %s\n", exp.message);
 			break;
 		default:
-			ERROR(SYSTEM, "Error out: %s\n", exp.message);
+			print_exception(ERROR, SYSTEM, exp);
 	}
 
 	do_cleanup();

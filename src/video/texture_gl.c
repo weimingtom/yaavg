@@ -17,6 +17,8 @@
 
 #include <common/utils.h>
 
+#ifdef VIDEO_OPENGL_ENGINE
+
 #define FREE_HWMEM(n)	do {} while(0)
 #define ALLOC_HWMEM(n)	do {} while(0)
 
@@ -128,9 +130,8 @@ load_bitmap(struct texture_gl * tex)
 		default:
 			FATAL(OPENGL, "Unknown texture format here: %d\n",
 					TEXGL_DUMMY_BITMAP(tex)->format);
-			THROW_VAL(EXCEPTION_FATAL,
-					"Unknown texture format",
-					TEXGL_DUMMY_BITMAP(tex)->format);
+			THROW(EXCEPTION_FATAL,
+					"Unknown texture format: 0x%x\n", TEXGL_DUMMY_BITMAP(tex)->format);
 	}
 
 }
@@ -514,8 +515,8 @@ load_hwtexs(struct texture_gl * tex)
 					break;
 				default:
 					FATAL(OPENGL, "Unknown texture target here: %d\n", target);
-					THROW_VAL(EXCEPTION_FATAL,
-							"Unknown texture target", target);
+					THROW(EXCEPTION_FATAL,
+							"Unknown texture target: 0x%x", target);
 			}
 			gl_check_error();
 
@@ -628,6 +629,8 @@ texgl_create(res_id_t bitmap_res_id, struct rectangle rect,
 		release_bitmap(tex);
 	return tex;
 }
+
+#endif	/* VIDEO_OPENGL_ENGINE */
 
 // vim:tabstop=4:shiftwidth=4
 

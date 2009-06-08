@@ -10,6 +10,8 @@
 #include <common/exception.h>
 #include <common/debug.h>
 #include <common/list.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 static LIST_HEAD(default_cleanup_chain);
 static struct list_head * current_cleanup_chain = &default_cleanup_chain;
@@ -104,8 +106,12 @@ exceptions_state_mc_init(
 		return_mask mask)
 {
 	exception->level = EXCEPTION_NO_ERROR;
-	exception->message = NULL;
+	memset((void*)(exception->message),
+			'\0', EXCEPTION_MSG_MAXLEN);
 	exception->val = 0;
+	exception->func = "";
+	exception->file = "";
+	exception->line = 0;
 
 	catcher->exception = exception;
 	catcher->mask = mask;
@@ -133,15 +139,43 @@ exceptions_state_mc_action_iter_1 (void)
 	return exceptions_state_mc(CATCH_ITER_1);
 }
 
-NORETURN void
-throw_exception (enum exception_level level,
-		const char * message, uintptr_t val)
+void
+print_exception(enum debug_level l, enum debug_component c,
+		struct exception exp)
 {
+	DEBUG_MSG(l, c, "exception happend at func %s, line %d:\n",
+			exp.func, exp.line);
+	DEBUG_MSG(l, c, "\tmessage: \"%s\", with value: %d\n",
+			exp.message, exp.val);
+	return;
+}
+
+
+NORETURN ATTR(format(printf, 6, 7)) void
+throw_exception (enum exception_level level,
+		uintptr_t val,
+		const char * file, const char * func, int line,
+		const char * fmt, ...)
+{
+	va_list ap;
+
 	if (current_catcher == NULL) {
 		/* We are not in a catch block. do all cleanup then
 		 * quit */
 		WARNING(SYSTEM, "throw exception out of a catcher block\n");
-		WARNING(SYSTEM, "exception message: %s\n", message);
+		struct exception tmp;
+		tmp.level = level;
+
+		va_start(ap, fmt);
+		vsnprintf((tmp.message),
+				sizeof(tmp.message),
+				fmt, ap);
+		va_end(ap);
+		tmp.val = val;
+		tmp.file = file;
+		tmp.func = func;
+		tmp.line = line;
+		print_exception(WARNING, SYSTEM, tmp);
 		do_cleanup();
 		exit(-1);
 	}
@@ -152,8 +186,17 @@ throw_exception (enum exception_level level,
 	 * the cleanup_chain will be restored.*/
 
 	current_catcher->exception->level = level;
-	current_catcher->exception->message = message;
+
+	va_start(ap, fmt);
+	vsnprintf((char*)&(current_catcher->exception->message),
+			EXCEPTION_MSG_MAXLEN,
+			fmt, ap);
+	va_end(ap);
+
 	current_catcher->exception->val = val;
+	current_catcher->exception->file = file;
+	current_catcher->exception->func = func;
+	current_catcher->exception->line = line;
 
 	exceptions_state_mc(CATCH_THROWING);
 	/* do the longjmp! */
@@ -253,8 +296,17 @@ exceptions_state_mc(enum catcher_action action)
 					/* We should not be here */
 					return 0;
 				}
+				case CATCH_THROWING: {
+					WARNING(SYSTEM, "Throw exception in cleanup\n");
+					struct exception exception =
+						*current_catcher->exception;
+					catcher_pop();
+					RETHROW(exception);
+					return 0;
+				}
 				default:
-					INTERNAL_ERROR(SYSTEM, "inner exception processing\n");
+					INTERNAL_ERROR(SYSTEM, "inner exception processing: action %d when aborting\n",
+							action);
 			}
 		default:
 			INTERNAL_ERROR(SYSTEM, "bad switch");
@@ -268,6 +320,7 @@ fatal_cleanup(void)
 		catcher_pop();
 	/* cleanup the default cleanup chain */
 	do_cleanup();
+	FORCE(SYSTEM, "Cleanup over\n");
 	exit(-1);
 }
 

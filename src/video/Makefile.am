@@ -1,4 +1,4 @@
-AM_CPPFLAGS= -I$(top_srcdir)/src $(GL_CFLAGS) $(SDL_CFLAGS) $(LIBPNG_CFLAGS)
+AM_CPPFLAGS= -I$(top_builddir)/src -I$(top_srcdir)/src $(GL_CFLAGS) $(SDL_CFLAGS) $(LIBPNG_CFLAGS)
 
 noinst_LTLIBRARIES=libvideo.la
 
@@ -10,9 +10,10 @@ libvideo_la_SOURCES=rlist.c rcommand.c \
 		    rlist.h rcommand.h \
 		    video.h video_gl.c video.c \
 		    video_gl.h video_gl_sdl.c \
+		    video_gl_glx.c video_engine.h \
 		    video.h texture.h texture.c texture_gl.c \
-		    video_screenshot.c
-libvideo_la_LIBADD=$(SDL_LIBS) $(GL_LIBS) $(LIBPNG_LIBS)
+		    video_screenshot.c utils_x11.h utils_x11.c
+libvideo_la_LIBADD=$(SDL_LIBS) $(GL_LIBS) $(LIBPNG_LIBS) -lX11 -ldl
 
 noinst_PROGRAMS=test_rlist
 
@@ -23,4 +24,7 @@ gl_funcs.h: generate_gl_funcs.py gl_funcs_list
 	python $(top_srcdir)/src/video/generate_gl_funcs.py \
 	       	$(top_srcdir)/src/video/gl_funcs_list > $@
 
+glx_funcs.h: generate_gl_funcs.py glx_funcs_list
+	python $(top_srcdir)/src/video/generate_gl_funcs.py \
+	       	$(top_srcdir)/src/video/glx_funcs_list glx > $@
 
