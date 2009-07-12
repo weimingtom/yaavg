@@ -467,6 +467,13 @@ init_gl_engine(void)
 	/* Set other OpenGL properties */
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glEnable(GL_BLEND);
+
+	/* don't enable textures here!!!
+	 * in NV's implementation, TEX_RECT and
+	 * TEX 1D, 2D cannot be both enabled in
+	 * non-forward compatible context.
+	 * */
+#if 0
 	if (gl_ctx->major_version < 3) {
 		glEnable(GL_TEXTURE_1D);
 		glEnable(GL_TEXTURE_2D);
@@ -477,6 +484,7 @@ init_gl_engine(void)
 	 * however, GL_TEXTURE_RECTANGLE not. */
 	if (gl_tex_RECT_enabled())
 		glEnable(GL_TEXTURE_RECTANGLE);
+#endif
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
