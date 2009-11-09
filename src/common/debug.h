@@ -43,9 +43,74 @@ dbg_exit(void);
  * format.
  */
 extern void
-dbg_output(enum __debug_level level, enum __debug_component comp,
-		const char * file, const char * func, int line,
+dbg_output(enum __debug_level level,
+#ifdef YAAVG_DEBUG
+		enum __debug_component comp,
+		const char * file,
+		const char * func,
+		int line,
+#endif
 		char * fmt, ...);
+
+/* Raise a SIGABRT, make program exit */
+extern void
+dbg_fatal(void);
+
+#ifdef YAAVG_DEBUG
+
+#define SILENT(...)     __NOP
+#define TRACE(c, ...)	dbg_output(DBG_LV_TRACE, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define DEBUG(c, ...)	dbg_output(DBG_LV_DEBUG, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define VERBOSE(c, ...)	dbg_output(DBG_LV_VERBOSE, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define WARNING(c, ...)	dbg_output(DBG_LV_WARNING, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define ERROR(c, ...)	dbg_output(DBG_LV_ERROR, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define FATAL(c, ...)	do {	\
+	dbg_output(DBG_LV_FATAL, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); \
+	dbg_fatal();	\
+}while(0)
+#define FATAL_MSG(c, ...)	dbg_output(DBG_LV_FATAL, c, __FILE__, __FUNCTION__, \
+		__LINE__, __VA_ARGS__)
+#define FORCE(c, ...)	dbg_output(DBG_LV_FORCE,	\
+		c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+
+/* memory leak detection */
+#define line_info	const char * file, const char * func, int line
+extern void *
+__wrap_malloc(size_t size, line_info);
+extern void
+__wrap_free(void * ptr, line_info);
+extern void *
+__wrap_calloc(size_t count, size_t eltsize, line_info);
+extern char *
+__wrap_strdup(const char * S, line_info);
+extern void *
+__wrap_realloc(void * ptr, size_t newsize, line_info);
+
+#ifndef __DEBUG_C
+# define malloc(s)	__wrap_malloc(s, __FILE__, __FUNCTION__, __LINE__)
+# define calloc(c, s)	__wrap_calloc(c, s, __FILE__, __FUNCTION__, __LINE__)
+# define free(ptr)		__wrap_free(ptr, __FILE__, __FUNCTION__, __LINE__)
+# define strdup(s)	__wrap_strdup(s, __FILE__, __FUNCTION__, __LINE__)
+# define realloc(p, n)	__wrap_realloc(p, n, __FILE__, __FUNCTION__, __LINE__)
+#endif
+
+#else
+
+#define SILENT(...)	__NOP
+#define TRACE(c, ...)	__NOP
+#define DEBUG(c, ...)	__NOP
+#define VERBOSE(c, ...)	dbg_output(DBG_LV_VERBOSE, __VA_ARGS__)
+#define WARNING(c, ...)	dbg_output(DBG_LV_WARNING, __VA_ARGS__)
+#define ERROR(c, ...)	dbg_output(DBG_LV_ERROR, __VA_ARGS__)
+#define FATAL(c, ...)	do {	\
+	dbg_output(DBG_LV_FATAL, __VA_ARGS__); \
+	dbg_fatal();	\
+}while(0)
+#define FATAL_MSG(c, ...)	dbg_output(DBG_LV_FATAL, __VA_ARGS__)
+#define FORCE(c, ...)	dbg_output(DBG_LV_FORCE, __VA_ARGS__)
+
+#endif
+
 
 __END_DECLS
 #endif
