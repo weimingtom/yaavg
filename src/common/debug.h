@@ -6,6 +6,7 @@
 #ifndef __DEBUG_H
 #define __DEBUG_H
 #include <common/defs.h>
+#include <stdlib.h>
 
 __BEGIN_DECLS
 
@@ -50,10 +51,14 @@ dbg_output(enum __debug_level level,
 		const char * func,
 		int line,
 #endif
-		char * fmt, ...);
-
+		char * fmt, ...)
+#ifdef YAAVG_DEBUG
+ATTR(format(printf, 6, 7));
+#else
+ATTR(format(printf, 2, 3));
+#endif
 /* Raise a SIGABRT, make program exit */
-extern void
+extern void NORETURN ATTR_NORETURN
 dbg_fatal(void);
 
 #ifdef YAAVG_DEBUG
@@ -74,17 +79,17 @@ dbg_fatal(void);
 		c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /* memory leak detection */
-#define line_info	const char * file, const char * func, int line
+#define __dbg_info_param	const char * file, const char * func, int line
 extern void *
-__wrap_malloc(size_t size, line_info);
+__wrap_malloc(size_t size, __dbg_info_param);
 extern void
-__wrap_free(void * ptr, line_info);
+__wrap_free(void * ptr, __dbg_info_param);
 extern void *
-__wrap_calloc(size_t count, size_t eltsize, line_info);
+__wrap_calloc(size_t count, size_t eltsize, __dbg_info_param);
 extern char *
-__wrap_strdup(const char * S, line_info);
+__wrap_strdup(const char * S, __dbg_info_param);
 extern void *
-__wrap_realloc(void * ptr, size_t newsize, line_info);
+__wrap_realloc(void * ptr, size_t newsize, __dbg_info_param);
 
 #ifndef __DEBUG_C
 # define malloc(s)	__wrap_malloc(s, __FILE__, __FUNCTION__, __LINE__)

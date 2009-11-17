@@ -84,7 +84,7 @@ static int strdup_counter = 0;
 
 void *
 __wrap_malloc(size_t size,
-		line_info)
+		__dbg_info_param)
 {
 	void * res;
 	res = malloc(size);
@@ -98,7 +98,7 @@ __wrap_malloc(size_t size,
 
 void
 __wrap_free(void * ptr,
-		line_info)
+		__dbg_info_param)
 {
 	TRACE(MEMORY, "@q free(%p)@[%s:%d]\n", ptr,
 			func, line);
@@ -109,7 +109,7 @@ __wrap_free(void * ptr,
 
 void *
 __wrap_calloc(size_t count, size_t eltsize,
-		line_info)
+		__dbg_info_param)
 {
 	void * res = NULL;
 	res = calloc (count, eltsize);
@@ -123,7 +123,7 @@ __wrap_calloc(size_t count, size_t eltsize,
 
 char *
 __wrap_strdup(const char * S,
-		line_info)
+		__dbg_info_param)
 {
 	char * res = NULL;
 	res = strdup (S);
@@ -138,7 +138,7 @@ __wrap_strdup(const char * S,
 
 void *
 __wrap_realloc(void * ptr, size_t newsize,
-		line_info)
+		__dbg_info_param)
 {
 	void * res;
 	res = realloc(ptr, newsize);
@@ -162,7 +162,8 @@ static void
 sighandler_mem_stats(int signum)
 {
 #ifndef YAAVG_DEBUG
-	VERBOSE(MEMORY, "this compilation doesn't support memory status report\n");
+	VERBOSE(MEMORY, "this compilation doesn't "
+			"support memory status report\n");
 #else
 	MEM_MSG("------ malloc counters ------\n");
 	MEM_MSG("malloc counter:\t%d\n", malloc_counter);
@@ -193,7 +194,8 @@ static void print_backtrace(FILE * fp)
 	count = backtrace(buffer, 256);
 	backtrace_symbols_fd(&buffer[1], count-1, fileno(fp));
 #else
-	fprintf(fp, "this compilation doesn't support backtrace reporting\n");
+	fprintf(fp, "this compilation doesn't "
+			"support backtrace reporting\n");
 #endif
 	return;
 }
@@ -337,8 +339,9 @@ dbg_output(enum __debug_level level,
 				break;
 			default:
 				set_color(COLOR_RED);
-				fprintf(output_fp, "!!! debug option char '%c' error\n",
-						*fmt);
+				fprintf(output_fp, 
+					"!!! debug option char '%c' error\n",
+					*fmt);
 				set_color(COLOR_NORMAL);
 		}
 	}
@@ -418,7 +421,7 @@ dbg_output(enum __debug_level level,
 	va_end(ap);
 }
 
-void
+void NORETURN ATTR_NORETURN
 dbg_fatal(void)
 {
 	fprintf(stderr, "fatal error occured, cannot continue.\n");
@@ -426,5 +429,5 @@ dbg_fatal(void)
 	exit(-1);
 }
 
-// vim:set tabstop=4
+// vim:ts=8:sw=8
 
