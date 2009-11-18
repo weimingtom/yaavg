@@ -5,13 +5,15 @@ SET(SRC
 	debug.h
 	exception.h
 	exception.c
+	dict.h
 	)
 
 ADD_LIBRARY(common STATIC ${SRC})
 
 SET(tests
 	test_debug
-	test_exception)
+	test_exception
+	test_dict)
 build_tests("${tests}" "common")
 
 
