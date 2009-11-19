@@ -8,8 +8,11 @@
 #ifndef YAAVG_DICT
 #define YAAVG_DICT
 
+#include <config.h>
 #include <common/defs.h>
 #include <stdint.h>
+
+__BEGIN_DECLS
 
 struct dict_t;
 
@@ -35,6 +38,9 @@ struct dict_item_t {
 #define DICT_FL_STRKEY	(1)
 /* if DICT_FL_STRVAL is set, all data_len is ignored. */
 #define DICT_FL_STRVAL	(2)
+/* if DICT_FL_FIXED set, the size of the dict is hints (if hints is too small,
+ * use DICT_SMALL_SIZE instead) */
+#define DICT_FL_FIXED	(4)
 
 /* if compare_key is NULL:
  * if DICT_FL_STRKEY is set, then use strcmp to compare keys;
@@ -96,6 +102,7 @@ dict_del(struct dict_t * dict, void * key, int key_len);
 extern struct dict_item_t *
 dict_get_next(struct dict_t * dict, struct dict_item_t * item);
 
+__END_DECLS
 #endif
 // vim:ts=4:sw=4
 

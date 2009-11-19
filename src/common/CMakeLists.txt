@@ -7,6 +7,8 @@ SET(SRC
 	exception.c
 	dict.h
 	dict.c
+	mm.h
+	mm.c
 	)
 
 ADD_LIBRARY(common STATIC ${SRC})
@@ -14,7 +16,8 @@ ADD_LIBRARY(common STATIC ${SRC})
 SET(tests
 	test_debug
 	test_exception
-	test_dict)
+	test_dict
+	test_mm)
 build_tests("${tests}" "common")
 
 

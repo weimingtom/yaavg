@@ -7,6 +7,7 @@
 #define __DEBUG_H
 #include <common/defs.h>
 #include <stdlib.h>
+#include <memory.h>	/* strdup */
 
 __BEGIN_DECLS
 
