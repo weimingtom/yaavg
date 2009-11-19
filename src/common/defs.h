@@ -20,6 +20,8 @@ typedef int bool_t;
 # define TRUE	(1)
 # define FALSE	(!TRUE)
 #endif
+#define defined_BOOL_T
+
 
 /* Copy code from list.h */
 #ifndef offsetof

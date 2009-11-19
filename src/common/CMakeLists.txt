@@ -6,6 +6,7 @@ SET(SRC
 	exception.h
 	exception.c
 	dict.h
+	dict.c
 	)
 
 ADD_LIBRARY(common STATIC ${SRC})
