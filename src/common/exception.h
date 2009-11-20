@@ -119,7 +119,7 @@ ATTR(format(printf, 3, 4))
 #endif
 
 #define THROW(t, fmt...) throw_exception(t, 0, __dbg_info fmt)
-#define THROW_VAL(t, v, fmt...) throw_exception(t, v, __dbg_info fmt)
+#define THROW_VAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), __dbg_info fmt)
 
 #ifdef YAAVG_DEBUG
 # define RETHROW(e) throw_exception((e).type, (e).u.xval, \
@@ -129,6 +129,7 @@ ATTR(format(printf, 3, 4))
 		"%s", (char*)&((e).msg))
 #endif
 
+#define THROWS(...)
 
 __END_DECLS
 #endif

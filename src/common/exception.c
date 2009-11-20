@@ -10,7 +10,7 @@
 static const char * exception_names[] = {
 	[EXP_NO_EXCEPTION] = "no exception",
 #define def_exp_type(a, b) \
-		[a] = b,
+		[a] = #a,
 #include <common/exception_types.h>
 #undef def_exp_type
 	[EXP_UNCATCHABLE] = "uncatchable exception",
