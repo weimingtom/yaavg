@@ -56,7 +56,6 @@ dict_destroy(struct dict_t * dict,
 
 /* the return value is a copy of target entry.
  * data == NULL indicates an empty slot. */
-/* never return NULL unless no more memory. */
 extern struct dict_entry_t
 dict_get(struct dict_t * dict, void * key,
 		hashval_t key_hash);

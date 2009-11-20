@@ -41,7 +41,7 @@ static bool_t compare_str(void * a, void * b)
  *
  * because the key may be the string of "<dummy>".
  * */
-static const char dummy[] = "<dummy>";
+static const char dummy_key[] = "<dummy_key>";
 
 static DEFINE_MEM_CACHE(__dict_t_cache, "cache of dict_t",
 		sizeof(struct dict_t));
@@ -113,9 +113,9 @@ dict_create(int hint, uint32_t flags,
  * 	a slot with key == NULL: the key is not fount, and the conflict link
  * 		is over. If we want to insert an entry, the used and fill should
  * 		both increas.
- * 	a slot with key == dummy: the key is not found, but the conflict link
+ * 	a slot with key == dummy_key: the key is not found, but the conflict link
  * 		has empty slots.
- * 	a slot with key != dummy and not null: the key has found.
+ * 	a slot with key != dummy_key and not null: the key has found.
  */
 static struct dict_entry_t *
 lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
@@ -140,7 +140,7 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 		if (ep->key == NULL)
 			break;
 
-		if (ep->key == dummy) {
+		if (ep->key == dummy_key) {
 			/* we always return the last entry in the conflict
 			 * link, therefore if we get an dummy slot,
 			 * we know the conflict is long. (???) */
@@ -205,7 +205,7 @@ __expand_dict(struct dict_t * dict, int fator)
 		struct dict_entry_t * oep = &old_table[i];
 		if (oep->key == NULL)
 			continue;
-		if (oep->key == dummy)
+		if (oep->key == dummy_key)
 			continue;
 		struct dict_entry_t * ep = lookup_entry(dict,
 				oep->key, oep->hash);
@@ -241,6 +241,9 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 		bool_t can_expand)
 {
 	struct dict_entry_t retval;
+	assert(dict != NULL);
+	assert(entry != NULL);
+
 	if (IS_STRKEY(dict))
 		fill_strhash(entry);
 
@@ -270,7 +273,7 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 		}
 	}
 
-	if (ep->key == dummy) {
+	if (ep->key == dummy_key) {
 		*ep = *entry;
 		dict->nr_used ++;
 		retval.key = retval.data = NULL;
@@ -312,6 +315,29 @@ dict_set(struct dict_t * dict, struct dict_entry_t * entry)
 	return __dict_insert(dict, entry, FALSE);
 }
 
+struct dict_entry_t
+dict_get(struct dict_t * dict, void * key,
+		hashval_t key_hash)
+{
+	assert(dict != NULL);
+	assert(key != NULL);
+	struct dict_entry_t retval;
+
+	if (IS_STRKEY(dict))
+		key_hash = string_hash(key);
+
+	/* lookup! */
+	struct dict_entry_t * ep = lookup_entry(dict, key,
+			key_hash);
+
+	if ((ep == NULL) || (ep->key == dummy_key)) {
+		retval.data = NULL;
+		return retval;
+	}
+
+	retval = *ep;
+	return retval;
+}
 
 // vim:ts=4:sw=4
 

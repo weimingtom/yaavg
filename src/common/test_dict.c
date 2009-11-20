@@ -50,8 +50,14 @@ int main()
 		struct dict_entry_t * ep = entries;
 		while (ep->key != NULL) {
 			dict_insert(dict, ep);
+			struct dict_entry_t te;
+			te = dict_get(dict, ep->key, 0);
+			VERBOSE(SYSTEM, "check data: %s\n",
+					(char*)te.data);
 			ep ++;
 		}
+
+
 	} FINALLY { }
 	CATCH(exp) {
 		switch (exp.type) {
