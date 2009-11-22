@@ -35,11 +35,12 @@ static bool_t compare_str(void * a, void * b)
 }
 
 /* dummy key */
-/* we shouldn't use
+/* we shouldn't use the below statement
  *
  * static const char * = "<dummy>";
  *
- * because the key may be the string of "<dummy>".
+ * if we do that, ld may link other string of "<dummy>"
+ * with it.
  * */
 static const char dummy_key[] = "<dummy_key>";
 
@@ -107,12 +108,36 @@ dict_create(int hint, uint32_t flags,
 	return new_dict;
 }
 
+void
+dict_destroy(struct dict_t * dict,
+		void  (*destroy_entry)(struct dict_entry_t * entry))
+{
+	/* we iterate over the table */
+	assert(dict != NULL);
+	assert(dict->ptable != NULL);
+	TRACE(DICT, "destroy dict %p\n", dict);
+	if (destroy_entry != NULL) {
+		int sz = dict->mask + 1;
+		for (int i = 0; i < sz; i++) {
+			struct dict_entry_t * ep = &(dict->ptable[i]);
+			if ((ep->key != NULL) && (ep->key != dummy_key))
+				destroy_entry(ep);
+		}
+	}
+
+	if (dict->ptable != dict->smalltable)
+		xfree(dict->ptable);
+	xfree(dict);
+}
+
+
+
 /* this util iterate over the conflict link. return value: 
  *  NULL: it is a fidxed size dict, the key is not fount and
  * 		cannot be inserted into;
  * 	a slot with key == NULL: the key is not fount, and the conflict link
  * 		is over. If we want to insert an entry, the used and fill should
- * 		both increas.
+ * 		both be increased.
  * 	a slot with key == dummy_key: the key is not found, but the conflict link
  * 		has empty slots.
  * 	a slot with key != dummy_key and not null: the key has found.
@@ -168,6 +193,7 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 		return ep;
 	/* if we didn't find free_slot and unused slot, and we exhaust the
 	 * whole table, the dict is full. */
+	assert(nr_checked > dict->mask + 1);
 	return NULL;
 }
 
@@ -256,10 +282,12 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 
 	if (ep == NULL) {
 		/* this is a fixed dict and cannot insert new entry */
-		if (IS_FIXED(dict))
+		if (IS_FIXED(dict)) {
+			TRACE(DICT, "dict %p is fixed and full\n", dict);
 			THROW_VAL(EXP_DICT_FULL, dict,
 					"fixed dict %p is full(%d/%d/%d), unable to insert", dict,
 					dict->nr_used, dict->nr_fill, dict->mask + 1);
+		}
 		TRACE(DICT, "lookup dict %p but return NULL, force dict expansion\n",
 				dict);
 		if (can_expand) {
@@ -267,7 +295,7 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 			ep = lookup_entry(dict, entry->key, entry->hash);
 			assert(ep != NULL);
 		} else {
-			/* makes the 2 hash different */
+			/* makes the 2 hashs different */
 			retval.hash = entry->hash - 1;
 			return retval;
 		}
@@ -331,7 +359,7 @@ dict_get(struct dict_t * dict, void * key,
 			key_hash);
 
 	if ((ep == NULL) || (ep->key == dummy_key)) {
-		retval.data = NULL;
+		retval.key = retval.data = NULL;
 		return retval;
 	}
 

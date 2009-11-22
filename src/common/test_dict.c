@@ -5,7 +5,7 @@
 #include <signal.h>
 
 static struct dict_entry_t entries[] = {
-	{"key1", "data1", 0},
+	{"<dummy_key>", "data1", 0},
 	{"key2", "data2", 0},
 	{"key3", "data3", 0},
 	{"key4", "data4", 0},
@@ -35,6 +35,7 @@ static struct dict_entry_t entries[] = {
 	{"key28", "data8", 0},
 	{"key29", "data9", 0},
 	{"key30", "data10", 0},
+	{"<dummy_key>", "data100", 0},
 	{NULL, NULL, 0},
 };
 
@@ -52,13 +53,13 @@ int main()
 			dict_insert(dict, ep);
 			struct dict_entry_t te;
 			te = dict_get(dict, ep->key, 0);
-			VERBOSE(SYSTEM, "check data: %s\n",
-					(char*)te.data);
+			VERBOSE(SYSTEM, "check data of key %s: %s\n",
+					(char*)ep->key, (char*)te.data);
 			ep ++;
 		}
-
-
-	} FINALLY { }
+	} FINALLY {
+		dict_destroy(dict, NULL);
+	}
 	CATCH(exp) {
 		switch (exp.type) {
 			case EXP_DICT_FULL:

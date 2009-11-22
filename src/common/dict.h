@@ -79,7 +79,7 @@ dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
 
 /* the return value of dict_set is a copy of the original entry. */
 /* set is different from insert: set never resize the dict, so set may fail,
- * but insert never fail (unless no memory, or the dict is fixed size.).  When
+ * but insert never fail (unless out of memory, or the dict is fixed size.).  When
  * set success, the hash in return entry should be same as entry->hash (it may
  * be changed by dict_set). When set failes, they are different. */
 extern struct dict_entry_t THROWS(EXP_DICT_FULL)
@@ -87,7 +87,7 @@ dict_set(struct dict_t * dict, struct dict_entry_t * entry);
 
 
 /* the return value is a copy of the original entry. the caller
- * can destroy the data. if there is no such key, the key field
+ * can destroy the data. if there is no such key, the key and data field
  * of the return entry will be set to NULL. */
 extern struct dict_entry_t
 dict_remove(struct dict_t * dict, void * key);
