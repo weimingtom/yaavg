@@ -49,7 +49,7 @@ int main()
 	dbg_init(NULL);
 
 	struct dict_t * strdict = strdict_create(sizeof(kvps) / sizeof(kvps[0]) - 1,
-			STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA | STRDICT_FL_FIXED );
+			STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA);
 	assert(strdict != NULL);
 	struct exception_t exp;
 	TRY(exp) {

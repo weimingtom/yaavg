@@ -12,9 +12,6 @@
 #include <assert.h>
 
 
-/* see python's code */
-#define PERTURB_SHIFT	(5)
-
 static bool_t compare_str(void * a, void * b, uintptr_t useless)
 {
 	char * sa, *sb;
@@ -159,13 +156,11 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 	struct dict_entry_t * ep;
 	struct dict_entry_t * free_slot = NULL;
 	int i = hash & (dict->mask);
-	hashval_t perturb;
 
 	assert(key != NULL);
 
 	int nr_checked = 0;
 
-	perturb = hash;
 	do {
 		ep = &ep0[i & dict->mask];
 		TRACE(DICT, "checking nr %d\n", i & dict->mask);
@@ -196,11 +191,9 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 			}
 		}
 
-		i = (i << 2) + i + perturb + 1;
-		perturb >>= PERTURB_SHIFT;
+		i = (i << 2) + i + 1;
 		nr_checked ++;
-	} while (nr_checked < (dict->mask + 1)
-			+ sizeof(hashval_t) * 8 / PERTURB_SHIFT + 1);
+	} while (nr_checked < (dict->mask + 1));
 
 	if (free_slot != NULL)
 		return free_slot;
@@ -208,8 +201,7 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 		return ep;
 	/* if we didn't find free_slot and unused slot, and we exhaust the
 	 * whole table, the dict is full. */
-	assert(nr_checked == dict->mask + 1
-			+ sizeof(hashval_t) * 8 / PERTURB_SHIFT + 1);
+	assert(nr_checked == dict->mask + 1);
 	return NULL;
 }
 
@@ -228,13 +220,12 @@ __dict_insert_clean(struct dict_t * dict, struct dict_entry_t * oep)
 {
 	/* a simple version of lookup_entry */
 	hashval_t hash = oep->hash;
-	hashval_t perturb;
 	hashval_t mask = dict->mask;
 	int i = hash & mask;
 	struct dict_entry_t * ep0 = dict->ptable;
 	struct dict_entry_t * ep = &ep0[hash & mask];
-	for (perturb = hash; ep->key != NULL; perturb >>= PERTURB_SHIFT) {
-		i = (i << 2) + i + perturb + 1;
+	while (ep->key != NULL) {
+		i = (i << 2) + i + 1;
 		ep = &ep0[i & mask];
 	}
 	*ep = *oep;
