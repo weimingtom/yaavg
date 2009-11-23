@@ -1,5 +1,6 @@
 #include <common/debug.h>
 #include <common/dict.h>
+#include <common/cleanup_list.h>
 
 #include <stdio.h>
 #include <signal.h>
@@ -46,7 +47,7 @@ int main()
 
 	struct exception_t exp;
 	TRY(exp) {
-		dict = dict_create(10, DICT_FL_FIXED | DICT_FL_STRKEY, NULL);
+		dict = dict_create(10, DICT_FL_STRKEY, NULL, 0);
 
 		struct dict_entry_t * ep = entries;
 		while (ep->key != NULL) {
@@ -58,7 +59,7 @@ int main()
 			ep ++;
 		}
 	} FINALLY {
-		dict_destroy(dict, NULL);
+		dict_destroy(dict, NULL, 0);
 	}
 	CATCH(exp) {
 		switch (exp.type) {
@@ -70,6 +71,7 @@ int main()
 		}
 	}
 
+	do_cleanup();
 	raise(SIGUSR1);
 	return 0;
 }

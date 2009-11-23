@@ -85,7 +85,7 @@ mem_cache_shrink(struct mem_cache_t * cache)
 		bytes += cache->size;
 		cache->nr_free --;
 	}
-	TRACE(MEMORY, "retrieve %d bytes from cache %s\n", bytes,
+	TRACE(MEMORY, "retrieve %d bytes from cache \"%s\"\n", bytes,
 			cache->name);
 	return bytes;
 }

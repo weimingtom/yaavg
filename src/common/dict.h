@@ -15,21 +15,27 @@
 
 __BEGIN_DECLS
 
-struct dict_t;
 
 typedef uint32_t hashval_t;
-
-struct dict_stat {
-	int nr_slots;
-	int nr_entrys;
-	int longest_link;
-};
 
 struct dict_entry_t {
 	void * key;
 	void * data;
 	hashval_t hash;
 };
+#define DICT_SMALL_SIZE	(1 << 3)
+struct dict_t {
+	int nr_fill;	/* active + dummy */
+	int nr_used;	/* active */
+	uint32_t mask;		/* mask is size - 1; size is always power of 2 */
+	uint32_t flags;
+	uintptr_t private;	/* dict contains private data */
+	uintptr_t compare_key_arg;	/* the 3rd argument passed to compare_key */
+	bool_t (*compare_key)(void*, void*, uintptr_t);
+	struct dict_entry_t * ptable;
+	struct dict_entry_t smalltable[DICT_SMALL_SIZE];
+};
+
 
 /* if the flag DICT_FL_STRKEY is set, then
  * all hash in dict handler and entry are ignored
@@ -46,13 +52,15 @@ struct dict_entry_t {
 extern struct dict_t *
 dict_create(int hint, uint32_t flags,
 		bool_t (*compare_key)(void * key1,
-			void * key2));
+			void * key2, uintptr_t arg),
+		uintptr_t ck_arg);
 
 /* iterate over entrys, destroy them, then destroy
  * dict */
 extern void
 dict_destroy(struct dict_t * dict,
-		void (*destroy_entry)(struct dict_entry_t * entry));
+		void (*destroy_entry)(struct dict_entry_t * entry, uintptr_t arg),
+		uintptr_t arg);
 
 /* the return value is a copy of target entry.
  * data == NULL indicates an empty slot. */
@@ -74,6 +82,16 @@ dict_get(struct dict_t * dict, void * key,
  * will be thrown.
  *
  * */
+/* **NOTE**:
+ * we shouldn't use entry to store the output entry. below code
+ * is **WRONG**:
+ *
+ * struct dict_entry_t e;
+ * e.key = ...;
+ * e.data = ...;
+ * e = dict_insert(dict, &e);
+ * ....
+ * */
 extern struct dict_entry_t THROWS(EXP_DICT_FULL)
 dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
 
@@ -81,7 +99,7 @@ dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
 /* set is different from insert: set never resize the dict, so set may fail,
  * but insert never fail (unless out of memory, or the dict is fixed size.).  When
  * set success, the hash in return entry should be same as entry->hash (it may
- * be changed by dict_set). When set failes, they are different. */
+ * be changed by dict_set). When set failes, it will throw an EXP_DICT_FULL */
 extern struct dict_entry_t THROWS(EXP_DICT_FULL)
 dict_set(struct dict_t * dict, struct dict_entry_t * entry);
 
@@ -90,11 +108,7 @@ dict_set(struct dict_t * dict, struct dict_entry_t * entry);
  * can destroy the data. if there is no such key, the key and data field
  * of the return entry will be set to NULL. */
 extern struct dict_entry_t
-dict_remove(struct dict_t * dict, void * key);
-
-/* del will guarantee no resize the dict */
-extern struct dict_entry_t
-dict_del(struct dict_t * dict, void * key);
+dict_remove(struct dict_t * dict, void * key, hashval_t hash);
 
 /* if the pentry is NULL, return the first entry */
 /* if the return value is NULL, there is no more entry. */
@@ -104,6 +118,28 @@ dict_del(struct dict_t * dict, void * key);
  * is safe. **NEVER** modify the key field. */
 extern struct dict_entry_t *
 dict_get_next(struct dict_t * dict, struct dict_entry_t * entry);
+
+/* special methods for string based dicts */
+#define STRDICT_FL_DUPKEY	(1)
+#define STRDICT_FL_DUPDATA	(2)
+#define STRDICT_FL_FIXED	(4)
+
+extern struct dict_t *
+strdict_create(int hint, uint32_t flags);
+
+extern void
+strdict_destroy(struct dict_t * dict);
+
+extern const char *
+strdict_get(struct dict_t * dict, char * key);
+
+extern void THROWS(EXP_DICT_FULL)
+strdict_insert(struct dict_t * dict,
+		const char * key, const char * data);
+
+extern void
+strdict_remove(struct dict_t * dict,
+		const char * key);
 
 __END_DECLS
 #endif

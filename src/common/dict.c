@@ -3,28 +3,19 @@
  * by WN @ Nov. 19, 2009
  */
 
+#include <common/debug.h>
 #include <common/mm.h>
+#include <common/cleanup_list.h>
 #include <common/dict.h>
 #include <common/bithacks.h>
 #include <string.h>
 #include <assert.h>
 
-#define DICT_SMALL_SIZE	(1 << 3)
 
 /* see python's code */
 #define PERTURB_SHIFT	(5)
 
-struct dict_t {
-	int nr_fill;	/* active + dummy */
-	int nr_used;	/* active */
-	uint32_t mask;		/* mask is size - 1; size is always power of 2 */
-	uint32_t flags;
-	bool_t (*compare_key)(void*, void*);
-	struct dict_entry_t * ptable;
-	struct dict_entry_t smalltable[DICT_SMALL_SIZE];
-};
-
-static bool_t compare_str(void * a, void * b)
+static bool_t compare_str(void * a, void * b, uintptr_t useless)
 {
 	char * sa, *sb;
 	sa = a;
@@ -48,6 +39,24 @@ static DEFINE_MEM_CACHE(__dict_t_cache, "cache of dict_t",
 		sizeof(struct dict_t));
 static struct mem_cache_t * pdict_cache = &__dict_t_cache;
 
+static void
+__dict_destructor(uintptr_t useless)
+{
+	mem_cache_shrink(&__dict_t_cache);
+}
+
+static struct cleanup_list_entry cleanup_dict_mem = {
+	.func 	= __dict_destructor,
+	.arg 	= 0,
+	.list	= LIST_HEAD_INIT(cleanup_dict_mem.list),
+};
+
+static void ATTR(constructor)
+__dict_constructor(void)
+{
+	register_cleanup_entry(&cleanup_dict_mem);
+}
+
 static hashval_t
 string_hash(char * s) 
 {
@@ -70,7 +79,8 @@ string_hash(char * s)
 
 struct dict_t *
 dict_create(int hint, uint32_t flags,
-		bool_t (*compare_key)(void*, void*))
+		bool_t (*compare_key)(void*, void*, uintptr_t),
+		uintptr_t ck_arg)
 {
 	struct dict_t * new_dict = mem_cache_zalloc(pdict_cache);
 	assert(new_dict != NULL);
@@ -79,6 +89,7 @@ dict_create(int hint, uint32_t flags,
 		new_dict->compare_key = compare_str;
 	else
 		new_dict->compare_key = compare_key;
+	new_dict->compare_key_arg = ck_arg;
 
 	new_dict->ptable = &(new_dict->smalltable[0]);
 
@@ -110,27 +121,26 @@ dict_create(int hint, uint32_t flags,
 
 void
 dict_destroy(struct dict_t * dict,
-		void  (*destroy_entry)(struct dict_entry_t * entry))
+		void  (*destroy_entry)(struct dict_entry_t * entry, uintptr_t arg),
+		uintptr_t arg)
 {
 	/* we iterate over the table */
 	assert(dict != NULL);
 	assert(dict->ptable != NULL);
-	TRACE(DICT, "destroy dict %p\n", dict);
+	TRACE(DICT, "destroying dict %p\n", dict);
 	if (destroy_entry != NULL) {
 		int sz = dict->mask + 1;
 		for (int i = 0; i < sz; i++) {
 			struct dict_entry_t * ep = &(dict->ptable[i]);
 			if ((ep->key != NULL) && (ep->key != dummy_key))
-				destroy_entry(ep);
+				destroy_entry(ep, arg);
 		}
 	}
 
 	if (dict->ptable != dict->smalltable)
 		xfree(dict->ptable);
-	xfree(dict);
+	mem_cache_free(pdict_cache, dict);
 }
-
-
 
 /* this util iterate over the conflict link. return value: 
  *  NULL: it is a fidxed size dict, the key is not fount and
@@ -158,6 +168,7 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 	perturb = hash;
 	do {
 		ep = &ep0[i & dict->mask];
+		TRACE(DICT, "checking nr %d\n", i & dict->mask);
 		/* the most common case */
 		if ((ep->key == key) || (ep->key == NULL))
 			return ep;
@@ -172,20 +183,24 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 			free_slot = ep;
 		} else {
 			/* check whether two keys are same */
-			if (IS_STRKEY(dict)) {
-				if (strcmp(key, ep->key) == 0)
-					return ep;
-			} else {
-				if (dict->compare_key != NULL)
-					if ((dict->compare_key)(key, ep->key))
+			if (ep->hash == hash) {
+				if (IS_STRKEY(dict)) {
+					if (strcmp(key, ep->key) == 0)
 						return ep;
+				} else {
+					if (dict->compare_key != NULL)
+						if ((dict->compare_key)(key, ep->key,
+									dict->compare_key_arg))
+							return ep;
+				}
 			}
 		}
 
+//		i = (i << 2) + i + 1;
 		i = (i << 2) + i + perturb + 1;
 		perturb >>= PERTURB_SHIFT;
 		nr_checked ++;
-	} while (nr_checked <= (dict->mask + 1));
+	} while (nr_checked < (dict->mask + 1));
 
 	if (free_slot != NULL)
 		return free_slot;
@@ -193,11 +208,9 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 		return ep;
 	/* if we didn't find free_slot and unused slot, and we exhaust the
 	 * whole table, the dict is full. */
-	assert(nr_checked > dict->mask + 1);
+	assert(nr_checked == dict->mask + 1);
 	return NULL;
 }
-
-
 
 static inline void
 fill_strhash(struct dict_entry_t * entry)
@@ -205,19 +218,59 @@ fill_strhash(struct dict_entry_t * entry)
 	entry->hash = string_hash(entry->key);
 }
 
+/* insert entrys in resizing. when call this func,
+ * the caller knows that there **MUST** have spaces
+ * for the oep. the key, hash and value field of oep should
+ * be set correctly. */
 static void
-__expand_dict(struct dict_t * dict, int fator)
+__dict_insert_clean(struct dict_t * dict, struct dict_entry_t * oep)
+{
+	/* a simple version of lookup_entry */
+	hashval_t hash = oep->hash;
+	hashval_t perturb;
+	hashval_t mask = dict->mask;
+	int i = hash & mask;
+	struct dict_entry_t * ep0 = dict->ptable;
+	struct dict_entry_t * ep = &ep0[hash & mask];
+	for (perturb = hash; ep->key != NULL; perturb >>= PERTURB_SHIFT) {
+		i = (i << 2) + i + perturb + 1;
+		ep = &ep0[i & mask];
+	}
+	*ep = *oep;
+	dict->nr_fill ++;
+	dict->nr_used ++;
+}
+
+static void
+__expand_dict(struct dict_t * dict, int minused)
 {
 	uint32_t old_size = dict->mask + 1;
-	uint32_t new_size = old_size * fator;
+	uint32_t new_size = pow2roundup(minused);
+	if (new_size < DICT_SMALL_SIZE) {
+		new_size = DICT_SMALL_SIZE;
+	}
+
 	uint32_t new_mask = new_size - 1;
 
-	TRACE(DICT, "expanding dict %p\n", dict);
+	TRACE(DICT, "resizing dict %p's size from %d to %d\n", dict,
+			old_size, new_size);
+	assert(dict->nr_used <= new_size);
 
 	assert(is_power_of_2(new_size));
 	/* we alloc the new table */
-	struct dict_entry_t * new_table = xcalloc(new_size,
-			sizeof(struct dict_entry_t));
+	/* we clone the old table for temporary storage */
+	struct dict_entry_t * new_table;
+	if ((new_size <= DICT_SMALL_SIZE) && (dict->ptable == dict->smalltable)) {
+		dict->ptable = xmalloc(sizeof(dict->smalltable));
+		assert(dict->ptable != NULL);
+		memcpy(dict->ptable, dict->smalltable, sizeof(dict->smalltable));
+		bzero(dict->smalltable, sizeof(dict->smalltable));
+		new_table = dict->smalltable;
+	} else {
+		new_table = xcalloc(new_size,
+				sizeof(struct dict_entry_t));
+	}
+
 	assert(new_table != NULL);
 
 	struct dict_entry_t * old_table = dict->ptable;
@@ -233,13 +286,8 @@ __expand_dict(struct dict_t * dict, int fator)
 			continue;
 		if (oep->key == dummy_key)
 			continue;
-		struct dict_entry_t * ep = lookup_entry(dict,
-				oep->key, oep->hash);
-		assert(ep != NULL);
-		assert(ep->key == NULL);
-		*ep = *oep;
-		dict->nr_fill ++;
-		dict->nr_used ++;
+		assert(oep->data != NULL);
+		__dict_insert_clean(dict, oep);
 	}
 
 	if (old_table != dict->smalltable)
@@ -247,7 +295,6 @@ __expand_dict(struct dict_t * dict, int fator)
 
 	TRACE(DICT, "dict %p expansion over: fill=%d, used=%d, size=%d\n",
 			dict, dict->nr_fill, dict->nr_used, dict->mask + 1);
-
 	return;
 }
 
@@ -258,7 +305,7 @@ expand_dict(struct dict_t * dict)
 	if (dict->nr_fill * 3 >= (dict->mask + 1) * 2) {
 		TRACE(DICT, "dict %p, fill=%d, used=%d, size=%d, need expansion\n",
 				dict, dict->nr_fill, dict->nr_used, dict->mask + 1);
-		__expand_dict(dict, 2);
+		__expand_dict(dict, dict->nr_used * 2);
 	}
 }
 
@@ -269,6 +316,8 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 	struct dict_entry_t retval;
 	assert(dict != NULL);
 	assert(entry != NULL);
+	assert(entry->key != NULL);
+	assert(entry->data != NULL);
 
 	if (IS_STRKEY(dict))
 		fill_strhash(entry);
@@ -295,13 +344,14 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 			ep = lookup_entry(dict, entry->key, entry->hash);
 			assert(ep != NULL);
 		} else {
-			/* makes the 2 hashs different */
-			retval.hash = entry->hash - 1;
-			return retval;
+			THROW_VAL(EXP_DICT_FULL, dict,
+					"dict %p is full(%d/%d/%d) and doesn't allow expansion", dict,
+					dict->nr_used, dict->nr_fill, dict->mask + 1);
 		}
 	}
 
 	if (ep->key == dummy_key) {
+		assert(ep->data == NULL);
 		*ep = *entry;
 		dict->nr_used ++;
 		retval.key = retval.data = NULL;
@@ -316,6 +366,7 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 
 	/* we still have unused slot */
 	if (ep->key == NULL) {
+		assert(ep->data == NULL);
 		dict->nr_fill ++;
 		dict->nr_used ++;
 		retval = *ep;
@@ -343,6 +394,44 @@ dict_set(struct dict_t * dict, struct dict_entry_t * entry)
 	return __dict_insert(dict, entry, FALSE);
 }
 
+static struct dict_entry_t
+__dict_remove(struct dict_t * dict, void * key, hashval_t hash)
+{
+	struct dict_entry_t retval;
+	/* first we lookup the key */
+	if (IS_STRKEY(dict))
+		hash = string_hash((char*)key);
+
+	struct dict_entry_t * ep = lookup_entry(dict, key, hash);
+	if ((ep == NULL) || (ep->key == dummy_key)) {
+		assert(ep->data == NULL);
+		retval.key = retval.data = NULL;
+		retval.hash = hash + 1;
+		return retval;
+	}
+
+	retval = *ep;
+	ep->key = (void*)dummy_key;
+	ep->hash = 0;
+	ep->data = NULL;
+	dict->nr_used --;
+	/* this is time for shrink */
+#if 0
+	/* never shrink when del entries. */
+	/* when insert entries, if nr_fill is too high,
+	 * it will do the shrinking. */
+	if (can_shrink && (!IS_FIXED(dict))) {
+	}
+#endif
+	return retval;
+}
+
+struct dict_entry_t
+dict_remove(struct dict_t * dict, void * key, hashval_t hash)
+{
+	return __dict_remove(dict, key, hash);
+}
+
 struct dict_entry_t
 dict_get(struct dict_t * dict, void * key,
 		hashval_t key_hash)
@@ -365,6 +454,120 @@ dict_get(struct dict_t * dict, void * key,
 
 	retval = *ep;
 	return retval;
+}
+
+struct dict_entry_t *
+dict_get_next(struct dict_t * dict, struct dict_entry_t * entry)
+{
+	assert(dict != NULL);
+	if (entry == NULL)
+		return &(dict->ptable[0]);
+	struct dict_entry_t * ep0, *epmax;
+	ep0 = &(dict->ptable[0]);
+	epmax = &(dict->ptable[dict->mask]);
+
+	assert(entry >= ep0);
+	while (entry <= epmax) {
+		entry ++;
+		if (entry->key == NULL)
+			continue;
+		if (entry->key == dummy_key)
+			continue;
+		break;
+	}
+
+	if (entry > epmax)
+		return NULL;
+	assert(entry->data != NULL);
+	return entry;
+}
+
+void
+dict_set_private(struct dict_t * dict, uintptr_t pri)
+{
+	dict->private = pri;
+}
+
+uintptr_t
+dict_get_private(struct dict_t * dict)
+{
+	return dict->private;
+}
+
+/* methods for special string based dicts */
+struct dict_t *
+strdict_create(int hint, uint32_t flags)
+{
+	uint32_t real_flags = DICT_FL_STRKEY | DICT_FL_STRVAL;
+	if (flags & STRDICT_FL_FIXED)
+		real_flags |= DICT_FL_FIXED;
+
+	struct dict_t * dict = dict_create(hint, real_flags, NULL, 0);
+	assert(dict != NULL);
+	dict->private = (uintptr_t)flags;
+	return dict;
+}
+
+static void
+strdict_destroy_entry(struct dict_entry_t * ep, uintptr_t arg)
+{
+	if ((arg & STRDICT_FL_DUPKEY) && (ep->key != NULL))
+		xfree(ep->key);
+	if ((arg & STRDICT_FL_DUPDATA) && (ep->data != NULL))
+		xfree(ep->data);
+}
+
+void
+strdict_destroy(struct dict_t * dict)
+{
+	uint32_t flags = (uint32_t)(dict->private);
+	if (flags & (STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA)) {
+		dict_destroy(dict, strdict_destroy_entry, flags);
+	} else {
+		dict_destroy(dict, NULL, 0);
+	}
+}
+
+const char *
+strdict_get(struct dict_t * dict, char * key)
+{
+	struct dict_entry_t e = dict_get(dict, key, 0);
+	return (const char *)e.data;
+}
+
+void
+strdict_insert(struct dict_t * dict,
+		const char * key, const char * data)
+{
+	struct dict_entry_t e, oe;
+	uintptr_t flags = dict->private;
+	if (flags & STRDICT_FL_DUPKEY)
+		e.key = strdup(key);
+	else
+		e.key = (char*)key;
+	if (flags & STRDICT_FL_DUPDATA)
+		e.data = strdup(data);
+	else
+		e.data = (char*)data;
+
+	oe = dict_insert(dict, &e);
+	if ((oe.data != NULL) && (flags & STRDICT_FL_DUPDATA))
+			xfree(oe.data);
+	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
+			xfree(oe.key);
+}
+
+void
+strdict_remove(struct dict_t * dict,
+		const char * key)
+{
+	struct dict_entry_t oe;
+	uintptr_t flags = dict->private;
+	oe = dict_remove(dict, (void*)key, 0);
+	if ((oe.data != NULL) && (flags & STRDICT_FL_DUPDATA))
+		xfree(oe.data);
+	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
+		xfree(oe.key);
 }
 
 // vim:ts=4:sw=4
