@@ -49,7 +49,7 @@ int main()
 	dbg_init(NULL);
 
 	struct dict_t * strdict = strdict_create(sizeof(kvps) / sizeof(kvps[0]) - 1,
-			STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA );
+			STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA | STRDICT_FL_FIXED );
 	assert(strdict != NULL);
 	struct exception_t exp;
 	TRY(exp) {
@@ -67,6 +67,13 @@ int main()
 			ep = dict_get_next(strdict, ep);
 		}
 
+		WARNING(SYSTEM, "----------------------------------\n");
+		pkvp = &kvps[0];
+		while (pkvp->key != NULL) {
+			WARNING(SYSTEM, "key=%s, value=%s\n",
+					pkvp->key, strdict_get(strdict, pkvp->key));
+			pkvp ++;
+		}
 
 	} FINALLY {
 		strdict_destroy(strdict);

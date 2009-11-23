@@ -196,11 +196,11 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 			}
 		}
 
-//		i = (i << 2) + i + 1;
 		i = (i << 2) + i + perturb + 1;
 		perturb >>= PERTURB_SHIFT;
 		nr_checked ++;
-	} while (nr_checked < (dict->mask + 1));
+	} while (nr_checked < (dict->mask + 1)
+			+ sizeof(hashval_t) * 8 / PERTURB_SHIFT + 1);
 
 	if (free_slot != NULL)
 		return free_slot;
@@ -208,7 +208,8 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 		return ep;
 	/* if we didn't find free_slot and unused slot, and we exhaust the
 	 * whole table, the dict is full. */
-	assert(nr_checked == dict->mask + 1);
+	assert(nr_checked == dict->mask + 1
+			+ sizeof(hashval_t) * 8 / PERTURB_SHIFT + 1);
 	return NULL;
 }
 
