@@ -13,6 +13,7 @@ enum __debug_component {
 	SYSTEM	= 0,
 	MEMORY,
 	DICT,
+	YCONF,
 	NR_DEBUG_COMPONENTS,
 };
 
@@ -24,13 +25,15 @@ __debug_component_names[NR_DEBUG_COMPONENTS] = {
 	[SYSTEM]	= "SYS",
 	[MEMORY]	= "MEM",
 	[DICT]		= "DIC",
+	[YCONF]		= "COF",
 };
 
 static const enum __debug_level
 __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[SYSTEM]	= DBG_LV_VERBOSE,
-	[MEMORY]	= DBG_LV_VERBOSE,
+	[MEMORY]	= DBG_LV_TRACE,
 	[DICT]		= DBG_LV_TRACE,
+	[YCONF]		= DBG_LV_TRACE,
 };
 #endif
 #endif

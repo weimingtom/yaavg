@@ -64,6 +64,10 @@ void
 mem_cache_free(struct mem_cache_t * cache,
 		void * ptr)
 {
+	if (!(cache->active)) {
+		xfree(ptr);
+		return;
+	}
 	struct list_head * h = (struct list_head *)ptr;
 	list_add(h, &(cache->free_list));
 	cache->nr_free ++;

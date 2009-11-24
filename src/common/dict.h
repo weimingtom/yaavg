@@ -18,10 +18,24 @@ __BEGIN_DECLS
 
 typedef uint32_t hashval_t;
 
+#define DICT_DATA_FL_VANISHED	(1UL)
+typedef union {
+		void * ptr;
+		const char * str;
+		int val;
+		float flt;
+		bool_t bol;
+		/* void* is the longest field of the above fields */
+		unsigned char flags[sizeof(void*) + 1];
+} dict_data_t;
+
+#define GET_DICT_DATA_FLAGS(d)	((d).flags[sizeof(void*)])
+
+
 struct dict_entry_t {
 	void * key;
-	void * data;
 	hashval_t hash;
+	dict_data_t data;
 };
 #define DICT_SMALL_SIZE	(1 << 3)
 struct dict_t {
@@ -75,7 +89,7 @@ dict_get(struct dict_t * dict, void * key,
  * if DICT_FL_STRKEY is set, entry->hash will be modified. */
 /* the retual value:
  *
- * if (data != NULL), return value is the original entry,
+ * if !(data.flags & DICT_DATA_FL_VANISHED), return value is the original entry,
  * we have a chance to clear the data.
  *
  * if fixed dict inserted into too much entries, a EXP_DICT_FULL
@@ -97,18 +111,18 @@ dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
 
 /* the return value of dict_set is a copy of the original entry. */
 /* set is different from insert: set never resize the dict, so set may fail,
- * but insert never fail (unless out of memory, or the dict is fixed size.).  When
- * set success, the hash in return entry should be same as entry->hash (it may
- * be changed by dict_set). When set failes, it will throw an EXP_DICT_FULL */
-extern struct dict_entry_t THROWS(EXP_DICT_FULL)
-dict_set(struct dict_t * dict, struct dict_entry_t * entry);
+ * but insert never fail (unless out of memory, or the dict is fixed size.).
+ * When set failes, it will throw an EXP_DICT_FULL */
+/* if there is no such key before the set, the DICT_DATA_FL_VANISHED will be set. */
+extern struct dict_entry_t THROWS(EXP_DICT_FULL) dict_set(struct dict_t * dict,
+		struct dict_entry_t * entry);
 
-
-/* the return value is a copy of the original entry. the caller
- * can destroy the data. if there is no such key, the key and data field
- * of the return entry will be set to NULL. */
-extern struct dict_entry_t
-dict_remove(struct dict_t * dict, void * key, hashval_t hash);
+/* the return value is a copy of the original entry. the caller can destroy the
+ * data. if there is no such key, the key and field of the return entry will be
+ * set to NULL. if there is no such key before the set, the
+ * DICT_DATA_FL_VANISHED will be set. */
+extern struct dict_entry_t dict_remove(struct dict_t * dict, void * key,
+		hashval_t hash);
 
 /* if the pentry is NULL, return the first entry */
 /* if the return value is NULL, there is no more entry. */
@@ -130,12 +144,12 @@ strdict_create(int hint, uint32_t flags);
 extern void
 strdict_destroy(struct dict_t * dict);
 
-extern const char *
-strdict_get(struct dict_t * dict, char * key);
+extern dict_data_t
+strdict_get(struct dict_t * dict, const char * key);
 
 extern void THROWS(EXP_DICT_FULL)
 strdict_insert(struct dict_t * dict,
-		const char * key, const char * data);
+		const char * key, dict_data_t data);
 
 extern void
 strdict_remove(struct dict_t * dict,

@@ -14,21 +14,13 @@ __BEGIN_DECLS
 /* we use cleanup list, not destructor, because in some
  * serious situation, the program need to be terminate immediately,
  * call cleanups may be dangerous. */
-/* we have 2 cleanup list, one is active when calling do_cleanup,
- * the other active when return or exit(). register_cleanup_entry install
- * cleanup entries onto the first(soft) list, register_cleanup_entry_hard
- * installs entries onto the next (hard) list. */
-struct cleanup_list_entry {
-	void (*func)(uintptr_t arg);
-	uintptr_t arg;
-	struct list_head list;
-};
+
+#define NR_CLEANUP_ENTRIES	(8)
+
+typedef void (*cleanup_func_t)(uintptr_t);
 
 void
-register_cleanup_entry(struct cleanup_list_entry * e);
-
-void
-register_cleanup_entry_hard(struct cleanup_list_entry * e);
+register_cleanup(cleanup_func_t func, uintptr_t arg);
 
 void
 do_cleanup(void);

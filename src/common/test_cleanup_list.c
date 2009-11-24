@@ -11,15 +11,10 @@ print_destructor(uintptr_t arg)
 	printf("XXXXX\n");
 }
 
-static struct cleanup_list_entry destructor = {
-	.func = print_destructor,
-	.arg = 0,
-};
-
 int main()
 {
 	dbg_init(NULL);
-	register_cleanup_entry_hard(&destructor);
+	register_cleanup(print_destructor, 0);
 	struct exception_t exp;
 	struct dict_t * dict;
 	TRY(exp) {

@@ -12,32 +12,27 @@
 #include <common/exception.h>
 #include <common/list.h>
 
-static inline void *
-xmalloc(size_t sz)
-{
-	void * ptr;
-	ptr = malloc(sz);
-	if (ptr == NULL)
-		THROW(EXP_OUT_OF_MEMORY, "out of memory");
-	return ptr;
-}
+#define xmalloc(___sz)	({	\
+		void * ___ptr;		\
+		___ptr = malloc(___sz);\
+		if (___ptr == NULL)	\
+			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			___ptr; \
+		})
 
-static inline void *
-xcalloc(size_t count, size_t eltsize)
-{
-	void * ptr;
-	ptr = calloc(count, eltsize);
-	if (ptr == NULL)
-		THROW(EXP_OUT_OF_MEMORY, "out of memory");
-	return ptr;
-}
+#define xcalloc(___count, ___eltsize)	({	\
+		void * ___ptr;		\
+		___ptr = calloc((___count), (___eltsize));\
+		if (___ptr == NULL)	\
+			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			___ptr; \
+		})
 
-static inline void
-xfree(void * ptr)
-{
-	if (ptr != NULL)
-		free(ptr);
-}
+#define xfree(___ptr) do {	\
+	void * ___X_ptr = ___ptr;	\
+	if ((___X_ptr) != NULL)			\
+		free((___X_ptr));			\
+} while(0)
 
 
 struct mem_cache_t {
@@ -47,6 +42,7 @@ struct mem_cache_t {
 	int nr_active;
 	int nr_free;
 	size_t size;
+	bool_t active;
 };
 
 #define DEFINE_MEM_CACHE(n, d, s) struct mem_cache_t n = { \
@@ -56,7 +52,10 @@ struct mem_cache_t {
 	.nr_active = 0,	\
 	.nr_free = 0,	\
 	.size = (s),		\
+	.active = TRUE,		\
 }
+
+#define SET_INACTIVE(c)	do { ((c).active = FALSE); } while(0)
 
 /* 
  * flags has not been defined now, it should be 0.

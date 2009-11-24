@@ -11,7 +11,6 @@
 #include <string.h>
 #include <assert.h>
 
-
 static bool_t compare_str(void * a, void * b, uintptr_t useless)
 {
 	char * sa, *sb;
@@ -40,18 +39,13 @@ static void
 __dict_destructor(uintptr_t useless)
 {
 	mem_cache_shrink(&__dict_t_cache);
+	SET_INACTIVE(__dict_t_cache);
 }
-
-static struct cleanup_list_entry cleanup_dict_mem = {
-	.func 	= __dict_destructor,
-	.arg 	= 0,
-	.list	= LIST_HEAD_INIT(cleanup_dict_mem.list),
-};
 
 static void ATTR(constructor)
 __dict_constructor(void)
 {
-	register_cleanup_entry(&cleanup_dict_mem);
+	register_cleanup(__dict_destructor, 0);
 }
 
 static hashval_t
@@ -161,6 +155,7 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 
 	int nr_checked = 0;
 
+	TRACE(DICT, "begin lookup for hash 0x%x\n", hash);
 	do {
 		ep = &ep0[i & dict->mask];
 		TRACE(DICT, "checking nr %d\n", i & dict->mask);
@@ -278,7 +273,6 @@ __expand_dict(struct dict_t * dict, int minused)
 			continue;
 		if (oep->key == dummy_key)
 			continue;
-		assert(oep->data != NULL);
 		__dict_insert_clean(dict, oep);
 	}
 
@@ -309,7 +303,8 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 	assert(dict != NULL);
 	assert(entry != NULL);
 	assert(entry->key != NULL);
-	assert(entry->data != NULL);
+
+	GET_DICT_DATA_FLAGS(entry->data) &= ~(DICT_DATA_FL_VANISHED);
 
 	if (IS_STRKEY(dict))
 		fill_strhash(entry);
@@ -343,10 +338,10 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 	}
 
 	if (ep->key == dummy_key) {
-		assert(ep->data == NULL);
 		*ep = *entry;
 		dict->nr_used ++;
-		retval.key = retval.data = NULL;
+		retval.key = retval.data.ptr = NULL;
+		GET_DICT_DATA_FLAGS(retval.data) |= DICT_DATA_FL_VANISHED;
 		retval.hash = entry->hash;
 
 		/* we can expand the dict */
@@ -358,10 +353,10 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 
 	/* we still have unused slot */
 	if (ep->key == NULL) {
-		assert(ep->data == NULL);
 		dict->nr_fill ++;
 		dict->nr_used ++;
-		retval = *ep;
+		retval.key = retval.data.ptr = NULL;
+		GET_DICT_DATA_FLAGS(retval.data) |= DICT_DATA_FL_VANISHED;
 		retval.hash = entry->hash;
 		*ep = *entry;
 		return retval;
@@ -395,18 +390,19 @@ __dict_remove(struct dict_t * dict, void * key, hashval_t hash)
 		hash = string_hash((char*)key);
 
 	struct dict_entry_t * ep = lookup_entry(dict, key, hash);
-	if ((ep == NULL) || (ep->key == dummy_key)) {
-		assert(ep->data == NULL);
-		retval.key = retval.data = NULL;
-		retval.hash = hash + 1;
+	if ((ep == NULL) || (ep->key == NULL) || (ep->key == dummy_key)) {
+		retval.key = retval.data.ptr = NULL;
+		GET_DICT_DATA_FLAGS(retval.data) |= DICT_DATA_FL_VANISHED;
 		return retval;
 	}
 
 	retval = *ep;
 	ep->key = (void*)dummy_key;
 	ep->hash = 0;
-	ep->data = NULL;
+	ep->data.ptr = NULL;
+	GET_DICT_DATA_FLAGS(ep->data) |= DICT_DATA_FL_VANISHED;
 	dict->nr_used --;
+	assert(!(GET_DICT_DATA_FLAGS(retval.data) & DICT_DATA_FL_VANISHED));
 	/* this is time for shrink */
 #if 0
 	/* never shrink when del entries. */
@@ -439,12 +435,14 @@ dict_get(struct dict_t * dict, void * key,
 	struct dict_entry_t * ep = lookup_entry(dict, key,
 			key_hash);
 
-	if ((ep == NULL) || (ep->key == dummy_key)) {
-		retval.key = retval.data = NULL;
+	if ((ep == NULL) || (ep->key == NULL) || (ep->key == dummy_key)) {
+		retval.key = retval.data.ptr = NULL;
+		GET_DICT_DATA_FLAGS(retval.data) = DICT_DATA_FL_VANISHED;
 		return retval;
 	}
 
 	retval = *ep;
+	assert(!(GET_DICT_DATA_FLAGS(retval.data) & DICT_DATA_FL_VANISHED));
 	return retval;
 }
 
@@ -470,7 +468,7 @@ dict_get_next(struct dict_t * dict, struct dict_entry_t * entry)
 
 	if (entry > epmax)
 		return NULL;
-	assert(entry->data != NULL);
+	assert(!(GET_DICT_DATA_FLAGS(entry->data) & DICT_DATA_FL_VANISHED));
 	return entry;
 }
 
@@ -505,8 +503,8 @@ strdict_destroy_entry(struct dict_entry_t * ep, uintptr_t arg)
 {
 	if ((arg & STRDICT_FL_DUPKEY) && (ep->key != NULL))
 		xfree(ep->key);
-	if ((arg & STRDICT_FL_DUPDATA) && (ep->data != NULL))
-		xfree(ep->data);
+	if ((arg & STRDICT_FL_DUPDATA) && (ep->data.str != NULL))
+		xfree((void*)(ep->data.str));
 }
 
 void
@@ -520,31 +518,32 @@ strdict_destroy(struct dict_t * dict)
 	}
 }
 
-const char *
-strdict_get(struct dict_t * dict, char * key)
+dict_data_t
+strdict_get(struct dict_t * dict, const char * key)
 {
-	struct dict_entry_t e = dict_get(dict, key, 0);
-	return (const char *)e.data;
+	struct dict_entry_t e = dict_get(dict, (char*)key, 0);
+	return e.data;
 }
 
 void
 strdict_insert(struct dict_t * dict,
-		const char * key, const char * data)
+		const char * key, dict_data_t data)
 {
 	struct dict_entry_t e, oe;
 	uintptr_t flags = dict->private;
+	GET_DICT_DATA_FLAGS(e.data) = 0;
 	if (flags & STRDICT_FL_DUPKEY)
 		e.key = strdup(key);
 	else
 		e.key = (char*)key;
 	if (flags & STRDICT_FL_DUPDATA)
-		e.data = strdup(data);
+		e.data.str = strdup(data.str);
 	else
-		e.data = (char*)data;
+		e.data = data;
 
 	oe = dict_insert(dict, &e);
-	if ((oe.data != NULL) && (flags & STRDICT_FL_DUPDATA))
-			xfree(oe.data);
+	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA))
+			xfree(oe.data.ptr);
 	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
 			xfree(oe.key);
 }
@@ -556,8 +555,8 @@ strdict_remove(struct dict_t * dict,
 	struct dict_entry_t oe;
 	uintptr_t flags = dict->private;
 	oe = dict_remove(dict, (void*)key, 0);
-	if ((oe.data != NULL) && (flags & STRDICT_FL_DUPDATA))
-		xfree(oe.data);
+	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA))
+		xfree(oe.data.ptr);
 	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
 		xfree(oe.key);
 }

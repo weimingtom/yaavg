@@ -4,50 +4,33 @@
  */
 
 #include <common/defs.h>
-#include <common/debug.h>
 #include <common/list.h>
 #include <common/cleanup_list.h>
+#include <assert.h>
 
-static LIST_HEAD(cleanup_list);
-static LIST_HEAD(cleanup_list_hard);
+struct cleanup_entry {
+	cleanup_func_t func;
+	uintptr_t arg;
+};
+
+static struct cleanup_entry entries[NR_CLEANUP_ENTRIES];
+static int nr_entries = 0;
 
 void
-register_cleanup_entry(struct cleanup_list_entry * e)
+register_cleanup(cleanup_func_t func, uintptr_t arg)
 {
-	list_add_tail(&(e->list), &cleanup_list);
+	nr_entries ++;
+	assert(nr_entries <= NR_CLEANUP_ENTRIES);
+	entries[nr_entries - 1].func = func;
+	entries[nr_entries - 1].arg = arg;
 }
-
-void
-register_cleanup_entry_hard(struct cleanup_list_entry * e)
-{
-	list_add_tail(&(e->list), &cleanup_list_hard);
-}
-
 
 void
 do_cleanup(void)
 {
-	struct cleanup_list_entry * pos, *n;
-	list_for_each_entry_safe(pos, n, &cleanup_list, list) {
-		list_del(&(pos->list));
-		pos->func(pos->arg);
+	for (int i = 0; i < nr_entries; i++) {
+		entries[i].func(entries[i].arg);
 	}
-}
-
-static void
-hard_cleanup(void)
-{
-	struct cleanup_list_entry * pos, *n;
-	list_for_each_entry_safe(pos, n, &cleanup_list_hard, list) {
-		list_del(&(pos->list));
-		pos->func(pos->arg);
-	}
-}
-
-static void ATTR(constructor)
-cleanup_list_init(void)
-{
-	atexit(hard_cleanup);
 }
 
 // vim:ts=4:sw=4

@@ -186,11 +186,11 @@ sighandler_mem_stats(int signum)
 static void * buffer[256];
 static void print_backtrace(FILE * fp)
 {
-#ifdef HAVE_BACKTRACE
 	if (fp == NULL)
 		fp = stderr;
 	size_t count;
 
+#ifdef HAVE_BACKTRACE
 	count = backtrace(buffer, 256);
 	backtrace_symbols_fd(&buffer[1], count-1, fileno(fp));
 #else
@@ -318,8 +318,10 @@ dbg_output(enum __debug_level level,
 		return;
 	if (level == DBG_LV_SILENT)
 		return;
-#ifdef YAAVG_DEBUG
 
+	if (output_fp == NULL)
+		output_fp = stderr;
+#ifdef YAAVG_DEBUG
 	/* check component and level */
 	if (get_comp_level(comp) > level)
 		return;
@@ -429,5 +431,5 @@ dbg_fatal(void)
 	exit(-1);
 }
 
-// vim:ts=8:sw=8
+// vim:ts=4:sw=4
 

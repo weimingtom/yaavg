@@ -55,7 +55,9 @@ int main()
 	TRY(exp) {
 		struct kvp * pkvp = &kvps[0];
 		while (pkvp->key != NULL) {
-			strdict_insert(strdict, pkvp->key, pkvp->value);
+			dict_data_t x;
+			x.str = pkvp->value;
+			strdict_insert(strdict, pkvp->key, x);
 			pkvp ++;
 		}
 
@@ -63,7 +65,7 @@ int main()
 		struct dict_entry_t * ep = dict_get_next(strdict, NULL);
 		while (ep != NULL) {
 			WARNING(SYSTEM, "key=%s, value=%s\n",
-					(char*)ep->key, (char*)ep->data);
+					(char*)ep->key, (char*)ep->data.str);
 			ep = dict_get_next(strdict, ep);
 		}
 
@@ -71,7 +73,7 @@ int main()
 		pkvp = &kvps[0];
 		while (pkvp->key != NULL) {
 			WARNING(SYSTEM, "key=%s, value=%s\n",
-					pkvp->key, strdict_get(strdict, pkvp->key));
+					pkvp->key, strdict_get(strdict, pkvp->key).str);
 			pkvp ++;
 		}
 

@@ -14,4 +14,5 @@ ENDMACRO(build_tests testlist libs)
 
 
 ADD_SUBDIRECTORY(common)
+ADD_SUBDIRECTORY(yconf)
 
