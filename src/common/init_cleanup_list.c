@@ -8,23 +8,10 @@
 #include <common/init_cleanup_list.h>
 #include <assert.h>
 
-static init_func_t init_funcs[] = {
-	__dbg_init,
-	__dict_init,
-	__yconf_init,
-	NULL,
-};
+extern init_func_t init_funcs[];
+extern cleanup_func_t cleanup_funcs[];
 
-
-static cleanup_func_t cleanup_funcs[] = {
-	__yconf_cleanup,
-	__dict_cleanup,
-	__dbg_cleanup,
-	NULL,
-};
-
-
-void
+void ATTR(constructor)
 do_init(void)
 {
 	init_func_t * p = &init_funcs[0];

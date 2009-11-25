@@ -5,6 +5,19 @@
 #include <signal.h>
 #include <stdio.h>
 
+init_func_t init_funcs[] = {
+	__dbg_init,
+	__dict_init,
+	NULL,
+};
+
+
+cleanup_func_t cleanup_funcs[] = {
+	__dict_cleanup,
+	__dbg_cleanup,
+	NULL,
+};
+
 
 int main()
 {

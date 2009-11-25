@@ -1,8 +1,23 @@
 #include <common/debug.h>
 #include <common/dict.h>
+#include <common/init_cleanup_list.h>
 
 #include <stdio.h>
 #include <signal.h>
+
+init_func_t init_funcs[] = {
+	__dbg_init,
+	__dict_init,
+	NULL,
+};
+
+
+cleanup_func_t cleanup_funcs[] = {
+	__dict_cleanup,
+	__dbg_cleanup,
+	NULL,
+};
+
 
 static struct dict_entry_t entries[] = {
 	{"<dummy_key>", 0, {"data1"},},
