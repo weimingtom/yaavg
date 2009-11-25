@@ -1,6 +1,5 @@
 #include <common/debug.h>
 #include <common/dict.h>
-#include <common/cleanup_list.h>
 
 #include <stdio.h>
 #include <signal.h>

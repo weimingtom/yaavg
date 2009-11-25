@@ -5,7 +5,7 @@
 
 #include <common/debug.h>
 #include <common/mm.h>
-#include <common/cleanup_list.h>
+#include <common/init_cleanup_list.h>
 #include <common/dict.h>
 #include <common/bithacks.h>
 #include <string.h>
@@ -35,18 +35,14 @@ static DEFINE_MEM_CACHE(__dict_t_cache, "cache of dict_t",
 		sizeof(struct dict_t));
 static struct mem_cache_t * pdict_cache = &__dict_t_cache;
 
-static void
-__dict_destructor(uintptr_t useless)
+void __dict_init(void) { return; }
+void
+__dict_cleanup(void)
 {
 	mem_cache_shrink(&__dict_t_cache);
 	SET_INACTIVE(__dict_t_cache);
 }
 
-static void ATTR(constructor)
-__dict_constructor(void)
-{
-	register_cleanup(__dict_destructor, 0);
-}
 
 static hashval_t
 string_hash(char * s) 

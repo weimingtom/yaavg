@@ -10,14 +10,6 @@
 #include <common/defs.h>
 __BEGIN_DECLS
 
-typedef enum _conf_type {
-	TypeNone = 0,
-	TypeInteger,
-	TypeString,
-	TypeFloat,
-	TypeBool,
-} conf_type_t;
-
 extern bool_t
 conf_get_bool(const char * key, bool_t def);
 extern const char *

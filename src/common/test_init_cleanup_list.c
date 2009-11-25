@@ -1,20 +1,15 @@
 #include <common/debug.h>
 #include <common/exception.h>
-#include <common/cleanup_list.h>
+#include <common/init_cleanup_list.h>
 #include <common/dict.h>
 #include <signal.h>
 #include <stdio.h>
 
-static void
-print_destructor(uintptr_t arg)
-{
-	printf("XXXXX\n");
-}
 
 int main()
 {
 	dbg_init(NULL);
-	register_cleanup(print_destructor, 0);
+	do_init();
 	struct exception_t exp;
 	struct dict_t * dict;
 	TRY(exp) {
@@ -34,3 +29,4 @@ int main()
 }
 
 // vim:ts=4:sw=4
+

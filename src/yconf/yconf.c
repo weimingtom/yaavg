@@ -6,11 +6,19 @@
 #include <config.h>
 #include <common/defs.h>
 #include <common/dict.h>
-#include <common/cleanup_list.h>
+#include <common/init_cleanup_list.h>
 #include <yconf/yconf.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+
+typedef enum {
+	TypeNone = 0,
+	TypeInteger,
+	TypeString,
+	TypeFloat,
+	TypeBool,
+} conf_type_t;
 
 struct kvp {
 	const char * key;
@@ -54,8 +62,8 @@ ENTRY_BOL("video.opengl.glx.grabkeyboard", FALSE),
 
 static struct dict_t * conf_dict = NULL;
 
-static void
-yconf_cleanup(uintptr_t arg)
+void
+__yconf_cleanup(void)
 {
 	if (conf_dict != NULL) {
 		strdict_destroy(conf_dict);
@@ -63,8 +71,8 @@ yconf_cleanup(uintptr_t arg)
 	}
 }
 
-static void ATTR(constructor)
-conf_init(void)
+void
+__yconf_init(void)
 {
 	if (conf_dict == NULL) {
 		conf_dict = strdict_create(sizeof(kvps) / sizeof(struct kvp),
@@ -77,7 +85,6 @@ conf_init(void)
 		strdict_insert(conf_dict, p->key, p->value);
 		p ++;
 	}
-	register_cleanup(yconf_cleanup, 0);
 }
 
 #define getv(x)	dict_data_t x = strdict_get(conf_dict, key);	\

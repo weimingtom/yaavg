@@ -230,9 +230,10 @@ dbg_exit(void)
 {
 	if ((output_fp != NULL) &&
 		(output_fp != stderr) &&
-		(output_fp != stdout))
+		(output_fp != stdout)) {
+		set_color(COLOR_NORMAL);
 		fclose(output_fp);
-	set_color(COLOR_NORMAL);
+	}
 	output_fp = NULL;
 }
 
@@ -241,6 +242,13 @@ dbg_init(const char * fn)
 {
 	int err;
 
+	/* we need to close the previous output_fp */
+	if ((output_fp != NULL) && (output_fp != stderr) && (output_fp != stdout)) {
+		set_color(COLOR_NORMAL);
+		fclose(output_fp);
+		output_fp = NULL;
+	}
+
 	/* open output_fp for debug output */
 	if ((fn == NULL) || fn[0] == '\0') {
 		output_fp = stderr;
@@ -248,9 +256,6 @@ dbg_init(const char * fn)
 		output_fp = fopen(fn, "a");
 		/* We will install a handler for SIGABRT */
 		assert(output_fp != NULL);
-#ifdef HAVE_ATEXIT
-		atexit(dbg_exit);
-#endif
 	}
 	/* test the colorful terminal */
 	if (isatty(fileno(output_fp)))
@@ -429,6 +434,16 @@ dbg_fatal(void)
 	fprintf(stderr, "fatal error occured, cannot continue.\n");
 	raise(SIGABRT);
 	exit(-1);
+}
+
+void __dbg_init(void)
+{
+	dbg_init(NULL);
+}
+
+void __dbg_cleanup(void)
+{
+	dbg_exit();
 }
 
 // vim:ts=4:sw=4

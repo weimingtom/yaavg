@@ -9,8 +9,8 @@ SET(SRC
 	dict.c
 	mm.h
 	mm.c
-	cleanup_list.h
-	cleanup_list.c
+	init_cleanup_list.h
+	init_cleanup_list.c
 	)
 
 ADD_LIBRARY(common STATIC ${SRC})
@@ -21,7 +21,7 @@ SET(tests
 	test_dict
 	test_mm
 	test_strdict
-	test_cleanup_list)
-build_tests("${tests}" "common")
+	test_init_cleanup_list)
+build_tests("${tests}" "common;yconf")
 
 

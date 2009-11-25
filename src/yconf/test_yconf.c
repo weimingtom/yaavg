@@ -1,6 +1,6 @@
 #include <config.h>
 #include <common/debug.h>
-#include <common/cleanup_list.h>
+#include <common/init_cleanup_list.h>
 #include <yconf/yconf.h>
 
 #include <signal.h>

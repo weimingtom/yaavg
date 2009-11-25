@@ -1,7 +1,7 @@
 #include <common/defs.h>
 #include <common/debug.h>
 #include <common/exception.h>
-#include <common/cleanup_list.h>
+#include <common/init_cleanup_list.h>
 #include <common/dict.h>
 #include <stdlib.h>
 #include <assert.h>
