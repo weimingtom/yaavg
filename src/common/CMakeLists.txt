@@ -11,6 +11,8 @@ SET(SRC
 	mm.c
 	init_cleanup_list.h
 	init_cleanup_list.c
+	functionor.h
+	functionor.c
 	)
 
 ADD_LIBRARY(common STATIC ${SRC})
