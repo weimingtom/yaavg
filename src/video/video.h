@@ -41,6 +41,22 @@ struct video_functionor_t {
 	void (*screenshot)(void);
 };
 
+#define VID_FUNC(x, f, args...)	do {if ((x) && ((x)->(f))) (x)->(f)(args);} while(0)
+#define VID_set_caption(x, v)	VID_FUNC((x), set_caption, v)
+#define VID_set_icon(x, v)		VID_FUNC((x), set_icon, v)
+#define VID_set_mouse_pos(x, a, b)	VID_FUNC((x), set_mouse_pos, a, b)
+#define VID_set_mouse_pos_int(x, a, b)		VID_FUNC((x), set_mouse_pos_int, a, b)
+#define VID_init(x)	VID_FUNC((x), init)
+#define VID_reinit(x)	VID_FUNC((x), reinit)
+#define VID_destroy(x)	VID_FUNC((x), destroy)
+#define VID_reshape(x, w, h)	VID_FUNC((x), reshape, w, h)
+#define VID_render_begin(x)	VID_FUNC((x), render_begin)
+#define VID_render_end(x)	VID_FUNC((x), render_end)
+#define VID_swap_buffer(x)	VID_FUNC((x), swap_buffer)
+#define VID_toggle_full_screen(x)	VID_FUNC((x), toggle_full_screen)
+#define VID_screenshot(x)			VID_FUNC((x), screenshot)
+
+
 #endif
 
 // vim:ts=4:sw=4

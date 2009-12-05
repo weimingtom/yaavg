@@ -9,6 +9,7 @@ extern struct functionor_t dummy_video_functionor;
 
 static struct functionor_t * functionors[] = {
 	&dummy_video_functionor,
+	NULL,
 };
 
 struct function_class_t video_function_class = {

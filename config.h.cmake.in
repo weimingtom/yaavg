@@ -1,3 +1,5 @@
+#ifndef __YAAVG_CONFIG_H
+#define __YAAVG_CONFIG_H
 #cmakedefine HAVE_MALLOC_H	1
 #cmakedefine HAVE_ALLOCA_H	1
 #cmakedefine HAVE_ALLOCA	1
@@ -11,4 +13,7 @@
 #cmakedefine HAVE_SETJMP_H	1
 #cmakedefine HAVE_CLOCK_GETTIME	1
 #cmakedefine HAVE_SIGSETJMP	1
+#cmakedefine HAVE_NANOSLEEP	1
+#cmakedefine HAVE_SDL		1
+#endif
 

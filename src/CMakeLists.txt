@@ -16,4 +16,5 @@ ENDMACRO(build_tests testlist libs)
 ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(yconf)
 ADD_SUBDIRECTORY(video)
+ADD_SUBDIRECTORY(utils)
 

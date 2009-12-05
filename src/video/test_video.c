@@ -33,6 +33,8 @@ main()
 	TRY(exp) {
 		vid = (struct video_functionor_t *)find_functionor(&video_function_class, "dummy");
 		VERBOSE(SYSTEM, "found video engine: %s\n", vid->name);
+
+
 	} FINALLY {
 		if (vid != NULL) {
 			if (vid->destroy != NULL)

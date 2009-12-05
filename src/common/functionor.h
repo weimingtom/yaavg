@@ -14,6 +14,7 @@ enum FunctionClass {
 	FC_VIDEO,
 	FC_OPENGL_ENGINE,
 	FC_PIC_LOADER,
+	FC_TIMER,
 	NR_FCS,
 };
 

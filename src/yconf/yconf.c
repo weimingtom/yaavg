@@ -32,6 +32,7 @@ struct kvp {
 #define ENTRY_BOL(a, b)	{a, TypeFloat, (dict_data_t)(bool_t)b}
 static struct kvp kvps[] = {
 ENTRY_STR("video.engine", "dummy"),
+ENTRY_BOL("disableSDL", FALSE),
 ENTRY_INT("video.resolution.w", 800),
 ENTRY_INT("video.resolution.h", 600),
 ENTRY_INT("video.viewport.w", 800),
