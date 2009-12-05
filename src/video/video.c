@@ -5,10 +5,16 @@
 
 #include <video/video.h>
 
-struct function_class_t display_function_class = {
-	.fclass = FC_DISPLAY,
-	.functionor_list = LIST_HEAD_INIT(display_function_class.functionor_list),
+extern struct functionor_t dummy_video_functionor;
+
+static struct functionor_t * functionors[] = {
+	&dummy_video_functionor,
+};
+
+struct function_class_t video_function_class = {
+	.fclass = FC_VIDEO,
 	.current_functionor = NULL,
+	.functionors = &functionors,
 };
 
 

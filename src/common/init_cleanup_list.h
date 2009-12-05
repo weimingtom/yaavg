@@ -15,6 +15,9 @@ __BEGIN_DECLS
 typedef void (*init_func_t)(void);
 typedef void (*cleanup_func_t)(void);
 
+extern init_func_t init_funcs[];
+extern cleanup_func_t cleanup_funcs[];
+
 extern void
 do_init(void);
 
@@ -29,6 +32,7 @@ extern void __dict_cleanup(void);
 
 extern void __yconf_init(void);
 extern void __yconf_cleanup(void);
+
 __END_DECLS
 #endif
 

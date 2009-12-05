@@ -19,6 +19,7 @@ cleanup_func_t cleanup_funcs[] = {
 	__dbg_cleanup,
 	NULL,
 };
+
 int
 main()
 {

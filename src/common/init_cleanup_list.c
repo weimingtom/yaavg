@@ -11,7 +11,7 @@
 extern init_func_t init_funcs[];
 extern cleanup_func_t cleanup_funcs[];
 
-void ATTR(constructor)
+void
 do_init(void)
 {
 	init_func_t * p = &init_funcs[0];

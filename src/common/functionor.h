@@ -11,7 +11,7 @@
 #include <common/list.h>
 
 enum FunctionClass {
-	FC_DISPLAY,
+	FC_VIDEO,
 	FC_OPENGL_ENGINE,
 	FC_PIC_LOADER,
 	NR_FCS,
@@ -20,7 +20,6 @@ enum FunctionClass {
 #define BASE_FUNCTIONOR	\
 	const char * name; 	\
 	enum FunctionClass fclass;	\
-	struct list_head list;	\
 	bool_t (*check_usable)(const char * params);
 
 struct functionor_t {
@@ -29,9 +28,12 @@ struct functionor_t {
 
 struct function_class_t {
 	enum FunctionClass fclass;
-	struct list_head functionor_list;
 	struct functionor_t * current_functionor;
+	struct functionor_t * (*functionors)[];
 };
+
+extern struct functionor_t *
+find_functionor(struct function_class_t * fclass, const char * param);
 
 #endif
 // vim:ts=4:sw=4
