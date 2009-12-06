@@ -15,6 +15,7 @@ enum __debug_component {
 	DICT,
 	YCONF,
 	VIDEO,
+	TIMER,
 	NR_DEBUG_COMPONENTS,
 };
 
@@ -28,6 +29,7 @@ __debug_component_names[NR_DEBUG_COMPONENTS] = {
 	[DICT]		= "DIC",
 	[YCONF]		= "COF",
 	[VIDEO]		= "VID",
+	[TIMER]		= "TMR"
 };
 
 static const enum __debug_level
@@ -37,6 +39,7 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[DICT]		= DBG_LV_VERBOSE,
 	[YCONF]		= DBG_LV_VERBOSE,
 	[VIDEO]		= DBG_LV_TRACE,
+	[TIMER]		= DBG_LV_TRACE,
 };
 #endif
 #endif

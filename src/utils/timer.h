@@ -23,6 +23,15 @@ struct timer_functionor_t {
 	tick_t (*get_ticks)(void);
 };
 
+extern void
+begin_frame_loop(void);
+
+extern dtick_t
+enter_frame(void);
+
+extern void
+finish_frame(void);
+
 #endif
 // vim:ts=4:sw=4
 

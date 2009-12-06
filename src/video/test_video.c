@@ -4,14 +4,17 @@
 #include <common/dict.h>
 #include <common/init_cleanup_list.h>
 #include <common/functionor.h>
+#include <utils/timer.h>
 #include <video/video.h>
 
+#include <assert.h>
 #include <signal.h>
 
 init_func_t init_funcs[] = {
 	__dbg_init,
 	__dict_init,
 	__yconf_init,
+	__timer_init,
 	NULL,
 };
 
@@ -27,14 +30,25 @@ int
 main()
 {
 	struct video_functionor_t * vid = NULL;
+	struct timer_functionor_t * timer = NULL;
 	do_init();
 
 	struct exception_t exp;
 	TRY(exp) {
-		vid = (struct video_functionor_t *)find_functionor(&video_function_class, "dummy");
+		SET_STATIC_FUNCTIONOR(vid, video_function_class, NULL);
+		assert(vid != NULL);
 		VERBOSE(SYSTEM, "found video engine: %s\n", vid->name);
 
+		SET_STATIC_FUNCTIONOR(timer, timer_function_class, NULL);
+		assert(timer != NULL);
+		VERBOSE(SYSTEM, "found timer engine: %s\n", timer->name);
 
+		dtick_t delta_time = 0;
+		begin_frame_loop();
+		for (;;) {
+			delta_time = enter_frame();
+			finish_frame();
+		}
 	} FINALLY {
 		if (vid != NULL) {
 			if (vid->destroy != NULL)

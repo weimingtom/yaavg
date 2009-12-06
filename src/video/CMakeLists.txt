@@ -10,5 +10,5 @@ SET(tests
 	test_video
 	)
 
-build_tests("${tests}" "yconf;common;video")
+build_tests("${tests}" "yconf;common;utils;video")
 

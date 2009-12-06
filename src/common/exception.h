@@ -25,6 +25,14 @@ enum exception_type {
 	EXP_UNCATCHABLE,
 };
 
+enum video_exception {
+	VIDEXP_NOEXP,
+	VIDEXP_RERENDER,
+	VIDEXP_SKIPFRAME,
+	VIDEXP_REINIT,
+	VIDEXP_FATAL,
+};
+
 #define EXCEPTION_MSG_LEN_MAX	(256)
 
 struct exception_t {
@@ -34,6 +42,7 @@ struct exception_t {
 		int val;
 		void * ptr;
 		uintptr_t xval;
+		enum exception_type video_exception;
 	} u;
 #ifdef YAAVG_DEBUG
 	const char * file;

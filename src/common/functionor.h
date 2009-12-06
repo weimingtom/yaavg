@@ -36,6 +36,14 @@ struct function_class_t {
 extern struct functionor_t *
 find_functionor(struct function_class_t * fclass, const char * param);
 
+#define SET_STATIC_FUNCTIONOR(var, class, param)	do {	\
+		struct functionor_t * ___c___;					\
+		___c___ = (class).current_functionor;				\
+		if (___c___ == NULL)								\
+			___c___ = find_functionor(&(class), param);	\
+		var = (typeof(var))(___c___);\
+} while(0)
+
 #endif
 // vim:ts=4:sw=4
 

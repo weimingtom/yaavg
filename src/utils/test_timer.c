@@ -12,6 +12,7 @@ init_func_t init_funcs[] = {
 	__dbg_init,
 	__dict_init,
 	__yconf_init,
+	__timer_init,
 	NULL,
 };
 

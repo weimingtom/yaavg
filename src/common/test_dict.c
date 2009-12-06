@@ -56,7 +56,7 @@ static struct dict_entry_t entries[] = {
 
 int main()
 {
-	struct dict_t * dict;
+	struct dict_t * dict = NULL;
 	dbg_init(NULL);
 
 	struct exception_t exp;

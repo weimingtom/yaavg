@@ -33,6 +33,7 @@ extern void __dict_cleanup(void);
 extern void __yconf_init(void);
 extern void __yconf_cleanup(void);
 
+extern void __timer_init(void);
 __END_DECLS
 #endif
 
