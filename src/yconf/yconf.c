@@ -34,7 +34,7 @@ static struct kvp kvps[] = {
 ENTRY_STR("video.engine", "dummy"),
 ENTRY_BOL("disableSDL", FALSE),
 ENTRY_INT("timer.mspf.fallback", 100),
-ENTRY_INT("timer.fps", 20),
+ENTRY_INT("timer.fps", 60),
 ENTRY_INT("video.resolution.w", 800),
 ENTRY_INT("video.resolution.h", 600),
 ENTRY_INT("video.viewport.w", 800),

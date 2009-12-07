@@ -32,6 +32,12 @@ enter_frame(void);
 extern void
 finish_frame(void);
 
+tick_t
+get_current(void);
+
+void
+force_delay(tick_t ms);
+
 #endif
 // vim:ts=4:sw=4
 

@@ -156,5 +156,20 @@ finish_frame(void)
 	}
 }
 
+tick_t
+get_current(void)
+{
+	return controller.last_frame_tick;
+}
+
+void
+force_delay(tick_t ms)
+{
+	if (frame_timer == NULL)
+		SET_STATIC_FUNCTIONOR(frame_timer, timer_function_class, NULL);
+	assert(frame_timer != NULL);
+	frame_timer->delay(ms);
+}
+
 // vim:ts=4:sw=4
 
