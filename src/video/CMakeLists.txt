@@ -7,7 +7,7 @@ SET(SRC
 ADD_LIBRARY(video STATIC ${SRC})
 
 SET(tests
-	test_video
+	test_video_timer
 	)
 
 build_tests("${tests}" "yconf;common;utils;video")

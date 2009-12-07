@@ -50,11 +50,9 @@ main()
 			finish_frame();
 		}
 	} FINALLY {
-		if (vid != NULL) {
-			if (vid->destroy != NULL)
-				vid->destroy();
-			vid = NULL;
-		}
+		if ((vid) && (vid->destroy))
+			vid->destroy();
+		vid = NULL;
 	}
 	CATCH(exp) {
 		switch(exp.type) {
