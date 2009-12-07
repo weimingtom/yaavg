@@ -61,6 +61,10 @@ main()
 			case EXP_FUNCTIONOR_NOT_FOUND:
 				ERROR(SYSTEM, "unable to find suitable video functionor\n");
 				break;
+			case EXP_CORRUPTED_CONF:
+				ERROR(SYSTEM, "configuraion \"%s\" currupted: %s\n",
+						(const char *)exp.u.ptr, exp.msg);
+				break;
 			default:
 				RETHROW(exp);
 		}

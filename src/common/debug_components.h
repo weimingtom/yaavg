@@ -39,7 +39,7 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[DICT]		= DBG_LV_VERBOSE,
 	[YCONF]		= DBG_LV_VERBOSE,
 	[VIDEO]		= DBG_LV_TRACE,
-	[TIMER]		= DBG_LV_TRACE,
+	[TIMER]		= DBG_LV_DEBUG,
 };
 #endif
 #endif
