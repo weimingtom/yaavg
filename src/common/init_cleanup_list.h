@@ -27,13 +27,11 @@ do_cleanup(void);
 extern void __dbg_init(void);
 extern void __dbg_cleanup(void);
 
-extern void __dict_init(void);
-extern void __dict_cleanup(void);
-
 extern void __yconf_init(void);
 extern void __yconf_cleanup(void);
 
 extern void __timer_init(void);
+extern void __mem_cache_cleanup(void);
 __END_DECLS
 #endif
 

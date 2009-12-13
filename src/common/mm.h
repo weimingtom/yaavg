@@ -55,7 +55,7 @@ struct mem_cache_t {
 	.active = TRUE,		\
 }
 
-#define SET_INACTIVE(c)	do { ((c).active = FALSE); } while(0)
+#define SET_INACTIVE(c)	do { ((c)->active = FALSE); } while(0)
 
 /* 
  * flags has not been defined now, it should be 0.
@@ -78,6 +78,11 @@ mem_cache_free(struct mem_cache_t * cache,
 /* free the whole free list */
 extern size_t
 mem_cache_shrink(struct mem_cache_t * cache);
+
+/* cleanup utils */
+extern struct mem_cache_t __dict_t_cache;
+extern struct mem_cache_t __file_resources_cache;
+extern struct mem_cache_t * static_mem_caches[];
 
 #endif
 // vim:ts=4:sw=4

@@ -1,20 +1,25 @@
 #include <common/debug.h>
 #include <common/dict.h>
+#include <common/mm.h>
 #include <common/init_cleanup_list.h>
 
 #include <stdio.h>
 #include <signal.h>
 
+struct mem_cache_t * static_mem_caches[] = {
+	&__dict_t_cache,
+	NULL,
+};
+
 init_func_t init_funcs[] = {
 	__dbg_init,
-	__dict_init,
 	NULL,
 };
 
 
 cleanup_func_t cleanup_funcs[] = {
-	__dict_cleanup,
 	__dbg_cleanup,
+	__mem_cache_cleanup,
 	NULL,
 };
 

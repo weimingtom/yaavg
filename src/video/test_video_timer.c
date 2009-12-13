@@ -4,15 +4,20 @@
 #include <common/dict.h>
 #include <common/init_cleanup_list.h>
 #include <common/functionor.h>
+#include <common/mm.h>
 #include <utils/timer.h>
 #include <video/video.h>
 
 #include <assert.h>
 #include <signal.h>
 
+struct mem_cache_t * static_mem_caches[] = {
+	&__dict_t_cache,
+	NULL,
+};
+
 init_func_t init_funcs[] = {
 	__dbg_init,
-	__dict_init,
 	__yconf_init,
 	__timer_init,
 	NULL,
@@ -21,7 +26,6 @@ init_func_t init_funcs[] = {
 
 cleanup_func_t cleanup_funcs[] = {
 	__yconf_cleanup,
-	__dict_cleanup,
 	__dbg_cleanup,
 	NULL,
 };

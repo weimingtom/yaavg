@@ -9,6 +9,7 @@
 #include <config.h>
 #include <common/defs.h>
 #include <common/functionor.h>
+#include <events/phy_events.h>
 
 extern struct function_class_t
 video_function_class;
@@ -39,6 +40,9 @@ struct video_functionor_t {
 	void (*swap_buffer)(void);
 	void (*toggle_full_screen)(void);
 	void (*screenshot)(void);
+
+	/* fill the phy_event struct. if return 0, there's no events left */
+	int (*poll_events)(struct phy_event * e);
 };
 
 #define VID_FUNC(x, f, args...)	do {if ((x) && ((x)->(f))) (x)->(f)(args);} while(0)
@@ -55,6 +59,7 @@ struct video_functionor_t {
 #define VID_swap_buffer(x)	VID_FUNC((x), swap_buffer)
 #define VID_toggle_full_screen(x)	VID_FUNC((x), toggle_full_screen)
 #define VID_screenshot(x)			VID_FUNC((x), screenshot)
+#define VID_poll_events(x)			VID_FUNC((x), poll_events)
 
 
 #endif

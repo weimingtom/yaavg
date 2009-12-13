@@ -10,5 +10,5 @@ SET(tests
 	test_video_timer
 	)
 
-build_tests("${tests}" "yconf;common;utils;video")
+build_tests("${tests}" "yconf;utils;video;common")
 

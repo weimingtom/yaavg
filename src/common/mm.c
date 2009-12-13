@@ -94,5 +94,18 @@ mem_cache_shrink(struct mem_cache_t * cache)
 	return bytes;
 }
 
+extern struct mem_cache_t * static_mem_caches[];
+
+void
+__mem_cache_cleanup(void)
+{
+	struct mem_cache_t ** p = &static_mem_caches[0];
+	while(*p != NULL) {
+		mem_cache_shrink(*p);
+		SET_INACTIVE(*p);
+		p ++;
+	}
+}
+
 // vim:ts=4:sw=4
 

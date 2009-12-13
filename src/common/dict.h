@@ -109,6 +109,25 @@ dict_get(struct dict_t * dict, void * key,
 extern struct dict_entry_t THROWS(EXP_DICT_FULL)
 dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
 
+/* 
+ * if the key is in the dict, dict_replace will replace the old data
+ * by the new one, if the key doesn't exist, nothing will happen.
+ * if return true, the key exists, pold_data is filled.
+ * if false, the key doesn't exist.
+ * dict_replace is used to control the key. sometime, such as static
+ * string dict, the original key is statically allocated. if we use
+ * dict_insert, it will be replaced. if insert may happen more than
+ * once, the caller will be unable to know whether to free the key
+ * returned by dict_insert.
+ *
+ * another solution is to modify dict_insert, makes it keep the old key
+ * and return the new key.
+ * However, replace is more powerful.
+ */
+extern bool_t
+dict_replace(struct dict_t * dict, void * key, hashval_t hash,
+		dict_data_t new_data, dict_data_t * pold_data);
+
 /* the return value of dict_set is a copy of the original entry. */
 /* set is different from insert: set never resize the dict, so set may fail,
  * but insert never fail (unless out of memory, or the dict is fixed size.).
@@ -150,6 +169,12 @@ strdict_get(struct dict_t * dict, const char * key);
 extern void THROWS(EXP_DICT_FULL)
 strdict_insert(struct dict_t * dict,
 		const char * key, dict_data_t data);
+
+extern bool_t
+strdict_replace(struct dict_t * dict,
+		const char * key,
+		dict_data_t new_data,
+		dict_data_t * pold_data);
 
 extern void
 strdict_remove(struct dict_t * dict,

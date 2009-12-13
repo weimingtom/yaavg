@@ -1,13 +1,18 @@
 #include <config.h>
 #include <common/debug.h>
 #include <common/init_cleanup_list.h>
+#include <common/mm.h>
 #include <yconf/yconf.h>
 
 #include <signal.h>
 
+struct mem_cache_t * static_mem_caches[] = {
+	&__dict_t_cache,
+	NULL,
+};
+
 init_func_t init_funcs[] = {
 	__dbg_init,
-	__dict_init,
 	__yconf_init,
 	NULL,
 };
@@ -15,7 +20,7 @@ init_func_t init_funcs[] = {
 
 cleanup_func_t cleanup_funcs[] = {
 	__yconf_cleanup,
-	__dict_cleanup,
+	__mem_cache_cleanup,
 	__dbg_cleanup,
 	NULL,
 };
@@ -23,11 +28,11 @@ cleanup_func_t cleanup_funcs[] = {
 int
 main()
 {
-	dbg_init(NULL);
 	int x;
 	const char * str;
 	bool_t b;
 	
+	do_init();
 	x = conf_get_int("XXXX", 12);
 	VERBOSE(SYSTEM, "XXXX = %d\n", x);
 

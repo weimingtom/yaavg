@@ -15,5 +15,7 @@
 #cmakedefine HAVE_SIGSETJMP	1
 #cmakedefine HAVE_NANOSLEEP	1
 #cmakedefine HAVE_SDL		1
+#cmakedefine HAVE_LIBPNG	1
+#cmakedefine HAVE_SDLIMAGE	1
 #endif
 

@@ -31,18 +31,9 @@ static bool_t compare_str(void * a, void * b, uintptr_t useless)
  * */
 static const char dummy_key[] = "<dummy_key>";
 
-static DEFINE_MEM_CACHE(__dict_t_cache, "cache of dict_t",
+DEFINE_MEM_CACHE(__dict_t_cache, "cache of dict_t",
 		sizeof(struct dict_t));
 static struct mem_cache_t * pdict_cache = &__dict_t_cache;
-
-void __dict_init(void) { return; }
-void
-__dict_cleanup(void)
-{
-	mem_cache_shrink(&__dict_t_cache);
-	SET_INACTIVE(__dict_t_cache);
-}
-
 
 static hashval_t
 string_hash(char * s) 
@@ -97,6 +88,8 @@ dict_create(int hint, uint32_t flags,
 			/* all field in ptable should have been zeroed */
 
 			new_dict->mask = hint - 1;
+		} else {
+			new_dict->mask = DICT_SMALL_SIZE - 1;
 		}
 	} else {
 		TRACE(DICT, "creating a dynamic size dict\n");
@@ -174,10 +167,15 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 					if (strcmp(key, ep->key) == 0)
 						return ep;
 				} else {
-					if (dict->compare_key != NULL)
+					if (dict->compare_key != NULL) {
 						if ((dict->compare_key)(key, ep->key,
 									dict->compare_key_arg))
 							return ep;
+					} else if (IS_STRKEY(dict)) {
+						dict->compare_key = compare_str;
+						if (compare_str(key, ep->key, 0))
+							return ep;
+					}
 				}
 			}
 		}
@@ -301,7 +299,6 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 	assert(entry->key != NULL);
 
 	GET_DICT_DATA_FLAGS(entry->data) &= ~(DICT_DATA_FL_VANISHED);
-
 	if (IS_STRKEY(dict))
 		fill_strhash(entry);
 
@@ -365,15 +362,52 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 	return retval;
 }
 
+static bool_t
+__dict_replace(struct dict_t * dict, void * key, hashval_t hash,
+		dict_data_t new_data, dict_data_t * pold_data)
+{
+	assert(dict != NULL);
+	assert(key != NULL);
+
+	if (IS_STRKEY(dict))
+		hash = string_hash(key);
+	TRACE(DICT, "replacing key %p with hash 0x%x\n", dict, hash);
+	struct dict_entry_t * ep;
+	ep = lookup_entry(dict, key, hash);
+	if ((ep == NULL) || (ep->key == dummy_key) || (ep->key == NULL)) {
+		TRACE(DICT, "doesn't found key %p in dict %p\n",
+				key, dict);
+		return FALSE;
+	}
+	assert(ep->hash == hash);
+	if (pold_data != NULL)
+		*pold_data = ep->data;
+	ep->data = new_data;
+	return TRUE;
+}
+
 struct dict_entry_t
 dict_insert(struct dict_t * dict, struct dict_entry_t * entry)
 {
+	assert(dict != NULL);
+	assert(entry != NULL);
 	return __dict_insert(dict, entry, TRUE);
+}
+
+bool_t
+dict_replace(struct dict_t * dict, void * key, hashval_t hash,
+		dict_data_t new_data, dict_data_t * pold_data)
+{
+	assert(dict != NULL);
+	assert(key != NULL);
+	return __dict_replace(dict, key, hash, new_data, pold_data);
 }
 
 struct dict_entry_t
 dict_set(struct dict_t * dict, struct dict_entry_t * entry)
 {
+	assert(dict != NULL);
+	assert(entry != NULL);
 	return __dict_insert(dict, entry, FALSE);
 }
 
@@ -413,6 +447,7 @@ __dict_remove(struct dict_t * dict, void * key, hashval_t hash)
 struct dict_entry_t
 dict_remove(struct dict_t * dict, void * key, hashval_t hash)
 {
+	assert(dict != NULL);
 	return __dict_remove(dict, key, hash);
 }
 
@@ -471,12 +506,14 @@ dict_get_next(struct dict_t * dict, struct dict_entry_t * entry)
 void
 dict_set_private(struct dict_t * dict, uintptr_t pri)
 {
+	assert(dict != NULL);
 	dict->private = pri;
 }
 
 uintptr_t
 dict_get_private(struct dict_t * dict)
 {
+	assert(dict != NULL);
 	return dict->private;
 }
 
@@ -484,7 +521,7 @@ dict_get_private(struct dict_t * dict)
 struct dict_t *
 strdict_create(int hint, uint32_t flags)
 {
-	uint32_t real_flags = DICT_FL_STRKEY | DICT_FL_STRVAL;
+	uint32_t real_flags = DICT_FL_STRKEY;
 	if (flags & STRDICT_FL_FIXED)
 		real_flags |= DICT_FL_FIXED;
 
@@ -506,6 +543,8 @@ strdict_destroy_entry(struct dict_entry_t * ep, uintptr_t arg)
 void
 strdict_destroy(struct dict_t * dict)
 {
+	assert(dict != NULL);
+
 	uint32_t flags = (uint32_t)(dict->private);
 	if (flags & (STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA)) {
 		dict_destroy(dict, strdict_destroy_entry, flags);
@@ -517,6 +556,9 @@ strdict_destroy(struct dict_t * dict)
 dict_data_t
 strdict_get(struct dict_t * dict, const char * key)
 {
+	assert(dict != NULL);
+	assert(key != NULL);
+
 	struct dict_entry_t e = dict_get(dict, (char*)key, 0);
 	return e.data;
 }
@@ -527,6 +569,10 @@ strdict_insert(struct dict_t * dict,
 {
 	struct dict_entry_t e, oe;
 	uintptr_t flags = dict->private;
+	
+	assert(key != NULL);
+	assert(dict != NULL);
+
 	GET_DICT_DATA_FLAGS(e.data) = 0;
 	if (flags & STRDICT_FL_DUPKEY)
 		e.key = strdup(key);
@@ -544,12 +590,25 @@ strdict_insert(struct dict_t * dict,
 			xfree(oe.key);
 }
 
+bool_t
+strdict_replace(struct dict_t * dict,
+		const char * key, dict_data_t new_data, dict_data_t * pold_data)
+{
+	assert(key != NULL);
+	assert(dict != NULL);
+	return dict_replace(dict, (void*)key, 0, new_data, pold_data);
+}
+
 void
 strdict_remove(struct dict_t * dict,
 		const char * key)
 {
 	struct dict_entry_t oe;
 	uintptr_t flags = dict->private;
+
+	assert(dict != NULL);
+	assert(key != NULL);
+
 	oe = dict_remove(dict, (void*)key, 0);
 	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA))
 		xfree(oe.data.ptr);

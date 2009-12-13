@@ -18,6 +18,5 @@ struct function_class_t video_function_class = {
 	.functionors = &functionors,
 };
 
-
 // vim:ts=4:sw=4
 
