@@ -16,6 +16,7 @@ enum __debug_component {
 	YCONF,
 	VIDEO,
 	TIMER,
+	CACHE,
 	BITMAP,
 	RESOURCES,
 	NR_DEBUG_COMPONENTS,
@@ -32,6 +33,7 @@ __debug_component_names[NR_DEBUG_COMPONENTS] = {
 	[YCONF]		= "COF",
 	[VIDEO]		= "VID",
 	[TIMER]		= "TMR",
+	[CACHE]		= "CHE",
 	[BITMAP]	= "BTM",
 	[RESOURCES]	= "RES",
 };
@@ -44,6 +46,7 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[YCONF]		= DBG_LV_VERBOSE,
 	[VIDEO]		= DBG_LV_TRACE,
 	[TIMER]		= DBG_LV_DEBUG,
+	[CACHE]		= DBG_LV_TRACE,
 	[BITMAP]	= DBG_LV_TRACE,
 	[RESOURCES]	= DBG_LV_TRACE,
 };

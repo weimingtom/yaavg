@@ -146,11 +146,17 @@ extern struct dict_entry_t dict_remove(struct dict_t * dict, void * key,
 /* if the pentry is NULL, return the first entry */
 /* if the return value is NULL, there is no more entry. */
 /* during the iteration, never call insert or remove,
- * only use get/set and del.
+ * only use get/set.
  * then, change the 'data' in return entry
  * is safe. **NEVER** modify the key field. */
 extern struct dict_entry_t *
 dict_get_next(struct dict_t * dict, struct dict_entry_t * entry);
+
+/* 
+ * used to invalid an entry directly
+ */
+extern void
+dict_invalid_entry(struct dict_t * d, struct dict_entry_t * e);
 
 /* special methods for string based dicts */
 #define STRDICT_FL_DUPKEY	(1)
@@ -166,7 +172,7 @@ strdict_destroy(struct dict_t * dict);
 extern dict_data_t
 strdict_get(struct dict_t * dict, const char * key);
 
-extern void THROWS(EXP_DICT_FULL)
+extern dict_data_t THROWS(EXP_DICT_FULL)
 strdict_insert(struct dict_t * dict,
 		const char * key, dict_data_t data);
 
@@ -176,10 +182,12 @@ strdict_replace(struct dict_t * dict,
 		dict_data_t new_data,
 		dict_data_t * pold_data);
 
-extern void
+extern dict_data_t
 strdict_remove(struct dict_t * dict,
 		const char * key);
 
+extern void
+strdict_invalid_entry(struct dict_t * d, struct dict_entry_t * e);
 __END_DECLS
 #endif
 // vim:ts=4:sw=4

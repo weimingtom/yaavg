@@ -15,6 +15,8 @@ SET(SRC
 	functionor.c
 	bithacks.h
 	strhacks.h
+	cache.h
+	cache.c
 	)
 
 ADD_LIBRARY(common STATIC ${SRC})
@@ -29,7 +31,8 @@ SET(tests
 	test_mm
 	test_strdict
 	test_static_dict
-	test_init_cleanup_list)
+	test_init_cleanup_list
+	test_cache)
 build_tests("${tests}" "common;yconf")
 
 

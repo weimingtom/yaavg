@@ -242,6 +242,12 @@ dbg_init(const char * fn)
 {
 	int err;
 
+
+	/* reset the counters */
+	malloc_counter = 0;
+	calloc_counter = 0;
+	free_counter = 0;
+	strdup_counter = 0;
 	/* we need to close the previous output_fp */
 	if ((output_fp != NULL) && (output_fp != stderr) && (output_fp != stdout)) {
 		set_color(COLOR_NORMAL);
@@ -296,7 +302,7 @@ dbg_init(const char * fn)
 		sigaction(handler[i].signum, &action, NULL);
 #else
 		signal(handler[i].signum,
-			       handler[i].handler);
+				handler[i].handler);
 #endif
 	}
 }
@@ -362,10 +368,10 @@ dbg_output(enum __debug_level level,
 			set_color(COLOR_BLUE);
 			break;
 		case DBG_LV_WARNING:
-			set_color(COLOR_YELLOW);
+			set_color(COLOR_RED);
 			break;
 		case DBG_LV_ERROR:
-			set_color(COLOR_RED);
+			set_color(COLOR_BOLD_RED);
 			break;
 		case DBG_LV_FATAL:
 			set_color(COLOR_BOLD_RED);

@@ -29,7 +29,7 @@
 		})
 
 #define xfree(___ptr) do {	\
-	void * ___X_ptr = ___ptr;	\
+	void * ___X_ptr = (void*)(___ptr);	\
 	if ((___X_ptr) != NULL)			\
 		free((___X_ptr));			\
 } while(0)

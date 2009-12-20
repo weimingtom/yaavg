@@ -427,12 +427,9 @@ __dict_remove(struct dict_t * dict, void * key, hashval_t hash)
 	}
 
 	retval = *ep;
-	ep->key = (void*)dummy_key;
-	ep->hash = 0;
-	ep->data.ptr = NULL;
-	GET_DICT_DATA_FLAGS(ep->data) |= DICT_DATA_FL_VANISHED;
-	dict->nr_used --;
+	dict_invalid_entry(dict, ep);
 	assert(!(GET_DICT_DATA_FLAGS(retval.data) & DICT_DATA_FL_VANISHED));
+
 	/* this is time for shrink */
 #if 0
 	/* never shrink when del entries. */
@@ -449,6 +446,18 @@ dict_remove(struct dict_t * dict, void * key, hashval_t hash)
 {
 	assert(dict != NULL);
 	return __dict_remove(dict, key, hash);
+}
+
+void
+dict_invalid_entry(struct dict_t * d, struct dict_entry_t * e)
+{
+	assert(d != NULL);
+	assert(e != NULL);
+	e->key = (void*)dummy_key;
+	e->hash = 0;
+	e->data.ptr = NULL;
+	GET_DICT_DATA_FLAGS(e->data) |= DICT_DATA_FL_VANISHED;
+	d->nr_used --;
 }
 
 struct dict_entry_t
@@ -482,19 +491,19 @@ dict_get_next(struct dict_t * dict, struct dict_entry_t * entry)
 {
 	assert(dict != NULL);
 	if (entry == NULL)
-		return &(dict->ptable[0]);
+		entry = &(dict->ptable[0]);
+	else
+		entry ++;
+
 	struct dict_entry_t * ep0, *epmax;
 	ep0 = &(dict->ptable[0]);
 	epmax = &(dict->ptable[dict->mask]);
 
 	assert(entry >= ep0);
-	while (entry <= epmax) {
-		entry ++;
-		if (entry->key == NULL)
-			continue;
-		if (entry->key == dummy_key)
-			continue;
-		break;
+	for (; entry <= epmax; entry ++) {
+		if ((entry->key != NULL) &&
+				(entry->key != dummy_key))
+			break;
 	}
 
 	if (entry > epmax)
@@ -563,7 +572,7 @@ strdict_get(struct dict_t * dict, const char * key)
 	return e.data;
 }
 
-void
+dict_data_t
 strdict_insert(struct dict_t * dict,
 		const char * key, dict_data_t data)
 {
@@ -584,10 +593,15 @@ strdict_insert(struct dict_t * dict,
 		e.data = data;
 
 	oe = dict_insert(dict, &e);
-	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA))
+	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
 			xfree(oe.data.ptr);
-	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
+			oe.data.ptr = NULL;
+	}
+	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY)) {
 			xfree(oe.key);
+			oe.key = NULL;
+	}
+	return oe.data;
 }
 
 bool_t
@@ -599,7 +613,7 @@ strdict_replace(struct dict_t * dict,
 	return dict_replace(dict, (void*)key, 0, new_data, pold_data);
 }
 
-void
+dict_data_t
 strdict_remove(struct dict_t * dict,
 		const char * key)
 {
@@ -610,10 +624,32 @@ strdict_remove(struct dict_t * dict,
 	assert(key != NULL);
 
 	oe = dict_remove(dict, (void*)key, 0);
-	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA))
-		xfree(oe.data.ptr);
+	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
+		if (!(GET_DICT_DATA_FLAGS(oe.data) & DICT_DATA_FL_VANISHED)) {
+			if (oe.data.ptr != NULL)
+				xfree(oe.data.ptr);
+		}
+		oe.data.ptr = NULL;
+		GET_DICT_DATA_FLAGS(oe.data) |= DICT_DATA_FL_VANISHED;
+	}
 	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
 		xfree(oe.key);
+	return oe.data;
+}
+
+void
+strdict_invalid_entry(struct dict_t * d, struct dict_entry_t * e)
+{
+	assert(d != NULL);
+	assert(e != NULL);
+	uintptr_t flags = d->private;
+	if ((e->key != NULL) && (flags & STRDICT_FL_DUPKEY))
+		xfree(e->key);
+	if ((e->data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
+		if (!(GET_DICT_DATA_FLAGS(e->data) & DICT_DATA_FL_VANISHED))
+			xfree(e->data.ptr);
+	}
+	dict_invalid_entry(d, e);
 }
 
 // vim:ts=4:sw=4
