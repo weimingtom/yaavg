@@ -4,13 +4,13 @@
 #include <common/init_cleanup_list.h>
 #include <common/mm.h>
 #include <common/functionor.h>
-#include <resources/resources.h>
+#include <io/io.h>
 
 #include <signal.h>
 
 struct mem_cache_t * static_mem_caches[] = {
 	&__dict_t_cache,
-	&__file_resources_cache,
+	&__file_io_cache,
 	NULL,
 };
 
@@ -32,7 +32,7 @@ int
 main()
 {
 	do_init();
-	struct resources_t * res = NULL;
+	struct io_t * res = NULL;
 	struct exception_t exp;
 	TRY(exp) {
 		res = res_open("file", "/tmp/abc");

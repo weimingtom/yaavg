@@ -81,7 +81,7 @@ mem_cache_shrink(struct mem_cache_t * cache);
 
 /* cleanup utils */
 extern struct mem_cache_t __dict_t_cache;
-extern struct mem_cache_t __file_resources_cache;
+extern struct mem_cache_t __file_io_cache;
 extern struct mem_cache_t * static_mem_caches[];
 
 #endif

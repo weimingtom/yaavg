@@ -1,5 +1,5 @@
 /* 
- * resources.h
+ * io.h
  * by WN @ Dec. 13, 2009
  */
 
@@ -11,40 +11,40 @@
 
 #define RES_READ	(1)
 #define RES_WRITE	(2)
-struct resources_functionor_t;
-struct resources_t {
-	struct resources_functionor_t * functionor;
+struct io_functionor_t;
+struct io_t {
+	struct io_functionor_t * functionor;
 	int rdwr;
 	void * pprivate;
 };
 
 extern struct function_class_t
-resources_function_class;
+io_function_class;
 
-struct resources_functionor_t {
+struct io_functionor_t {
 	BASE_FUNCTIONOR
-	struct resources_t * (*open)(const char *);
-	struct resources_t * (*open_write)(const char *);
-	int (*read)(struct resources_t * res, void * ptr,
+	struct io_t * (*open)(const char *);
+	struct io_t * (*open_write)(const char *);
+	int (*read)(struct io_t * res, void * ptr,
 			int size, int nr);
-	int (*write)(struct resources_t * res, void * ptr,
+	int (*write)(struct io_t * res, void * ptr,
 			int size, int nr);
-	int (*seek)(struct resources_t * res, int offset,
+	int (*seek)(struct io_t * res, int offset,
 			int whence);
-	void (*close)(struct resources_t * res);
+	void (*close)(struct io_t * res);
 };
 
-extern struct resources_functionor_t *
-get_resources_handler(const char * proto);
+extern struct io_functionor_t *
+get_io_handler(const char * proto);
 
-struct resources_t *
+struct io_t *
 res_open(const char * proto, const char * name);
 
-struct resources_t *
+struct io_t *
 res_open_write(const char * proto, const char * name);
 
 static inline int
-res_read(struct resources_t * res, void * ptr,
+res_read(struct io_t * res, void * ptr,
 		int size, int nr)
 {
 	assert(res &&
@@ -55,7 +55,7 @@ res_read(struct resources_t * res, void * ptr,
 }
 
 static inline int
-res_write(struct resources_t * res, void * ptr,
+res_write(struct io_t * res, void * ptr,
 		int size, int nr)
 {
 	assert(res &&
@@ -66,7 +66,7 @@ res_write(struct resources_t * res, void * ptr,
 }
 
 static inline int
-res_seek(struct resources_t * res, int offset,
+res_seek(struct io_t * res, int offset,
 		int whence)
 {
 	assert(res &&
@@ -77,7 +77,7 @@ res_seek(struct resources_t * res, int offset,
 }
 
 static inline void
-res_close(struct resources_t * res)
+res_close(struct io_t * res)
 {
 	assert(res &&
 			(res->functionor) &&

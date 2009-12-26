@@ -1,21 +1,21 @@
 /* 
- * file_resources.c
+ * file_io.c
  * by WN @ Dec. 13, 2009
  */
 
 #include <common/mm.h>
 #include <common/debug.h>
 #include <common/exception.h>
-#include <resources/resources.h>
+#include <io/io.h>
 #include <stdio.h>
 
-DEFINE_MEM_CACHE(__file_resources_cache, "cache of file resources",
-		sizeof(struct resources_t));
-static struct mem_cache_t * pfile_resources_cache = &__file_resources_cache;
+DEFINE_MEM_CACHE(__file_io_cache, "cache of file io",
+		sizeof(struct io_t));
+static struct mem_cache_t * pfile_io_cache = &__file_io_cache;
 
-struct resources_functionor_t file_resources_functionor;
+struct io_functionor_t file_io_functionor;
 
-static struct resources_t *
+static struct io_t *
 file_open(const char * path, const char * mode)
 {
 	assert(path != NULL);
@@ -23,27 +23,27 @@ file_open(const char * path, const char * mode)
 	if (fp == NULL)
 		THROW(EXP_RESOURCE_NOT_FOUND, "unable to open file %s with mode %s",
 				path, mode);
-	struct resources_t * r = mem_cache_zalloc(pfile_resources_cache);
+	struct io_t * r = mem_cache_zalloc(pfile_io_cache);
 	assert(r != NULL);
-	r->functionor = &file_resources_functionor;
+	r->functionor = &file_io_functionor;
 	r->pprivate = fp;
 	return r;
 }
 
-static struct resources_t *
+static struct io_t *
 file_read_open(const char * path)
 {
-	struct resources_t * r = file_open(path, "rb");
+	struct io_t * r = file_open(path, "rb");
 	if (r == NULL)
 		return NULL;
 	r->rdwr = RES_READ;
 	return r;
 }
 
-static struct resources_t *
+static struct io_t *
 file_write_open(const char * path)
 {
-	struct resources_t * r = file_open(path, "wb");
+	struct io_t * r = file_open(path, "wb");
 	if (r == NULL)
 		return NULL;
 	r->rdwr = RES_WRITE;
@@ -51,7 +51,7 @@ file_write_open(const char * path)
 }
 
 static int
-file_read(struct resources_t * res, void * ptr,
+file_read(struct io_t * res, void * ptr,
 		int size, int nr)
 {
 	assert(res != NULL);
@@ -65,7 +65,7 @@ file_read(struct resources_t * res, void * ptr,
 }
 
 static int
-file_write(struct resources_t * res, void * ptr,
+file_write(struct io_t * res, void * ptr,
 		int size, int nr)
 {
 	assert(res != NULL);
@@ -79,7 +79,7 @@ file_write(struct resources_t * res, void * ptr,
 }
 
 static int
-file_seek(struct resources_t * res, int offset,
+file_seek(struct io_t * res, int offset,
 		int whence)
 {
 	assert(res != NULL);
@@ -91,7 +91,7 @@ file_seek(struct resources_t * res, int offset,
 }
 
 static void
-file_close(struct resources_t * res)
+file_close(struct io_t * res)
 {
 	assert(res != NULL);
 	assert(res->functionor);
@@ -99,7 +99,7 @@ file_close(struct resources_t * res)
 	FILE * fp = res->pprivate;
 	assert(fp != NULL);
 	fclose(fp);
-	mem_cache_free(pfile_resources_cache, res);
+	mem_cache_free(pfile_io_cache, res);
 }
 
 static bool_t
@@ -111,7 +111,7 @@ file_check_usable(const char * param)
 	return FALSE;
 }
 
-struct resources_functionor_t file_resources_functionor = {
+struct io_functionor_t file_io_functionor = {
 	.name = "libc file",
 	.fclass = FC_RESOURCES,
 	.check_usable = file_check_usable,
