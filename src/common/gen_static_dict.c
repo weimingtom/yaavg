@@ -8,10 +8,6 @@
 #include <string.h>
 #include <assert.h>
 
-struct mem_cache_t * static_mem_caches[] = {
-	NULL,
-};
-
 int
 main(int argc, char * argv[])
 {

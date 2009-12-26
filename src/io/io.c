@@ -55,7 +55,7 @@ get_io_handler(const char * proto)
 }
 
 struct io_t *
-res_open(const char * proto, const char * name)
+io_open(const char * proto, const char * name)
 {
 	struct io_functionor_t * f;
 	f = get_io_handler(proto);
@@ -64,7 +64,7 @@ res_open(const char * proto, const char * name)
 }
 
 struct io_t *
-res_open_write(const char * proto, const char * name)
+io_open_write(const char * proto, const char * name)
 {
 	struct io_functionor_t * f;
 	f = get_io_handler(proto);

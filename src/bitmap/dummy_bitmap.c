@@ -6,7 +6,8 @@
 #include <bitmap/bitmap.h>
 #include <assert.h>
 
-struct bitmap_functionor_t dummy_bitmap_functionor;
+static struct bitmap_resource_functionor_t
+dummy_bitmap_resource_functionor;
 
 static bool_t
 dummy_check_usable(const char * param)
@@ -15,10 +16,10 @@ dummy_check_usable(const char * param)
 	return TRUE;
 }
 
-static struct bitmap_t *
-dummy_load_bitmap(const char * name)
+static struct bitmap_resource_t *
+dummy_load(const char * name)
 {
-	struct bitmap_t * retval = NULL;
+	struct bitmap_resource_t * retval = NULL;
 
 	WARNING(BITMAP, "load bitmap %s using dummy handler\n", name);
 
@@ -26,37 +27,73 @@ dummy_load_bitmap(const char * name)
 	assert(retval != NULL);
 
 	retval->format = BITMAP_RGBA;
+	retval->bpp = 4;
 	retval->w = retval->h = 8;
-	retval->functionor = &dummy_bitmap_functionor;
-	retval->pprivate = NULL;
-	retval->data = retval->internal_data;
+	retval->functionor = &dummy_bitmap_resource_functionor;
+	retval->pprivate = retval + 1;
 	return retval;
 }
 
 static void
-dummy_save_bitmap(struct bitmap_t * name, const char * path)
+dummy_store(struct bitmap_t * name, const char * path)
 {
-	TRACE(BITMAP, "dummy: save bitmap to %s\n", path);
+	TRACE(BITMAP, "dummy: store bitmap to %s\n", path);
 	return;
 }
 
 static void
-dummy_destroy_bitmap(struct bitmap_t * bitmap)
+dummy_destroy(struct bitmap_resource_t * b)
 {
-	assert(bitmap->functionor->destroy_bitmap ==
-			dummy_destroy_bitmap);
+	assert(b->functionor->destroy ==
+			dummy_destroy);
 	TRACE(BITMAP, "dummy: destroy bitmap\n");
-	xfree(bitmap);
+	xfree(b);
 	return;
 }
 
-struct bitmap_functionor_t dummy_bitmap_functionor = {
+static void
+dummy_serialize(struct bitmap_resource_t * b, struct io_t * io)
+{
+	assert(b != NULL);
+	assert(io != NULL);
+
+	int bitmap_size = bitmap_data_size((struct bitmap_t*)b);
+	int id_sz = strlen(b->id) + 1;
+
+	/* dup a bitmap head */
+	struct bitmap_t head;
+	head = *((struct bitmap_t *)(b));
+	/* see bitmap.h, the definition of bitmap_t */
+	head.id = (void*)id_sz;
+	head.pixels = (void*)bitmap_size;
+
+	if (io->functionor->writev) {
+		struct iovec * vecs;
+		vecs = alloca(sizeof(struct iovec) * 3);
+		assert(vecs != NULL);
+		vecs[0].iov_base = &head;
+		vecs[0].iov_len = sizeof(head);
+		vecs[1].iov_base = (void*)(b->id);
+		vecs[1].iov_len = id_sz;
+		vecs[2].iov_base = b->pprivate;
+		vecs[2].iov_len = bitmap_size;
+		io_writev(io, vecs, 2);
+	} else {
+		io_write(io, &head, sizeof(struct bitmap_t), 1);
+		io_write(io, (void*)b->id, id_sz, 1);
+		io_write(io, b->pprivate, bitmap_size, 1);
+	}
+}
+
+
+struct bitmap_resource_functionor_t dummy_bitmap_functionor = {
 	.name = "DummyBitmap",
-	.fclass = FC_BITMAP_HANDLER,
+	.fclass = FC_BITMAP_RESOURCE_HANDLER,
 	.check_usable = dummy_check_usable,
-	.destroy_bitmap = dummy_destroy_bitmap,
-	.load_bitmap = dummy_load_bitmap,
-	.save_bitmap = dummy_save_bitmap,
+	.destroy = dummy_destroy,
+	.load = dummy_load,
+	.store = dummy_store,
+	.serialize = dummy_serialize,
 };
 
 // vim:ts=4:sw=4

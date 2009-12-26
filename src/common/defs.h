@@ -71,6 +71,9 @@ typedef int bool_t;
 #endif
 #endif
 
+#define ALIGN_DOWN(v, a)	((uint32_t)(v) & (~((a) - 1)))
+#define ALIGN_UP(v, a)		(ALIGN_DOWN((v) + (a) - 1, (a)))
+
 __END_DECLS
 
 #endif

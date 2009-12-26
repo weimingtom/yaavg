@@ -3,9 +3,10 @@
  * by WN @ Dec. 13, 2009
  */
 
-#ifndef __RESOURCES_H
-#define __RESOURCES_H
+#ifndef __IO_H
+#define __IO_H
 
+#include <sys/uio.h>
 #include <common/functionor.h>
 #include <assert.h>
 
@@ -21,69 +22,95 @@ struct io_t {
 extern struct function_class_t
 io_function_class;
 
+/* Those function should never return error (negitive number),
+ * if error arise, throw an exception instead. */
+
 struct io_functionor_t {
 	BASE_FUNCTIONOR
 	struct io_t * (*open)(const char *);
 	struct io_t * (*open_write)(const char *);
-	int (*read)(struct io_t * res, void * ptr,
+	int (*read)(struct io_t * io, void * ptr,
 			int size, int nr);
-	int (*write)(struct io_t * res, void * ptr,
+	int (*write)(struct io_t * io, void * ptr,
 			int size, int nr);
-	int (*seek)(struct io_t * res, int offset,
+	int (*readv)(struct io_t * io, struct iovec * iovec,
+			int nr);
+	int (*writev)(struct io_t * io, struct iovec * iovec,
+			int nr);
+	int (*seek)(struct io_t * io, int offset,
 			int whence);
-	void (*close)(struct io_t * res);
+	void (*close)(struct io_t * io);
 };
 
 extern struct io_functionor_t *
 get_io_handler(const char * proto);
 
 struct io_t *
-res_open(const char * proto, const char * name);
+io_open(const char * proto, const char * name);
 
 struct io_t *
-res_open_write(const char * proto, const char * name);
+io_open_write(const char * proto, const char * name);
 
 static inline int
-res_read(struct io_t * res, void * ptr,
+io_read(struct io_t * io, void * ptr,
 		int size, int nr)
 {
-	assert(res &&
-			(res->functionor) &&
-			(res->functionor->read));
-	return res->functionor->read(res, ptr,
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->read));
+	return io->functionor->read(io, ptr,
 			size, nr);
 }
 
 static inline int
-res_write(struct io_t * res, void * ptr,
+io_write(struct io_t * io, void * ptr,
 		int size, int nr)
 {
-	assert(res &&
-			(res->functionor) &&
-			(res->functionor->write));
-	return res->functionor->write(res, ptr,
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->write));
+	return io->functionor->write(io, ptr,
 			size, nr);
 }
 
 static inline int
-res_seek(struct io_t * res, int offset,
+io_seek(struct io_t * io, int offset,
 		int whence)
 {
-	assert(res &&
-			(res->functionor) &&
-			(res->functionor->seek));
-	return res->functionor->seek(res, offset,
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->seek));
+	return io->functionor->seek(io, offset,
 			whence);
 }
 
 static inline void
-res_close(struct io_t * res)
+io_close(struct io_t * io)
 {
-	assert(res &&
-			(res->functionor) &&
-			(res->functionor->close));
-	res->functionor->close(res);
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->close));
+	io->functionor->close(io);
 }
+
+static inline int
+io_writev(struct io_t * io, struct iovec * vecs, int nr)
+{
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->writev));
+	return io->functionor->writev(io, vecs, nr);
+}
+
+static inline int
+io_readv(struct io_t * io, struct iovec * vecs, int nr)
+{
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->readv));
+	return io->functionor->readv(io, vecs, nr);
+}
+
 
 #endif
 

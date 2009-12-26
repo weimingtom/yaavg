@@ -35,24 +35,6 @@
 } while(0)
 
 
-struct mem_cache_t {
-	const char * name;
-	struct list_head free_list;
-	uint32_t flags;
-	int nr_active;
-	int nr_free;
-	size_t size;
-};
-
-#define DEFINE_MEM_CACHE(n, d, s) struct mem_cache_t n = { \
-	.name = (d),	\
-	.free_list = LIST_HEAD_INIT((n).free_list),	\
-	.flags = 0,	\
-	.nr_active = 0,	\
-	.nr_free = 0,	\
-	.size = (s),		\
-}
-
 #endif
 // vim:ts=4:sw=4
 

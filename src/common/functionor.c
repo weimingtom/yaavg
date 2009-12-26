@@ -9,7 +9,7 @@
 static const char * function_class_names[NR_FCS] = {
 	[FC_VIDEO] = "video",
 	[FC_OPENGL_ENGINE] = "OpenGL engine",
-	[FC_BITMAP_HANDLER] = "bitmap handler",
+	[FC_BITMAP_RESOURCE_HANDLER] = "bitmap resource handler",
 	[FC_TIMER] = "timer handler",
 	[FC_RESOURCES] = "resource handler",
 };

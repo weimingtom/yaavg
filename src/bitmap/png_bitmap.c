@@ -10,7 +10,9 @@
 
 #include <string.h>
 
-struct bitmap_functionor_t png_bitmap_functionor;
+#if 0
+static struct bitmap_resource_functionor_t
+png_bitmap_functionor;
 
 static bool_t
 png_check_usable(const char * param)
@@ -18,11 +20,12 @@ png_check_usable(const char * param)
 	return FALSE;
 }
 
-struct bitmap_functionor_t png_bitmap_functionor = {
+static struct bitmap_resource_functionor_t png_bitmap_functionor = {
 	.name = "libpng pngloader",
-	.fclass = FC_BITMAP_HANDLER,
+	.fclass = FC_BITMAP_RESOURCE_HANDLER,
 	.check_usable = png_check_usable,
 };
 
+#endif
 // vim:ts=4:sw=4
 

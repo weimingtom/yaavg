@@ -22,6 +22,8 @@
 # include <SDL/SDL_image.h>
 #endif
 
+#if 0
+
 static bool_t
 sdl_check_usable(const char * param)
 {
@@ -98,6 +100,7 @@ struct bitmap_functionor_t sdl_bitmap_functionor = {
 	.load_bitmap = sdl_load_bitmap,
 	.save_bitmap = sdl_save_bitmap,
 };
+#endif
 
 // vim:ts=4:sw=4
 

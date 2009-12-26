@@ -25,18 +25,18 @@ int
 main()
 {
 	do_init();
-	struct io_t * res = NULL;
+	struct io_t * io = NULL;
 	struct exception_t exp;
 	TRY(exp) {
-		res = res_open("file", "/tmp/abc");
-		assert(res != NULL);
+		io = io_open("file", "/tmp/abc");
+		assert(io != NULL);
 		char data[5];
-		res_read(res, data, 1, 5);
+		io_read(io, data, 1, 5);
 		VERBOSE(SYSTEM, "read str=\"%s\"\n", data);
 	} FINALLY {
-		if (res != NULL) {
-			res_close(res);
-			res = NULL;
+		if (io != NULL) {
+			io_close(io);
+			io = NULL;
 		}
 	} CATCH (exp) {
 		RETHROW(exp);
