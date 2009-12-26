@@ -8,12 +8,6 @@
 
 #include <signal.h>
 
-struct mem_cache_t * static_mem_caches[] = {
-	&__dict_t_cache,
-	&__file_io_cache,
-	NULL,
-};
-
 init_func_t init_funcs[] = {
 	__dbg_init,
 	__yconf_init,
@@ -22,7 +16,6 @@ init_func_t init_funcs[] = {
 
 cleanup_func_t cleanup_funcs[] = {
 	__yconf_cleanup,
-	__mem_cache_cleanup,
 	__dbg_cleanup,
 	NULL,
 };

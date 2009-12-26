@@ -12,16 +12,6 @@ struct dummy_bitmap_t {
 	int x, y, z, w;
 };
 
-DEFINE_MEM_CACHE(__dummy_bitmap_t_cache, "cache of dummy bitmap",
-		sizeof(struct dummy_bitmap_t));
-static struct mem_cache_t * pbitmap_mm = &__dummy_bitmap_t_cache;
-
-struct mem_cache_t * static_mem_caches[] = {
-	&__dict_t_cache,
-	&__dummy_bitmap_t_cache,
-	NULL,
-};
-
 init_func_t init_funcs[] = {
 	__dbg_init,
 	NULL,
@@ -30,7 +20,6 @@ init_func_t init_funcs[] = {
 cleanup_func_t cleanup_funcs[] = {
 	__dbg_cleanup,
 	__caches_cleanup,
-	__mem_cache_cleanup,
 	NULL,
 };
 
@@ -41,14 +30,14 @@ dummy_bitmap_destroy(struct dummy_bitmap_t * d)
 	WARNING(SYSTEM, "Destroy bitmap %s\n", d->ce.id);
 	if (d->ce.id != NULL)
 		xfree(d->ce.id);
-	mem_cache_free(pbitmap_mm, d);
+	xfree(d);
 }
 
 static struct dummy_bitmap_t *
 dummy_bitmap_load(const char * str)
 {
 	struct dummy_bitmap_t * bitmap =
-		mem_cache_zalloc(pbitmap_mm);
+		xcalloc(1, sizeof(*bitmap));
 	assert(bitmap != NULL);
 
 	WARNING(SYSTEM, "Load bitmap %s\n", str);

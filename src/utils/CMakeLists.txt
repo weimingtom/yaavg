@@ -15,5 +15,5 @@ TARGET_LINK_LIBRARIES(utils ${CMAKE_REQUIRED_LIBRARIES})
 
 SET(tests
 	test_timer)
-build_tests("${tests}" "common;yconf;utils")
+build_tests("${tests}" "yconf;utils;common")
 

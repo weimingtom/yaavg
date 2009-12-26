@@ -8,11 +8,6 @@
 #include <assert.h>
 #include <signal.h>
 
-struct mem_cache_t * static_mem_caches[] = {
-	&__dict_t_cache,
-	NULL,
-};
-
 init_func_t init_funcs[] = {
 	__dbg_init,
 	NULL,
@@ -20,7 +15,6 @@ init_func_t init_funcs[] = {
 
 
 cleanup_func_t cleanup_funcs[] = {
-	__mem_cache_cleanup,
 	__dbg_cleanup,
 	NULL,
 };

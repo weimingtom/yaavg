@@ -9,10 +9,6 @@
 #include <io/io.h>
 #include <stdio.h>
 
-DEFINE_MEM_CACHE(__file_io_cache, "cache of file io",
-		sizeof(struct io_t));
-static struct mem_cache_t * pfile_io_cache = &__file_io_cache;
-
 struct io_functionor_t file_io_functionor;
 
 static struct io_t *
@@ -23,7 +19,7 @@ file_open(const char * path, const char * mode)
 	if (fp == NULL)
 		THROW(EXP_RESOURCE_NOT_FOUND, "unable to open file %s with mode %s",
 				path, mode);
-	struct io_t * r = mem_cache_zalloc(pfile_io_cache);
+	struct io_t * r = calloc(1, sizeof(*r));
 	assert(r != NULL);
 	r->functionor = &file_io_functionor;
 	r->pprivate = fp;
@@ -51,55 +47,55 @@ file_write_open(const char * path)
 }
 
 static int
-file_read(struct io_t * res, void * ptr,
+file_read(struct io_t * io, void * ptr,
 		int size, int nr)
 {
-	assert(res != NULL);
-	assert(res->functionor);
-	assert(res->functionor->read == file_read);
-	assert(res->rdwr = RES_READ);
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->read == file_read);
+	assert(io->rdwr = RES_READ);
 
-	FILE * fp = res->pprivate;
+	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	return fread(ptr, size, nr, fp);
 }
 
 static int
-file_write(struct io_t * res, void * ptr,
+file_write(struct io_t * io, void * ptr,
 		int size, int nr)
 {
-	assert(res != NULL);
-	assert(res->functionor);
-	assert(res->functionor->write == file_write);
-	assert(res->rdwr = RES_WRITE);
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->write == file_write);
+	assert(io->rdwr = RES_WRITE);
 
-	FILE * fp = res->pprivate;
+	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	return fwrite(ptr, size, nr, fp);
 }
 
 static int
-file_seek(struct io_t * res, int offset,
+file_seek(struct io_t * io, int offset,
 		int whence)
 {
-	assert(res != NULL);
-	assert(res->functionor);
-	assert(res->functionor->seek == file_seek);
-	FILE * fp = res->pprivate;
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->seek == file_seek);
+	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	return fseek(fp, offset, whence);
 }
 
 static void
-file_close(struct io_t * res)
+file_close(struct io_t * io)
 {
-	assert(res != NULL);
-	assert(res->functionor);
-	assert(res->functionor->close == file_close);
-	FILE * fp = res->pprivate;
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->close == file_close);
+	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	fclose(fp);
-	mem_cache_free(pfile_io_cache, res);
+	xfree(io);
 }
 
 static bool_t

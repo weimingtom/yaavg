@@ -31,10 +31,6 @@ static bool_t compare_str(void * a, void * b, uintptr_t useless)
  * */
 static const char dummy_key[] = "<dummy_key>";
 
-DEFINE_MEM_CACHE(__dict_t_cache, "cache of dict_t",
-		sizeof(struct dict_t));
-static struct mem_cache_t * pdict_cache = &__dict_t_cache;
-
 static hashval_t
 string_hash(char * s) 
 {
@@ -60,7 +56,7 @@ dict_create(int hint, uint32_t flags,
 		bool_t (*compare_key)(void*, void*, uintptr_t),
 		uintptr_t ck_arg)
 {
-	struct dict_t * new_dict = mem_cache_zalloc(pdict_cache);
+	struct dict_t * new_dict = xcalloc(1, sizeof(struct dict_t));
 	assert(new_dict != NULL);
 	new_dict->flags = flags;
 	if (IS_STRKEY(new_dict))
@@ -119,7 +115,7 @@ dict_destroy(struct dict_t * dict,
 
 	if (dict->ptable != dict->smalltable)
 		xfree(dict->ptable);
-	mem_cache_free(pdict_cache, dict);
+	xfree(dict);
 }
 
 /* this util iterate over the conflict link. return value: 

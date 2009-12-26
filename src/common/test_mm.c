@@ -16,13 +16,6 @@ struct x {
 	int d;
 };
 
-static DEFINE_MEM_CACHE(cache, "test_cache_1", sizeof(struct x));
-
-struct mem_cache_t * static_mem_caches[] = {
-	&cache,
-	&__dict_t_cache,
-	NULL,
-};
 
 init_func_t init_funcs[] = {
 	__dbg_init,
@@ -31,7 +24,6 @@ init_func_t init_funcs[] = {
 
 
 cleanup_func_t cleanup_funcs[] = {
-	__mem_cache_cleanup,
 	__dbg_cleanup,
 	NULL,
 };
@@ -42,19 +34,19 @@ main()
 	dbg_init(NULL);
 	struct x * buf[5];
 	for (int i = 0; i < 5; i++) {
-		buf[i] = mem_cache_alloc(&cache);
+		buf[i] = xmalloc(sizeof(struct x));
 	}
 
 	for (int i = 0; i < 5; i++) {
-		mem_cache_free(&cache, buf[i]);
+		xfree(buf[i]);
 	}
 
 	for (int i = 0; i < 5; i++) {
-		buf[i] = mem_cache_alloc(&cache);
+		buf[i] = xmalloc(sizeof(struct x));
 	}
 
 	for (int i = 0; i < 5; i++) {
-		mem_cache_free(&cache, buf[i]);
+		xfree(buf[i]);
 	}
 
 	do_cleanup();
