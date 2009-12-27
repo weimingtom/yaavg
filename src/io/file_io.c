@@ -109,7 +109,7 @@ file_check_usable(const char * param)
 
 struct io_functionor_t file_io_functionor = {
 	.name = "libc file",
-	.fclass = FC_RESOURCES,
+	.fclass = FC_IO,
 	.check_usable = file_check_usable,
 	.open = file_read_open,
 	.open_write = file_write_open,

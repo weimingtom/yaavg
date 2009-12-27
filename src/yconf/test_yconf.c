@@ -44,7 +44,6 @@ main()
 	VERBOSE(SYSTEM, "video.opengl.glx.grabkeyboard = %d\n", b);
 
 	do_cleanup();
-	raise(SIGUSR1);
 	return 0;
 }
 

@@ -43,7 +43,6 @@ main()
 	}
 	
 	do_cleanup();
-	raise(SIGUSR1);
 	return 0;
 }
 

@@ -24,6 +24,8 @@
 #include <common/defs.h>
 #include <common/debug.h>
 
+static pid_t proc_pid = 0;
+
 #ifdef YAAVG_DEBUG
 static const char * __debug_level_names[NR_DEBUG_LEVELS] = {
 	[DBG_LV_SILENT]		= "SIL",
@@ -157,7 +159,9 @@ __wrap_realloc(void * ptr, size_t newsize,
 
 
 /* signal handlers */
-#define MEM_MSG(str...)	FORCE(MEMORY, "@q" str)
+/* it should print pid */
+/* #define MEM_MSG(str...)	FORCE(MEMORY, "@q" str) */
+#define MEM_MSG(str...)	FORCE(MEMORY, str)
 static void
 sighandler_mem_stats(int signum)
 {
@@ -235,6 +239,16 @@ dbg_exit(void)
 		fclose(output_fp);
 	}
 	output_fp = NULL;
+#ifdef YAAVG_DEBUG
+	/* raise signal here to see the memory allocations */
+	raise(SIGUSR1);
+#endif
+	/* reset the counters */
+	/* see comment at dbg_init */
+	malloc_counter = 0;
+	calloc_counter = 0;
+	free_counter = 0;
+	strdup_counter = 0;
 }
 
 void
@@ -242,12 +256,20 @@ dbg_init(const char * fn)
 {
 	int err;
 
+	proc_pid = getpid();
+	assert(proc_pid > 0);
 
+#if 0
 	/* reset the counters */
+	/* NOTICE: we should reset counters when cleanup:
+	 * if we reset those counters here, then if the newly forked
+	 * process call dbg_init, its malloc counter will become 0,
+	 * then when it cleanup, the alloc and free won't get paired */
 	malloc_counter = 0;
 	calloc_counter = 0;
 	free_counter = 0;
 	strdup_counter = 0;
+#endif
 	/* we need to close the previous output_fp */
 	if ((output_fp != NULL) && (output_fp != stderr) && (output_fp != stdout)) {
 		set_color(COLOR_NORMAL);
@@ -382,7 +404,8 @@ dbg_output(enum __debug_level level,
 
 	/* print the prefix */
 	if (!option.no_prefix)
-		fprintf(output_fp, "[%s %s@%s:%d]\t",
+		fprintf(output_fp, "(%d)[%s %s@%s:%d]\t",
+				proc_pid,
 				get_comp_name(comp),
 				get_level_name(level),
 				func,
@@ -426,6 +449,7 @@ dbg_output(enum __debug_level level,
 			set_color(COLOR_NORMAL);
 	}
 
+	fprintf(output_fp, "(%d)", proc_pid);
 	vfprintf(output_fp, fmt, ap);
 
 	if (level >= DBG_LV_WARNING)

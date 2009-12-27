@@ -39,7 +39,6 @@ int main()
 			timer->get_ticks());
 
 	do_cleanup();
-	raise(SIGUSR1);
 	return 0;
 }
 

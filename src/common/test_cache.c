@@ -60,7 +60,6 @@ test_cache_creation(void)
 	cache_init(&c, "creation cache");
 	VERBOSE(SYSTEM, "------------ END ---------------\n");
 	do_cleanup();
-	raise(SIGUSR1);
 }
 
 static void
@@ -85,7 +84,6 @@ test_cache_insertion(void)
 	}
 	VERBOSE(SYSTEM, "------------ END ---------------\n");
 	do_cleanup();
-	raise(SIGUSR1);
 }
 
 static struct dummy_bitmap_t *
@@ -152,7 +150,6 @@ test_cache_use(void)
 
 	VERBOSE(SYSTEM, "------- END -----\n");
 	do_cleanup();
-	raise(SIGUSR1);
 }
 
 static void
@@ -182,7 +179,6 @@ test_cache_replace(void)
 
 	VERBOSE(SYSTEM, "------- END ---------\n");
 	do_cleanup();
-	raise(SIGUSR1);
 }
 
 static void
@@ -209,7 +205,6 @@ test_cache_xxx(void)
 
 	VERBOSE(SYSTEM, "------- END ---------\n");
 	do_cleanup();
-	raise(SIGUSR1);
 }
 
 

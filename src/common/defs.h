@@ -74,6 +74,12 @@ typedef int bool_t;
 #define ALIGN_DOWN(v, a)	((uint32_t)(v) & (~((a) - 1)))
 #define ALIGN_UP(v, a)		(ALIGN_DOWN((v) + (a) - 1, (a)))
 
+enum process_number {
+	MAIN_PROCESS,
+	RESOURCE_PROCESS,
+	AUDIO_PROCESS,
+};
+
 __END_DECLS
 
 #endif

@@ -91,7 +91,6 @@ int main()
 	/* Test memory leak detection */
 	void * ptr = malloc(1024);
 	free(ptr);
-	raise(SIGUSR1);
 
 	FATAL(SYSTEM, "system fatal message with arg %d\n", 10);
 	return 0;

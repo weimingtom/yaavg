@@ -30,7 +30,6 @@ int main()
 	bitmap = load_bitmap("xxx.jpg");
 	destroy_bitmap(bitmap);
 	do_cleanup();
-	raise(SIGUSR1);
 	return 0;
 }
 #endif

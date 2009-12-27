@@ -19,7 +19,7 @@ static struct functionor_t * functionors[] = {
 };
 
 struct function_class_t io_function_class = {
-	.fclass = FC_RESOURCES,
+	.fclass = FC_IO,
 	.current_functionor = NULL,
 	.functionors = &functionors,
 };
@@ -34,11 +34,11 @@ get_io_handler(const char * proto)
 
 	char * p = strdupa(proto);
 	str_toupper(p);
-	TRACE(RESOURCES, "find io handler for proto \"%s\"\n",
+	TRACE(IO, "find io handler for proto \"%s\"\n",
 			p);
 	r = strdict_get(&io_functionors_dict, p).ptr;
 	if (r != NULL) {
-		TRACE(RESOURCES, "get handler \"%s\" from dict for proto \"%s\"\n",
+		TRACE(IO, "get handler \"%s\" from dict for proto \"%s\"\n",
 				r->name, p);
 		return r;
 	}
@@ -46,7 +46,7 @@ get_io_handler(const char * proto)
 	r = (struct io_functionor_t*)find_functionor(
 			&io_function_class, p);
 	assert(r != NULL);
-	DEBUG(RESOURCES, "find handler \"%s\" for type %s\n",
+	DEBUG(IO, "find handler \"%s\" for type %s\n",
 			r->name, p);
 	bool_t rep = strdict_replace(&io_functionors_dict,
 			p, (dict_data_t)(void*)r, NULL);

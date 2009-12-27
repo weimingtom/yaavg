@@ -7,11 +7,14 @@
 #define __RESOURCE_H
 
 #include <common/functionor.h>
+#include <io/io.h>
 
-typedef void * (deserializer_t)(struct io_t * io);
+typedef void * (*deserializer_t)(struct io_t * io);
+
+/* the resource process can be launched after do_init */
 
 void
-lauch_resource_process(void);
+launch_resource_process(void);
 
 void
 shutdown_resource_process(void);

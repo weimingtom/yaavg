@@ -18,7 +18,8 @@ enum __debug_component {
 	TIMER,
 	CACHE,
 	BITMAP,
-	RESOURCES,
+	IO,
+	RESOURCE,
 	NR_DEBUG_COMPONENTS,
 };
 
@@ -35,7 +36,8 @@ __debug_component_names[NR_DEBUG_COMPONENTS] = {
 	[TIMER]		= "TMR",
 	[CACHE]		= "CHE",
 	[BITMAP]	= "BTM",
-	[RESOURCES]	= "RES",
+	[IO]		= "I/O",
+	[RESOURCE]	= "RES",
 };
 
 static const enum __debug_level
@@ -48,7 +50,8 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[TIMER]		= DBG_LV_DEBUG,
 	[CACHE]		= DBG_LV_TRACE,
 	[BITMAP]	= DBG_LV_TRACE,
-	[RESOURCES]	= DBG_LV_TRACE,
+	[IO]		= DBG_LV_TRACE,
+	[RESOURCE]	= DBG_LV_TRACE,
 };
 #endif
 #endif
