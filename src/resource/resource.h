@@ -9,6 +9,8 @@
 #include <common/functionor.h>
 #include <io/io.h>
 
+#define MAX_IDLEN	(256)
+
 typedef void * (*deserializer_t)(struct io_t * io);
 
 /* the resource process can be launched after do_init */
