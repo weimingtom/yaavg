@@ -23,7 +23,7 @@ int main()
 	dbg_init(NULL);
 	do_init();
 	struct exception_t exp;
-	struct dict_t * dict;
+	struct dict_t * dict = NULL;
 	TRY(exp) {
 		dict = dict_create(10, DICT_FL_STRKEY, NULL, 0);
 	} FINALLY {

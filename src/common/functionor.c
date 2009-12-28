@@ -6,6 +6,8 @@
 #include <common/functionor.h>
 #include <common/exception.h>
 
+#include <assert.h>
+
 static const char * function_class_names[NR_FCS] = {
 	[FC_VIDEO] = "video",
 	[FC_OPENGL_ENGINE] = "OpenGL engine",
@@ -17,6 +19,7 @@ static const char * function_class_names[NR_FCS] = {
 struct functionor_t *
 find_functionor(struct function_class_t * fclass, const char * param)
 {
+	assert(fclass != NULL);
 	struct functionor_t ** pos = *(fclass->functionors);
 	while (*pos != NULL) {
 		if ((*pos)->check_usable != NULL)
