@@ -214,6 +214,7 @@ sigpipe_handler(int signum)
 	WARNING(RESOURCE, "signal %d received\n", signum);
 }
 
+static void read_resource(const char *);
 static void
 work(void)
 {
@@ -244,12 +245,26 @@ work(void)
 		xxread(C_IN, cmd, cmd_len);
 		DEBUG(RESOURCE, "command: %s\n", cmd);
 
-		if (cmd[0] == 'x') {
-			/* we are killed */
-			THROW(EXP_RESOURCE_PEER_SHUTDOWN,
-					"we are shutted down by command\n");
+		switch (cmd[0]) {
+			case 'x':
+				THROW(EXP_RESOURCE_PEER_SHUTDOWN,
+						"we are shutted down by command x\n");
+				break;
+			case 'r':
+				assert(cmd[1] == ':');
+				read_resource(&cmd[2]);
+				break;
+			default:
+				THROW(EXP_RESOURCE_PROCESS_FAILURE,
+						"got unknown command '%c'");
 		}
 	}
+}
+
+static void
+read_resource(const char * id)
+{
+	
 }
 
 int
