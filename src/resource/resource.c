@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <assert.h>
+#include <wait.h>
 
 #include <config.h>
 #include <common/defs.h>
@@ -23,15 +24,22 @@
 #include <resource/resource.h>
 
 
-static pid_t resproc_pid;
+#define OK_SIG	(0x98765432)
 
-static int cmd_channel[2];
-static int data_channel[2];
-#define C_IN	(cmd_channel[STDIN_FILENO])
-#define C_OUT	(cmd_channel[STDOUT_FILENO])
-#define D_IN	(data_channel[STDIN_FILENO])
-#define D_OUT	(data_channel[STDOUT_FILENO])
+static pid_t resproc_pid = 0;
 
+static int __cmd_channel[2] = {-1, -1};
+static int __data_channel[2] = {-1, -1};
+#define C_IN	(__cmd_channel[STDIN_FILENO])
+#define C_OUT	(__cmd_channel[STDOUT_FILENO])
+#define D_IN	(__data_channel[STDIN_FILENO])
+#define D_OUT	(__data_channel[STDOUT_FILENO])
+
+#define xclose(x)	do {close(x); x = -1;} while(0)
+
+/* 
+ * xread never return failure or 0
+ */
 static int
 xread(int fd, void * buf, int len)
 {
@@ -41,6 +49,9 @@ xread(int fd, void * buf, int len)
 		return 0;
 	assert(len > 0);
 
+	TRACE(RESOURCE, "try to xread %d bytes from %d\n",
+			len, fd);
+
 	err = read(fd, buf, len);
 	if (err < 0) {
 		THROW(EXP_RESOURCE_PROCESS_FAILURE,
@@ -49,33 +60,38 @@ xread(int fd, void * buf, int len)
 	}
 
 	if (err == 0)
-		THROW(EXP_RESOURCE_HOST_END,
-				"seems host process has ended\n");
+		THROW(EXP_RESOURCE_PEER_SHUTDOWN,
+				"seems host peer has shutdown\n");
+	TRACE(RESOURCE, "finish to xread %d bytes from %d\n",
+			len, fd);
 	return err;
 }
 
 /* 
  * write is very different from read
+ *
+ * xwrite never return failure
  */
 static int
 xwrite(int fd, void * buf, int len)
 {
 	int err;
 	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
-	assert(fd < FD_SETSIZE);
 
+	assert(fd < FD_SETSIZE);
 	assert(buf != NULL);
 	if (len == 0)
 		return 0;
 	assert(len > 0);
 
+	TRACE(RESOURCE, "try to xwrite %d bytes to %d\n",
+			len, fd);
 	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-
 	do {
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		FD_ZERO(&set);
+		FD_SET(fd, &set);
 		err = TEMP_FAILURE_RETRY(
 				select(FD_SETSIZE, NULL,
 					&set, NULL,
@@ -94,13 +110,15 @@ xwrite(int fd, void * buf, int len)
 	err = write(fd, buf, len);
 	if (err < 0) {
 		THROW(EXP_RESOURCE_PROCESS_FAILURE,
-				"write from pipe error: %d/%d:%s\n",
+				"write to pipe error: %d/%d:%s",
 				err, len, strerror(errno));
 	}
 
 	if (err == 0)
 		THROW(EXP_RESOURCE_PROCESS_FAILURE,
 				"very strange: write returns 0");
+	TRACE(RESOURCE, "finish to xwrite %d bytes from %d\n",
+			len, fd);
 	return err;
 }
 
@@ -108,42 +126,86 @@ xwrite(int fd, void * buf, int len)
 static void
 xxwrite(int fd, void * buf, int len)
 {
-	int err;
+	TRACE(RESOURCE, "try to xxwrite %d bytes to %d\n",
+			len, fd);
 	while (len > 0)
 		len -= xwrite(fd, buf, len);
+	TRACE(RESOURCE, "finish to xxwrite some bytes from %d\n", fd);
 }
 
+/* 
+ * peri_wait_usec: periodically wait time
+ * 0: wait forever
+ */
 static void
-xxread(int fd, void * buf, int len)
+__xxread(int fd, void * buf, int len, int peri_wait_usec)
 {
 	int err;
-	fd_set set;
-	FD_ZERO(&set);
-	FD_SET(fd, &set);
+	fd_set fdset;
 	assert(fd < FD_SETSIZE);
 
-	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
 
+	TRACE(RESOURCE, "try to __xxread %d bytes from %d\n",
+			len, fd);
+
+	assert(peri_wait_usec >= 0);
+	struct timeval tv;
+
+	int nr_warn = 0;
 	while (len > 0) {
-		err = TEMP_FAILURE_RETRY(
-				select(FD_SETSIZE, &set,
-					NULL, NULL,
-					&tv));
-		if (err < 0)
-			THROW(EXP_RESOURCE_PROCESS_FAILURE,
-					"select error: %d:%s",
-					err, strerror(errno));
-		if (err == 0) {
-			WARNING(RESOURCE, "select timeout when read, wait for another 1s\n");
-			continue;
-		}
+		do {
+			if (peri_wait_usec == 0) {
+				tv.tv_sec = 5;
+				tv.tv_usec = 0;
+			} else {
+				tv.tv_sec = peri_wait_usec / 1000;
+				tv.tv_usec = peri_wait_usec % 1000;
+			}
+			FD_ZERO(&fdset);
+			FD_SET(fd, &fdset);
+
+			/* periodically select */
+			err = TEMP_FAILURE_RETRY(
+					select(FD_SETSIZE, &fdset,
+						NULL, NULL,
+						&tv));
+
+			if (err < 0)
+				THROW(EXP_RESOURCE_PROCESS_FAILURE,
+						"select error: %d:%s",
+						err, strerror(errno));
+			if (err == 0) {
+				if (peri_wait_usec == 0)
+					DEBUG(RESOURCE, "i am still alive\n");
+				else {
+					WARNING(RESOURCE, "select timeout, wait for another %d ms\n",
+							peri_wait_usec);
+					nr_warn ++;
+					if (nr_warn >= 3)
+						THROW(EXP_RESOURCE_PROCESS_FAILURE,
+								"no response for too long time, something error");
+				}
+			}
+		} while (err <= 0);
 		assert(err == 1);
+
 		err = xread(fd, buf, len);
-		assert(err != 0);
 		len -= err;
 	}
+	assert(len == 0);
+	TRACE(RESOURCE, "finish to __xxread some bytes from %d\n", fd);
+}
+
+static inline void
+xxread(int fd, void * buf, int len)
+{
+	__xxread(fd, buf, len, 0);
+}
+
+static inline void
+xxread_imm(int fd, void * buf, int len)
+{
+	__xxread(fd, buf, len, 1000);
 }
 
 static void
@@ -157,43 +219,21 @@ work(void)
 {
 	VERBOSE(RESOURCE, "resource process start working\n");
 
-
-	fd_set fdset;
-	FD_ZERO(&fdset);
-	FD_SET(C_IN, &fdset);
-
+	/* push the ok sig */
+	uint32_t ok = OK_SIG;
+	xxwrite(D_OUT, &ok, sizeof(ok));
 
 	while (1) {
 		int err;
 		int cmd_len;
 		char cmd[MAX_IDLEN];
 
-		struct timeval tv;
-		tv.tv_sec = 5;
-		tv.tv_usec = 0;
-		while (1) {
-			err = TEMP_FAILURE_RETRY(select(FD_SETSIZE, &fdset,
-					NULL, NULL, &tv));
-			if (err != 0)
-				break;
-			DEBUG(RESOURCE, "resource process is still alive\n");
-		}
-
-		/* select won't failure exception real error, that is,
-		 * even if the other size of the pipe is closed, select still
-		 * return 1, but the incoming read will return 0. */
-		if (err != 1)
-			THROW(EXP_RESOURCE_PROCESS_FAILURE,
-					"wait for command but failed");
 		/* 
 		 * cmd syntax:
 		 * read resource: r:[format]:[type]:[proto]:[id]
 		 * exit: x
 		 */
-
-#if 0
-		err = xread(C_IN, &cmd_len, sizeof(cmd_len));
-		assert(err == sizeof(cmd_len));
+		xxread(C_IN, &cmd_len, sizeof(cmd_len));
 
 		if ((cmd_len > MAX_IDLEN) || (cmd_len < 0))
 			THROW(EXP_RESOURCE_PROCESS_FAILURE,
@@ -204,20 +244,24 @@ work(void)
 		xxread(C_IN, cmd, cmd_len);
 		DEBUG(RESOURCE, "command: %s\n", cmd);
 
-#endif
+		if (cmd[0] == 'x') {
+			/* we are killed */
+			THROW(EXP_RESOURCE_PEER_SHUTDOWN,
+					"we are shutted down by command\n");
+		}
 	}
 }
 
-void
+int
 launch_resource_process(void)
 {
 	int err;
 	VERBOSE(RESOURCE, "launching resource process\n");
 
 	/* create the pipes */
-	err = pipe(cmd_channel);
+	err = pipe(__cmd_channel);
 	assert(err == 0);
-	err = pipe(data_channel);
+	err = pipe(__data_channel);
 	assert(err == 0);
 
 	/* fork */
@@ -228,32 +272,45 @@ launch_resource_process(void)
 		VERBOSE(RESOURCE, "resource process created: pid=%d\n",
 				resproc_pid);
 		/* close the unneed pipe */
-		close(C_IN);
-		close(D_OUT);
-		return;
+		xclose(C_IN);
+		xclose(D_OUT);
+		/* wait for the first byte and return */
+		uint32_t ok = 0;
+		xxread(D_IN, &ok, sizeof(ok));
+		if (ok != OK_SIG) {
+			xclose(C_OUT);
+			xclose(D_IN);
+			THROW(EXP_RESOURCE_PROCESS_FAILURE,
+					"seems resource process meet some error, it return 0x%x\n",
+					ok);
+		}
+		DEBUG(RESOURCE, "got ok_sig=0x%x\n", ok);
+		return resproc_pid;
 	}
 
 	/* child */
 	/* reinit debug */
-	dbg_init(NULL);
+	dbg_init("/tmp/yaavg_resource_log");
 
 	/* regist the SIGPIPE handler */
 	signal(SIGPIPE, sigpipe_handler);
 
 	/* close the other end */
-	close(C_OUT);
-	close(D_IN);
-
+	xclose(C_OUT);
+	xclose(D_IN);
+#if 1
 	struct exception_t exp;
 	TRY(exp) {
 		VERBOSE(RESOURCE, "resource process is started\n");
 		/* begin the working flow */
 		work();
 	} FINALLY {
+		xclose(C_IN);
+		xclose(D_OUT);
 		WARNING(RESOURCE, "resource process cleanup exitted\n");
 	} CATCH(exp) {
 		switch (exp.type) {
-			case EXP_RESOURCE_HOST_END:
+			case EXP_RESOURCE_PEER_SHUTDOWN:
 				VERBOSE(RESOURCE, "resource process end normally\n");
 				do_cleanup();
 				break;
@@ -262,6 +319,30 @@ launch_resource_process(void)
 				do_cleanup();
 		}
 	}
+#endif
+	exit(0);
+	return 0;
+}
+
+void
+shutdown_resource_process(void)
+{
+	TRACE(RESOURCE, "shutting down resource process %d, C_OUT=%d\n", resproc_pid,
+			C_OUT);
+	if (C_OUT == -1)
+		return;
+	if (resproc_pid == 0)
+		return;
+
+	char x[2] = {'x', '\0'};
+	int i = 2;
+	xxwrite(C_OUT, &i, 4);
+	xxwrite(C_OUT, &x, sizeof(x));
+	TRACE(RESOURCE, "wait for process %d finish\n", resproc_pid);
+	waitpid(resproc_pid, NULL, 0);
+
+	resproc_pid = -1;
+	C_OUT = -1;
 	return;
 }
 

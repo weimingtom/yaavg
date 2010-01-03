@@ -215,6 +215,9 @@ sighandler_backtrace(int signum)
 		case SIGABRT:
 			SYS_FATAL("Received SIGABRT:\n");
 			break;
+		case SIGPIPE:
+			SYS_FATAL("Received SIGPIPE:\n");
+			break;
 		default:
 			SYS_FATAL("Received signal %d\n", signum);
 			break;
@@ -232,6 +235,11 @@ sighandler_backtrace(int signum)
 void
 dbg_exit(void)
 {
+#ifdef YAAVG_DEBUG
+	/* raise signal here to see the memory allocations */
+	raise(SIGUSR1);
+#endif
+
 	if ((output_fp != NULL) &&
 		(output_fp != stderr) &&
 		(output_fp != stdout)) {
@@ -239,10 +247,7 @@ dbg_exit(void)
 		fclose(output_fp);
 	}
 	output_fp = NULL;
-#ifdef YAAVG_DEBUG
-	/* raise signal here to see the memory allocations */
-	raise(SIGUSR1);
-#endif
+
 	/* reset the counters */
 	/* see comment at dbg_init */
 	malloc_counter = 0;
@@ -306,10 +311,11 @@ dbg_init(const char * fn)
 		int signum;
 		void (*handler)(int);
 	};
-	struct signals_handler handler[4] = {
+	struct signals_handler handler[5] = {
 		{SIGUSR1, sighandler_mem_stats},
 		{SIGSEGV, sighandler_backtrace},
 		{SIGABRT, sighandler_backtrace},
+		{SIGPIPE, SIG_IGN},
 		{0, NULL},
 	};
 

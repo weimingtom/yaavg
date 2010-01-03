@@ -15,7 +15,7 @@ typedef void * (*deserializer_t)(struct io_t * io);
 
 /* the resource process can be launched after do_init */
 
-void
+int
 launch_resource_process(void);
 
 void
