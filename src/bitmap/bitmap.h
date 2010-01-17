@@ -28,7 +28,7 @@ enum bitmap_format {
  * in fact, pixels is useless. but we employ it for check
  * */
 #define BITMAP_HEAD				\
-	const char * id;			\
+	char * id;			\
 	enum bitmap_format format;	\
 	int bpp;		\
 	int w, h;					\

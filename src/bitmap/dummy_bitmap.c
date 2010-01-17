@@ -69,7 +69,7 @@ dummy_destroy(struct bitmap_resource_t * b)
 {
 	assert(b->functionor->destroy ==
 			dummy_destroy);
-	TRACE(BITMAP, "dummy: destroy bitmap\n");
+	TRACE(BITMAP, "dummy: destroy bitmap %s\n", b->id);
 	struct cache_entry_t * ce = &b->cache_entry;
 	xfree(ce->id);
 	xfree(b);
@@ -83,9 +83,9 @@ dummy_serialize(struct bitmap_resource_t * b, struct io_t * io)
 	assert(io != NULL);
 
 	int bitmap_size = bitmap_data_size((struct bitmap_t*)b);
-	int id_sz = 0;
-	if (b->id != NULL)
-		id_sz = strlen(b->id) + 1;
+	if (b->id == NULL)
+		b->id = "";
+	int id_sz = strlen(b->id) + 1;
 
 	/* dup a bitmap head */
 	struct bitmap_t head;

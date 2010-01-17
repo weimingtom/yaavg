@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
@@ -244,7 +245,6 @@ dbg_exit(void)
 		(output_fp != stderr) &&
 		(output_fp != stdout)) {
 		set_color(COLOR_NORMAL);
-		fclose(output_fp);
 	}
 	output_fp = NULL;
 
@@ -275,14 +275,12 @@ dbg_init(const char * fn)
 	free_counter = 0;
 	strdup_counter = 0;
 #endif
-	/* we need to close the previous output_fp */
-	if ((output_fp != NULL) && (output_fp != stderr) && (output_fp != stdout)) {
-		set_color(COLOR_NORMAL);
-		fclose(output_fp);
-		output_fp = NULL;
-	}
+	/* now we needn't to close the previous output_fp. we always use stderr to print. */
+	fflush(stderr);
 
+#if 0
 	/* open output_fp for debug output */
+	NOW WE NEEDN'T THIS CODE!
 	if ((fn == NULL) || fn[0] == '\0') {
 		output_fp = stderr;
 	} else {
@@ -290,6 +288,19 @@ dbg_init(const char * fn)
 		/* We will install a handler for SIGABRT */
 		assert(output_fp != NULL);
 	}
+#endif
+	/* don't fopen a file, but dup a fd to stderr */
+	if ((fn != NULL) && (fn[0] != '\0')) {
+		int fd = open(fn, O_WRONLY|O_CREAT|O_APPEND|O_TRUNC, 0666);
+		int err;
+		assert(fd > 0);
+		close(STDERR_FILENO);
+		err = dup2(fd, STDERR_FILENO);
+		assert(err >= 0);
+		close(fd);
+	}
+	output_fp = stderr;
+
 	/* test the colorful terminal */
 	if (isatty(fileno(output_fp)))
 		colorful_terminal = TRUE;

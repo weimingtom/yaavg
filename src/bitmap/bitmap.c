@@ -69,15 +69,17 @@ get_bitmap_resource_handler(const char * name)
 }
 
 struct bitmap_t *
-alloc_bitmap(struct bitmap_t * head)
+alloc_bitmap(struct bitmap_t * phead)
 {
-	int id_sz = (uintptr_t)(head->id);
-	struct bitmap_t * res = xmalloc(sizeof(head) +
+	int id_sz = (uintptr_t)(phead->id);
+	struct bitmap_t * res = xmalloc(sizeof(*phead) +
 			id_sz +
-			bitmap_data_size(head) +
+			bitmap_data_size(phead) +
 			PIXELS_ALIGN - 1);
 	assert(res != NULL);
-	*res = *head;
+	*res = *phead;
+	res->id = (char *)(res->__data);
+	res->pixels = PIXELS_PTR(res->__data + id_sz);
 	return res;
 }
 
@@ -100,6 +102,8 @@ bitmap_deserialize(struct io_t * io)
 	io_read(io, &head, sizeof(head), 1);
 	int ds = bitmap_data_size(&head); 
 	int id_sz = (uintptr_t)(head.id);
+	assert(id_sz > 0);
+
 
 	/* check */
 	assert((uintptr_t)(head.pixels) == ds);
@@ -111,16 +115,11 @@ bitmap_deserialize(struct io_t * io)
 	assert(r != NULL);
 
 	/* read id */
-	r->__data[0] = '\0';
-	io_read(io, r->__data, id_sz, 1);
-	r->id = (void*)(r->__data);
+	io_read(io, r->id, id_sz, 1);
 	TRACE(BITMAP, "read id: %s\n", r->id);
 
 	/* read pixels */
-	/* align */
-	uint8_t * pix_ptr = PIXELS_PTR(r->__data + id_sz);
-	io_read(io, &(r->pixels), ds, 1);
-	r->pixels = pix_ptr;
+	io_read(io, r->pixels, ds, 1);
 	return r;
 }
 
