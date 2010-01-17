@@ -22,6 +22,9 @@ dummy_check_usable(const char * param)
 	return TRUE;
 }
 
+static void
+dummy_destroy(struct bitmap_resource_t * b);
+
 static struct bitmap_resource_t *
 dummy_load(struct io_t * io, const char * name)
 {
@@ -32,16 +35,30 @@ dummy_load(struct io_t * io, const char * name)
 	retval = xcalloc(1, sizeof(*retval) + (8 * 8 * 4));
 	assert(retval != NULL);
 
+	retval->id = strdup(name);
 	retval->format = BITMAP_RGBA;
 	retval->bpp = 4;
 	retval->w = retval->h = 8;
 	retval->functionor = &dummy_bitmap_resource_functionor;
 	retval->pprivate = retval + 1;
+
+	struct cache_entry_t * ce = &retval->cache_entry;
+
+	ce->id = retval->id;
+	ce->data = retval;
+	ce->sz = sizeof(retval + 8 * 8 * 4);
+	ce->destroy_arg = retval;
+	ce->destroy = (cache_destroy_t)dummy_destroy;
+	ce->cache = NULL;
+	INIT_LIST_HEAD(&ce->lru_list);
+	ce->type = CACHE_ENTRY_BITMAP;
+	ce->pprivate = NULL;
+
 	return retval;
 }
 
 static void
-dummy_store(struct bitmap_t * name, const char * path)
+dummy_store(struct bitmap_resource_t * name, const char * path)
 {
 	TRACE(BITMAP, "dummy: store bitmap to %s\n", path);
 	return;
@@ -53,6 +70,8 @@ dummy_destroy(struct bitmap_resource_t * b)
 	assert(b->functionor->destroy ==
 			dummy_destroy);
 	TRACE(BITMAP, "dummy: destroy bitmap\n");
+	struct cache_entry_t * ce = &b->cache_entry;
+	xfree(ce->id);
 	xfree(b);
 	return;
 }
@@ -64,7 +83,9 @@ dummy_serialize(struct bitmap_resource_t * b, struct io_t * io)
 	assert(io != NULL);
 
 	int bitmap_size = bitmap_data_size((struct bitmap_t*)b);
-	int id_sz = strlen(b->id) + 1;
+	int id_sz = 0;
+	if (b->id != NULL)
+		id_sz = strlen(b->id) + 1;
 
 	/* dup a bitmap head */
 	struct bitmap_t head;
@@ -83,7 +104,7 @@ dummy_serialize(struct bitmap_resource_t * b, struct io_t * io)
 		vecs[1].iov_len = id_sz;
 		vecs[2].iov_base = b->pprivate;
 		vecs[2].iov_len = bitmap_size;
-		io_writev(io, vecs, 2);
+		io_writev(io, vecs, 3);
 	} else {
 		io_write(io, &head, sizeof(struct bitmap_t), 1);
 		io_write(io, (void*)b->id, id_sz, 1);
@@ -92,7 +113,7 @@ dummy_serialize(struct bitmap_resource_t * b, struct io_t * io)
 }
 
 
-struct bitmap_resource_functionor_t dummy_bitmap_functionor = {
+struct bitmap_resource_functionor_t dummy_bitmap_resource_functionor = {
 	.name = "DummyBitmap",
 	.fclass = FC_BITMAP_RESOURCE_HANDLER,
 	.check_usable = dummy_check_usable,

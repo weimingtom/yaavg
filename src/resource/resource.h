@@ -18,7 +18,7 @@ enum resource_type {
 
 typedef void * (*deserializer_t)(struct io_t * io);
 
-/* the resource process can be launched after do_init */
+/* the resource process should be launched after do_init */
 
 int
 launch_resource_process(void);
@@ -31,6 +31,9 @@ extern struct io_functionor_t resource_io_functionor;
 void *
 get_resource(const char * name,
 		deserializer_t deserializer);
+
+void
+delete_resource(const char * name);
 
 #endif
 

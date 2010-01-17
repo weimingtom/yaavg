@@ -30,6 +30,10 @@ struct cache_t {
 	ssize_t limit_sz;
 };
 
+enum cache_entry_type {
+	CACHE_ENTRY_BITMAP,
+};
+
 struct cache_entry_t {
 	const char * id;
 	void * data;
@@ -38,6 +42,8 @@ struct cache_entry_t {
 	cache_destroy_t destroy;
 	struct cache_t * cache;
 	struct list_head lru_list;
+	enum cache_entry_type type;
+	void * pprivate;
 };
 
 /* 

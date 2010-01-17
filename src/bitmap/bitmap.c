@@ -77,7 +77,7 @@ alloc_bitmap(struct bitmap_t * head)
 			bitmap_data_size(head) +
 			PIXELS_ALIGN - 1);
 	assert(res != NULL);
-	memcpy(res, head, sizeof(*head));
+	*res = *head;
 	return res;
 }
 
@@ -111,6 +111,7 @@ bitmap_deserialize(struct io_t * io)
 	assert(r != NULL);
 
 	/* read id */
+	r->__data[0] = '\0';
 	io_read(io, r->__data, id_sz, 1);
 	r->id = (void*)(r->__data);
 	TRACE(BITMAP, "read id: %s\n", r->id);

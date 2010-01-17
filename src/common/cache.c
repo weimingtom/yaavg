@@ -36,6 +36,7 @@ cache_init(struct cache_t * c, const char * name,
 
 	list_add_tail(&(c->list), &__cache_list);
 	INIT_LIST_HEAD(&(c->lru_head));
+
 	return;
 }
 
@@ -87,6 +88,11 @@ cache_insert(struct cache_t * cache,
 	/* the entry is already in the cache */
 	if (entry->cache != NULL) {
 		assert(entry->cache == cache);
+		TRACE(CACHE, "entry %s has already in cache %s, bring it on\n",
+				entry->id,
+				cache->name);
+		list_del(&entry->lru_list);
+		list_add_tail(&entry->lru_list, &cache->lru_head);
 		return;
 	}
 

@@ -16,6 +16,7 @@ init_func_t init_funcs[] = {
 
 cleanup_func_t cleanup_funcs[] = {
 	__yconf_cleanup,
+	__caches_cleanup,
 	__dbg_cleanup,
 	NULL,
 };
@@ -23,8 +24,8 @@ cleanup_func_t cleanup_funcs[] = {
 int main()
 {
 	/* test start and stop */
-	launch_resource_process();
 	do_init();
+	launch_resource_process();
 	shutdown_resource_process();
 	do_cleanup();
 
@@ -32,8 +33,8 @@ int main()
 
 	struct exception_t exp;
 	TRY(exp) {
-		pid = launch_resource_process();
 		do_init();
+		pid = launch_resource_process();
 
 		kill(pid, SIGSEGV);
 

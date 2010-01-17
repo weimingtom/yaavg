@@ -58,6 +58,7 @@ dict_create(int hint, uint32_t flags,
 {
 	struct dict_t * new_dict = xcalloc(1, sizeof(struct dict_t));
 	assert(new_dict != NULL);
+
 	new_dict->flags = flags;
 	if (IS_STRKEY(new_dict))
 		new_dict->compare_key = compare_str;
@@ -529,7 +530,6 @@ strdict_create(int hint, uint32_t flags)
 	uint32_t real_flags = DICT_FL_STRKEY;
 	if (flags & STRDICT_FL_FIXED)
 		real_flags |= DICT_FL_FIXED;
-
 	struct dict_t * dict = dict_create(hint, real_flags, NULL, 0);
 	assert(dict != NULL);
 	dict->private = (uintptr_t)flags;

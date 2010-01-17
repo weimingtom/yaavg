@@ -3,10 +3,19 @@
 #include <common/dict.h>
 #include <common/bithacks.h>
 #include <common/mm.h>
+#include <common/init_cleanup_list.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+init_func_t init_funcs[] = {
+	
+};
+
+cleanup_func_t cleanup_funcs[] = {
+	
+};
 
 int
 main(int argc, char * argv[])

@@ -21,6 +21,7 @@
 #include <common/mm.h>
 #include <common/dict.h>
 #include <common/cache.h>
+#include <yconf/yconf.h>
 #include <bitmap/bitmap.h>
 
 #include <resource/resource.h>
@@ -210,6 +211,80 @@ xxread_imm(int fd, void * buf, int len)
 	__xxread(fd, buf, len, 1000);
 }
 
+
+static ssize_t
+xxreadv(int fd, struct iovec * iovec,
+		int nr)
+{
+	ssize_t retval;
+	retval = readv(fd, iovec, nr);
+	if (retval <= 0)
+		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+				"readv failed, return %d:%s",
+				retval, strerror(errno));
+
+	size_t total_sz = 0;
+	for (int i = 0; i < nr; i++)
+		total_sz += iovec[i].iov_len;
+	TRACE(RESOURCE, "readv: read %d bytes, return %d\n",
+			total_sz, retval);
+	if (retval >= total_sz)
+		return retval;
+
+	size_t total_read = retval;
+	size_t s = 0;
+	/* use normal read to read left data */
+	for (int i = 0; i < nr; i++) {
+		s += iovec[i].iov_len;
+		if (s > total_read) {
+			int len = s - total_read;
+			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
+			xxread_imm(fd, ptr, len);
+			total_read += len;
+		}
+	}
+	return total_read;
+}
+
+static ssize_t
+xxwritev(int fd, struct iovec * iovec,
+		int nr)
+{
+	ssize_t retval;
+#ifdef HAVE_VMSPLICE
+	retval = vmsplice(fd, iovec, nr, 0);
+#else
+	retval = writev(fd, iovec, nr);
+#endif
+
+	if (retval <= 0)
+		THROW(EXP_RESOURCE_PROCESS_FAILURE, "writev failed: return %d:%s",
+				retval, strerror(errno));
+
+	size_t total_sz = 0;
+	for (int i = 0; i < nr; i++)
+		total_sz += iovec[i].iov_len;
+	TRACE(RESOURCE, "writev: write %d bytes, return %d\n",
+			total_sz, retval);
+	if (retval >= total_sz)
+		return retval;
+
+	size_t total_write = retval;
+	size_t s = 0;
+	/* use normal write to read left data */
+	for (int i = 0; i < nr; i++) {
+		s += iovec[i].iov_len;
+		if (s > total_write) {
+			int len = s - total_write;
+			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
+			xxwrite(fd, ptr, len);
+			total_write += len;
+		}
+	}
+	return total_write;
+}
+
+
 static void
 sigpipe_handler(int signum)
 {
@@ -255,80 +330,25 @@ readv_data(struct io_t * io, struct iovec * iovec,
 		return 0;
 	assert(iovec != NULL);
 
-	ssize_t retval;
-	retval = readv(D_IN, iovec, nr);
-	if (retval <= 0)
-		THROW(EXP_RESOURCE_PROCESS_FAILURE,
-				"readv failed, return %d:%s",
-				retval, strerror(errno));
-
-	size_t total_sz = 0;
-	for (int i = 0; i < nr; i++)
-		total_sz += iovec[i].iov_len;
-	TRACE(RESOURCE, "readv: read %d bytes, return %d\n",
-			total_sz, retval);
-	if (retval >= total_sz)
-		return retval;
-
-	size_t total_read = retval;
-	size_t s = 0;
-	/* use normal read to read left data */
-	for (int i = 0; i < nr; i++) {
-		s += iovec[i].iov_len;
-		if (s > total_read) {
-			int len = s - total_read;
-			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
-			xxread_imm(D_IN, ptr, len);
-			total_read += len;
-		}
-	}
-	return total_read;
+	return xxreadv(D_IN, iovec, nr);
 }
 
+
 static ssize_t
-writev_data(struct io_t * io, struct iovec * iovec,
-		int nr)
+writev_data(struct io_t * io, struct iovec * iovec, int nr)
 {
 	assert(io == &res_data_io);
 	if (nr <= 0)
 		return 0;
 	assert(iovec != NULL);
-
-	ssize_t retval;
-#ifdef HAVE_VMSPLICE
-	retval = vmsplice(D_OUT, iovec, nr, 0);
-#else
-	retval = writev(D_OUT, iovec, nr);
-#endif
-
-	if (retval <= 0)
-		THROW(EXP_RESOURCE_PROCESS_FAILURE, "writev failed: return %d:%s",
-				retval, strerror(errno));
-
-	size_t total_sz = 0;
-	for (int i = 0; i < nr; i++)
-		total_sz += iovec[i].iov_len;
-	TRACE(RESOURCE, "writev: write %d bytes, return %d\n",
-			total_sz, retval);
-	if (retval >= total_sz)
-		return retval;
-
-	size_t total_write = retval;
-	size_t s = 0;
-	/* use normal write to read left data */
-	for (int i = 0; i < nr; i++) {
-		s += iovec[i].iov_len;
-		if (s > total_write) {
-			int len = s - total_write;
-			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
-			xxwrite(D_OUT, ptr, len);
-			total_write += len;
-		}
-	}
-	return total_write;
+	return xxwritev(D_OUT, iovec, nr);
 }
 
+
 static struct io_functionor_t res_data_io_functionor = {
+	.name = "ResourceIOFunctionor",
+	.fclass = FC_IO,
+	.check_usable = NULL,
 	.open = NULL,
 	.open_write = NULL,
 	.read = read_data,
@@ -348,18 +368,16 @@ static struct io_t res_data_io = {
 /* ******************************** */
 /* CACHE!!! */
 
-//static struct cache_t 
+static struct cache_t res_cache;
 
 /* ******************************** */
 
 static void
-read_resource(const char * __id)
+read_resource_worker(const char * __id)
 {
 	assert(__id != NULL);
 	char * id = strdupa(__id);
 	TRACE(RESOURCE, "read resource %s\n", id);
-
-	/* first, check from dict */
 
 	/* format of an id:
 	 *
@@ -393,25 +411,66 @@ read_resource(const char * __id)
 	TRACE(RESOURCE, "resource io type: %s\n", iot);
 	TRACE(RESOURCE, "resource name: %s\n", name);
 
-	struct io_t * io = io_open(iot, name);
-	assert(io != NULL);
 
-	TRACE(RESOURCE, "open io: %s\n", io->functionor->name);
+	/* first, check from cache */
+	struct cache_entry_t * ce = cache_get_entry(
+			&res_cache, __id);
 
 	if (strncmp(type, "bitmap", sizeof("bitmap")) == 0) {
-		struct bitmap_resource_functionor_t * h =
-			get_bitmap_resource_handler(name);
-		assert(h != NULL);
-		struct bitmap_resource_t * r =
-			h->load(io, name);
+
+		struct bitmap_resource_t * r;
+		if (ce != NULL) {
+			r = container_of(ce,
+					struct bitmap_resource_t,
+					cache_entry);
+		} else {
+			struct bitmap_resource_functionor_t * h =
+				get_bitmap_resource_handler(name);
+			assert(h != NULL);
+
+			struct io_t * io = NULL;
+
+			struct exception_t exp;
+			TRY(exp) {
+				io = io_open(iot, name);
+				assert(io != NULL);
+				TRACE(RESOURCE, "open io: %s\n", io->functionor->name);
+				r = h->load(io, name);
+			} FINALLY{
+				if (io != NULL)
+					io_close(io);
+			} CATCH(exp) {
+				switch (exp.type) {
+					case EXP_RESOURCE_NOT_FOUND:
+						print_exception(&exp);
+						extern struct bitmap_resource_functionor_t
+							dummy_bitmap_resource_functionor;
+						h = &dummy_bitmap_resource_functionor;
+						r = h->load(NULL, name);
+						break;
+					default:
+						RETHROW(exp);
+				}
+			}
+		}
 		assert(r != NULL);
-		h->serialize(r, &res_data_io);
+
+		/* cache it */
+		cache_insert(&res_cache, &r->cache_entry);
+		r->functionor->serialize(r, &res_data_io);
 	} else {
 		THROW(EXP_RESOURCE_PROCESS_FAILURE, "unknown resource type %s",
 				type);
 	}
 }
 
+
+static void
+delete_resource_worker(const char * __id)
+{
+	DEBUG(RESOURCE, "delete resource %s\n", __id);
+	cache_remove_entry(&res_cache, __id);
+}
 
 static void
 work(void)
@@ -450,7 +509,11 @@ work(void)
 				break;
 			case 'r':
 				assert(cmd[1] == ':');
-				read_resource(&cmd[2]);
+				read_resource_worker(&cmd[2]);
+				break;
+			case 'd':
+				assert(cmd[1] == ':');
+				delete_resource_worker(&cmd[2]);
 				break;
 			default:
 				THROW(EXP_RESOURCE_PROCESS_FAILURE,
@@ -505,6 +568,10 @@ launch_resource_process(void)
 	/* reinit debug */
 	dbg_init("/tmp/yaavg_resource_log");
 
+	/* cache, default: 10M */
+	cache_init(&res_cache, "resource cache",
+			conf_get_int("sys.mem.threshold", 0xa00000));
+
 	/* close the other end */
 	xclose(C_OUT);
 	xclose(D_IN);
@@ -545,7 +612,7 @@ shutdown_resource_process(void)
 
 	char x[2] = {'x', '\0'};
 	int i = 2;
-	xxwrite(C_OUT, &i, 4);
+	xxwrite(C_OUT, &i, sizeof(i));
 	xxwrite(C_OUT, &x, sizeof(x));
 	TRACE(RESOURCE, "wait for process %d finish\n", resproc_pid);
 	waitpid(resproc_pid, NULL, 0);
@@ -553,6 +620,50 @@ shutdown_resource_process(void)
 	resproc_pid = -1;
 	C_OUT = -1;
 	return;
+}
+
+void
+delete_resource(const char * name)
+{
+	struct iovec vecs[3];
+	static char d_cmd[2] = "d:";
+
+	int len = 3 + strlen(name);
+
+	vecs[0].iov_base = &len;
+	vecs[0].iov_len = sizeof(len);
+
+	vecs[1].iov_base = d_cmd;
+	vecs[1].iov_len = 2;
+
+	vecs[2].iov_base = (void*)name;
+	vecs[2].iov_len = len - 2;
+
+	xxwritev(C_OUT, vecs, 3);
+}
+
+
+void *
+get_resource(const char * name,
+		deserializer_t deserializer)
+{
+	struct iovec vecs[3];
+	static char d_cmd[2] = "r:";
+
+	int len = 3 + strlen(name);
+
+	vecs[0].iov_base = &len;
+	vecs[0].iov_len = sizeof(len);
+
+	vecs[1].iov_base = d_cmd;
+	vecs[1].iov_len = 2;
+
+	vecs[2].iov_base = (void*)name;
+	vecs[2].iov_len = len - 2;
+
+	xxwritev(C_OUT, vecs, 3);
+
+	return deserializer(&res_data_io);
 }
 
 // vim:ts=4:sw=4

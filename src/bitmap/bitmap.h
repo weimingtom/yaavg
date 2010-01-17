@@ -6,6 +6,7 @@
 #ifndef __BITMAP_H
 #define __BITMAP_H
 
+#include <common/cache.h>
 #include <common/defs.h>
 #include <common/functionor.h>
 #include <io/io.h>
@@ -23,23 +24,33 @@ enum bitmap_format {
 
 /* data should be fixed when deserializing */
 /* when deserializing, id is actually the length of id */
-/* and pixels is actually the length of pixels */
+/* and pixels is actually the length of pixels.
+ * in fact, pixels is useless. but we employ it for check
+ * */
 #define BITMAP_HEAD				\
 	const char * id;			\
 	enum bitmap_format format;	\
 	int bpp;		\
 	int w, h;					\
 	uint8_t * pixels;
+
+/* 
+ * this is the host side bitmap
+ */
 struct bitmap_t {
 	BITMAP_HEAD
 	uint8_t __data[0];
 };
 
+/* 
+ * this is the resource side bitmap
+ */
 struct bitmap_resource_functionor_t;
 struct bitmap_resource_t {
 	BITMAP_HEAD
 	void * pprivate;
 	struct bitmap_resource_functionor_t * functionor;
+	struct cache_entry_t cache_entry;
 };
 
 static inline int
@@ -52,7 +63,7 @@ struct bitmap_resource_functionor_t {
 	BASE_FUNCTIONOR
 	struct bitmap_resource_t * (*load)(struct io_t * io, const char * name);
 	void (*destroy)(struct bitmap_resource_t *);
-	void (*store)(struct bitmap_t *, const char * path);
+	void (*store)(struct bitmap_resource_t *, const char * path);
 	void (*serialize)(struct bitmap_resource_t *, struct io_t *);
 };
 
