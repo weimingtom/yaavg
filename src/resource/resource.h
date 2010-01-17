@@ -8,8 +8,13 @@
 
 #include <common/functionor.h>
 #include <io/io.h>
+#include <stdint.h>
 
 #define MAX_IDLEN	(256)
+
+enum resource_type {
+	RESOURCE_BITMAP,
+};
 
 typedef void * (*deserializer_t)(struct io_t * io);
 

@@ -50,7 +50,7 @@ bitmap_data_size(struct bitmap_t * s)
 
 struct bitmap_resource_functionor_t {
 	BASE_FUNCTIONOR
-	struct bitmap_resource_t * (*load)(const char * name);
+	struct bitmap_resource_t * (*load)(struct io_t * io, const char * name);
 	void (*destroy)(struct bitmap_resource_t *);
 	void (*store)(struct bitmap_t *, const char * path);
 	void (*serialize)(struct bitmap_resource_t *, struct io_t *);

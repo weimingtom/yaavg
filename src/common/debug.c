@@ -315,7 +315,6 @@ dbg_init(const char * fn)
 		{SIGUSR1, sighandler_mem_stats},
 		{SIGSEGV, sighandler_backtrace},
 		{SIGABRT, sighandler_backtrace},
-		{SIGPIPE, SIG_IGN},
 		{0, NULL},
 	};
 

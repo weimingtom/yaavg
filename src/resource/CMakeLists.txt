@@ -8,6 +8,7 @@ ADD_LIBRARY(resource STATIC ${SRC})
 SET(
 	tests
 	test_resource
+	test_resource2
 	)
-build_tests("${tests}" "resource;yconf;common")
+build_tests("${tests}" "resource;bitmap;io;yconf;common")
 

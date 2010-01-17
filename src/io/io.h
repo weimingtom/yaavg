@@ -10,8 +10,11 @@
 #include <common/functionor.h>
 #include <assert.h>
 
-#define RES_READ	(1)
-#define RES_WRITE	(2)
+/* for ssize_t */
+#include <stdio.h>
+
+#define IO_READ	(1)
+#define IO_WRITE	(2)
 struct io_functionor_t;
 struct io_t {
 	struct io_functionor_t * functionor;
@@ -33,9 +36,9 @@ struct io_functionor_t {
 			int size, int nr);
 	int (*write)(struct io_t * io, void * ptr,
 			int size, int nr);
-	int (*readv)(struct io_t * io, struct iovec * iovec,
+	ssize_t (*readv)(struct io_t * io, struct iovec * iovec,
 			int nr);
-	int (*writev)(struct io_t * io, struct iovec * iovec,
+	ssize_t (*writev)(struct io_t * io, struct iovec * iovec,
 			int nr);
 	int (*seek)(struct io_t * io, int offset,
 			int whence);

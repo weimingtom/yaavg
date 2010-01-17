@@ -1,3 +1,9 @@
+/* 
+ * dummy_bitmap.c
+ * by WN @ Jan. 16, 2010
+ */
+
+
 #include <config.h>
 #include <common/defs.h>
 #include <common/debug.h>
@@ -6,7 +12,7 @@
 #include <bitmap/bitmap.h>
 #include <assert.h>
 
-static struct bitmap_resource_functionor_t
+struct bitmap_resource_functionor_t
 dummy_bitmap_resource_functionor;
 
 static bool_t
@@ -17,7 +23,7 @@ dummy_check_usable(const char * param)
 }
 
 static struct bitmap_resource_t *
-dummy_load(const char * name)
+dummy_load(struct io_t * io, const char * name)
 {
 	struct bitmap_resource_t * retval = NULL;
 

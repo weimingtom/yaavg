@@ -32,7 +32,7 @@ file_read_open(const char * path)
 	struct io_t * r = file_open(path, "rb");
 	if (r == NULL)
 		return NULL;
-	r->rdwr = RES_READ;
+	r->rdwr = IO_READ;
 	return r;
 }
 
@@ -42,7 +42,7 @@ file_write_open(const char * path)
 	struct io_t * r = file_open(path, "wb");
 	if (r == NULL)
 		return NULL;
-	r->rdwr = RES_WRITE;
+	r->rdwr = IO_WRITE;
 	return r;
 }
 
@@ -53,7 +53,7 @@ file_read(struct io_t * io, void * ptr,
 	assert(io != NULL);
 	assert(io->functionor);
 	assert(io->functionor->read == file_read);
-	assert(io->rdwr = RES_READ);
+	assert(io->rdwr = IO_READ);
 
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
@@ -67,7 +67,7 @@ file_write(struct io_t * io, void * ptr,
 	assert(io != NULL);
 	assert(io->functionor);
 	assert(io->functionor->write == file_write);
-	assert(io->rdwr = RES_WRITE);
+	assert(io->rdwr = IO_WRITE);
 
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);

@@ -12,6 +12,7 @@
 #include <common/list.h>
 #include <common/init_cleanup_list.h>
 
+#include <stdio.h>	/* ssize_t */
 
 /* 
  * cache is originally design for store temporary store currently
@@ -23,18 +24,20 @@ struct cache_t {
 	const char * name;
 	struct dict_t * dict;
 	struct list_head list;
+	struct list_head lru_head;
 	int nr;
 	int total_sz;
+	ssize_t limit_sz;
 };
 
 struct cache_entry_t {
 	const char * id;
+	void * data;
 	int sz;
 	void * destroy_arg;
-	void * data;
 	cache_destroy_t destroy;
 	struct cache_t * cache;
-	int ref_count;
+	struct list_head lru_list;
 };
 
 /* 
@@ -50,35 +53,36 @@ static void inline cache_entry_destroy(struct cache_entry_t * e)
 }
 
 extern void
-cache_init(struct cache_t * c, const char * name);
+cache_init(struct cache_t * c, const char * name,
+		int limit_sz);
 
 extern void
 cache_insert(struct cache_t * cache,
 		struct cache_entry_t * entry);
 
 /* 
- * if the reference count of target entry is down to 0,
- * cache_rmeove_entry will destroy it.
  */
 extern void
 cache_remove_entry(struct cache_t * cache,
 		const char * id);
 
 /* 
- * get_entry will increase the ref counter
+ * get_entry will promote the entry
  */
 extern struct cache_entry_t *
 cache_get_entry(struct cache_t * cache,
 		const char * id);
 /* 
- * put_entry will decrease the ref counter,
- * if rec counter decrease to 0 and entry->cache == NULL,
- * put_entry will destroy it.
+ * put_entry will move it
+ * to the head of LRU list (easier to be removed)
  */
 extern void
 cache_put_entry(struct cache_t * cache,
 		struct cache_entry_t * entry);
 
+/* 
+ * remove all entries
+ */
 extern void
 cache_shrink(struct cache_t * cache);
 

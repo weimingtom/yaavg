@@ -18,8 +18,8 @@ init_func_t init_funcs[] = {
 };
 
 cleanup_func_t cleanup_funcs[] = {
-	__dbg_cleanup,
 	__caches_cleanup,
+	__dbg_cleanup,
 	NULL,
 };
 
@@ -56,10 +56,10 @@ test_cache_creation(void)
 {
 	do_init();
 	static struct cache_t c;
-	VERBOSE(SYSTEM, "Testing cache create and destroy\n");
-	cache_init(&c, "creation cache");
-	VERBOSE(SYSTEM, "------------ END ---------------\n");
+	VERBOSE(SYSTEM, "-------------- Testing cache create and destroy --------------\n");
+	cache_init(&c, "creation cache", 2048);
 	do_cleanup();
+	VERBOSE(SYSTEM, "------------ END ---------------\n");
 }
 
 static void
@@ -67,8 +67,8 @@ test_cache_insertion(void)
 {
 	do_init();
 	static struct cache_t c;
-	cache_init(&c, "dummy_bitmap_t's cache");
-	VERBOSE(SYSTEM, "Testing cache insertion\n");
+	VERBOSE(SYSTEM, "--------------- Testing cache insertion -------------\n");
+	cache_init(&c, "dummy_bitmap_t's cache", 2048);
 
 	for (int i = 0; i < 5; i++) {
 		char id[5];
@@ -98,7 +98,6 @@ get_bitmap(struct cache_t * c, int nr)
 		b = dummy_bitmap_load(id);
 		assert(b != NULL);
 		cache_insert(c, &(b->ce));
-		b->ce.ref_count ++;
 	} else {
 		b = e->data;
 	}
@@ -108,7 +107,6 @@ get_bitmap(struct cache_t * c, int nr)
 static void
 put_bitmap(struct cache_t * c, struct dummy_bitmap_t * b)
 {
-	cache_put_entry(c, &(b->ce));
 }
 
 static void
@@ -116,9 +114,9 @@ test_cache_use(void)
 {
 	do_init();
 	static struct cache_t c;
-	cache_init(&c, "dummy_bitmap_t's cache");
+	VERBOSE(SYSTEM, "---------------- Testing cache use ----------------\n");
+	cache_init(&c, "dummy_bitmap_t's cache", 2048);
 
-	VERBOSE(SYSTEM, "Testing cache use\n");
 
 	{
 		struct dummy_bitmap_t * b1 = get_bitmap(&c, 123);
@@ -157,8 +155,8 @@ test_cache_replace(void)
 {
 	do_init();
 	static struct cache_t c;
-	cache_init(&c, "dummy_bitmap_t's cache");
-	VERBOSE(SYSTEM, "Testing cache replace\n");
+	VERBOSE(SYSTEM, "------------------ Testing cache replace -------------------\n");
+	cache_init(&c, "dummy_bitmap_t's cache", 2048);
 
 	{
 		struct dummy_bitmap_t * b1 = get_bitmap(&c, 123);
@@ -185,9 +183,9 @@ static void
 test_cache_xxx(void)
 {
 	do_init();
+	VERBOSE(SYSTEM, "--------------------- Testing cache xxx ---------------------\n");
 	static struct cache_t c;
-	cache_init(&c, "dummy_bitmap_t's cache");
-	VERBOSE(SYSTEM, "Testing cache xxx\n");
+	cache_init(&c, "dummy_bitmap_t's cache", 2048);
 
 	{
 		struct dummy_bitmap_t * b1 = get_bitmap(&c, 123);
@@ -207,6 +205,27 @@ test_cache_xxx(void)
 	do_cleanup();
 }
 
+static void
+test_cache_size(void)
+{
+	do_init();
+	VERBOSE(SYSTEM, "--------------------- Testing cache size ---------------------\n");
+
+	static struct cache_t c;
+	cache_init(&c, "dummy_bitmap_t's cache", sizeof(struct dummy_bitmap_t) * 3);
+
+	get_bitmap(&c, 123);
+	get_bitmap(&c, 456);
+	get_bitmap(&c, 789);
+	get_bitmap(&c, 123);
+	get_bitmap(&c, 234);
+	get_bitmap(&c, 567);
+	get_bitmap(&c, 890);
+
+
+	VERBOSE(SYSTEM, "------- END ---------\n");
+	do_cleanup();
+}
 
 
 int main()
@@ -217,6 +236,8 @@ int main()
 	test_cache_use();
 	test_cache_replace();
 	test_cache_xxx();
+
+	test_cache_size();
 
 	return 0;
 }

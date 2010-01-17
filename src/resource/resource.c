@@ -21,6 +21,8 @@
 #include <common/mm.h>
 #include <common/dict.h>
 #include <common/cache.h>
+#include <bitmap/bitmap.h>
+
 #include <resource/resource.h>
 
 
@@ -175,9 +177,9 @@ __xxread(int fd, void * buf, int len, int peri_wait_usec)
 						"select error: %d:%s",
 						err, strerror(errno));
 			if (err == 0) {
-				if (peri_wait_usec == 0)
+				if (peri_wait_usec == 0) {
 					DEBUG(RESOURCE, "i am still alive\n");
-				else {
+				} else {
 					WARNING(RESOURCE, "select timeout, wait for another %d ms\n",
 							peri_wait_usec);
 					nr_warn ++;
@@ -211,10 +213,206 @@ xxread_imm(int fd, void * buf, int len)
 static void
 sigpipe_handler(int signum)
 {
-	WARNING(RESOURCE, "signal %d received\n", signum);
+	WARNING(RESOURCE, "signal %d received by process %d\n", signum,
+			getpid());
+	THROW(EXP_RESOURCE_PROCESS_FAILURE,
+			"receive SIGPIPE, write when other end closed");
 }
 
-static void read_resource(const char *);
+/* ******************************** */
+static struct io_t res_data_io;
+
+static int
+read_data(struct io_t * io, void * ptr,
+		int size, int nr)
+{
+	assert(io == &res_data_io);
+	assert(ptr != NULL);
+	if (size * nr == 0)
+		return 0;
+	xxread_imm(D_IN, ptr, size * nr);
+	return nr;
+}
+
+static int
+write_data(struct io_t * io, void * ptr,
+		int size, int nr)
+{
+	assert(io == &res_data_io);
+	assert(ptr != NULL);
+	if (size * nr == 0)
+		return 0;
+	xxwrite(D_OUT, ptr, size * nr);
+	return nr;
+}
+
+static ssize_t
+readv_data(struct io_t * io, struct iovec * iovec,
+		int nr)
+{
+	assert(io == &res_data_io);
+	if (nr <= 0)
+		return 0;
+	assert(iovec != NULL);
+
+	ssize_t retval;
+	retval = readv(D_IN, iovec, nr);
+	if (retval <= 0)
+		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+				"readv failed, return %d:%s",
+				retval, strerror(errno));
+
+	size_t total_sz = 0;
+	for (int i = 0; i < nr; i++)
+		total_sz += iovec[i].iov_len;
+	TRACE(RESOURCE, "readv: read %d bytes, return %d\n",
+			total_sz, retval);
+	if (retval >= total_sz)
+		return retval;
+
+	size_t total_read = retval;
+	size_t s = 0;
+	/* use normal read to read left data */
+	for (int i = 0; i < nr; i++) {
+		s += iovec[i].iov_len;
+		if (s > total_read) {
+			int len = s - total_read;
+			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
+			xxread_imm(D_IN, ptr, len);
+			total_read += len;
+		}
+	}
+	return total_read;
+}
+
+static ssize_t
+writev_data(struct io_t * io, struct iovec * iovec,
+		int nr)
+{
+	assert(io == &res_data_io);
+	if (nr <= 0)
+		return 0;
+	assert(iovec != NULL);
+
+	ssize_t retval;
+#ifdef HAVE_VMSPLICE
+	retval = vmsplice(D_OUT, iovec, nr, 0);
+#else
+	retval = writev(D_OUT, iovec, nr);
+#endif
+
+	if (retval <= 0)
+		THROW(EXP_RESOURCE_PROCESS_FAILURE, "writev failed: return %d:%s",
+				retval, strerror(errno));
+
+	size_t total_sz = 0;
+	for (int i = 0; i < nr; i++)
+		total_sz += iovec[i].iov_len;
+	TRACE(RESOURCE, "writev: write %d bytes, return %d\n",
+			total_sz, retval);
+	if (retval >= total_sz)
+		return retval;
+
+	size_t total_write = retval;
+	size_t s = 0;
+	/* use normal write to read left data */
+	for (int i = 0; i < nr; i++) {
+		s += iovec[i].iov_len;
+		if (s > total_write) {
+			int len = s - total_write;
+			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
+			xxwrite(D_OUT, ptr, len);
+			total_write += len;
+		}
+	}
+	return total_write;
+}
+
+static struct io_functionor_t res_data_io_functionor = {
+	.open = NULL,
+	.open_write = NULL,
+	.read = read_data,
+	.write = write_data,
+	.readv = readv_data,
+	.writev = writev_data,
+	.seek = NULL,
+	.close = NULL,
+};
+
+static struct io_t res_data_io = {
+	.functionor = &res_data_io_functionor,
+	.rdwr = IO_READ | IO_WRITE,
+	.pprivate = NULL,
+};
+
+/* ******************************** */
+/* CACHE!!! */
+
+//static struct cache_t 
+
+/* ******************************** */
+
+static void
+read_resource(const char * __id)
+{
+	assert(__id != NULL);
+	char * id = strdupa(__id);
+	TRACE(RESOURCE, "read resource %s\n", id);
+
+	/* first, check from dict */
+
+	/* format of an id:
+	 *
+	 * bitmap:file:xxxx/xxxx/xxxx.png
+	 * */
+	/* find the first `"' */
+	char * cp = id;
+	char * type, * iot, * name;
+	type = cp;
+
+	while ((*cp != '\0') && (*cp != ':'))
+		cp ++;
+	if (*cp == '\0')
+		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+				"%s (type) format error", type);
+	*cp = '\0';
+	cp ++;
+	iot = cp;
+
+	while ((*cp != '\0') && (*cp != ':'))
+		cp ++;
+	if (*cp == '\0')
+		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+				"%s (io) format error", iot);
+	*cp = '\0';
+	cp ++;
+
+	name = cp;
+
+	TRACE(RESOURCE, "resource type: %s\n", type);
+	TRACE(RESOURCE, "resource io type: %s\n", iot);
+	TRACE(RESOURCE, "resource name: %s\n", name);
+
+	struct io_t * io = io_open(iot, name);
+	assert(io != NULL);
+
+	TRACE(RESOURCE, "open io: %s\n", io->functionor->name);
+
+	if (strncmp(type, "bitmap", sizeof("bitmap")) == 0) {
+		struct bitmap_resource_functionor_t * h =
+			get_bitmap_resource_handler(name);
+		assert(h != NULL);
+		struct bitmap_resource_t * r =
+			h->load(io, name);
+		assert(r != NULL);
+		h->serialize(r, &res_data_io);
+	} else {
+		THROW(EXP_RESOURCE_PROCESS_FAILURE, "unknown resource type %s",
+				type);
+	}
+}
+
+
 static void
 work(void)
 {
@@ -224,7 +422,7 @@ work(void)
 	uint32_t ok = OK_SIG;
 	xxwrite(D_OUT, &ok, sizeof(ok));
 
-	while (1) {
+	for(;;) {
 		int err;
 		int cmd_len;
 		char cmd[MAX_IDLEN];
@@ -256,16 +454,13 @@ work(void)
 				break;
 			default:
 				THROW(EXP_RESOURCE_PROCESS_FAILURE,
-						"got unknown command '%c'");
+						"got unknown command '%c'", cmd[0]);
 		}
 	}
 }
 
-static void
-read_resource(const char * id)
-{
-	
-}
+
+/* *************************************************************8 */
 
 int
 launch_resource_process(void)
@@ -278,6 +473,9 @@ launch_resource_process(void)
 	assert(err == 0);
 	err = pipe(__data_channel);
 	assert(err == 0);
+
+	/* regist the SIGPIPE handler */
+	signal(SIGPIPE, sigpipe_handler);
 
 	/* fork */
 	resproc_pid = fork();
@@ -307,13 +505,10 @@ launch_resource_process(void)
 	/* reinit debug */
 	dbg_init("/tmp/yaavg_resource_log");
 
-	/* regist the SIGPIPE handler */
-	signal(SIGPIPE, sigpipe_handler);
-
 	/* close the other end */
 	xclose(C_OUT);
 	xclose(D_IN);
-#if 1
+
 	struct exception_t exp;
 	TRY(exp) {
 		VERBOSE(RESOURCE, "resource process is started\n");
@@ -322,7 +517,6 @@ launch_resource_process(void)
 	} FINALLY {
 		xclose(C_IN);
 		xclose(D_OUT);
-		WARNING(RESOURCE, "resource process cleanup exitted\n");
 	} CATCH(exp) {
 		switch (exp.type) {
 			case EXP_RESOURCE_PEER_SHUTDOWN:
@@ -334,7 +528,7 @@ launch_resource_process(void)
 				do_cleanup();
 		}
 	}
-#endif
+
 	exit(0);
 	return 0;
 }
