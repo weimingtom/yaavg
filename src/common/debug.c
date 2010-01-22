@@ -289,7 +289,8 @@ dbg_init(const char * fn)
 		assert(output_fp != NULL);
 	}
 #endif
-	/* don't fopen a file, but dup a fd to stderr */
+	/* don't fopen a file, but dup an fd to stderr
+	 * This can prevent the cost of FILE shown in mallinfo */
 	if ((fn != NULL) && (fn[0] != '\0')) {
 		int fd = open(fn, O_WRONLY|O_CREAT|O_APPEND|O_TRUNC, 0666);
 		int err;
