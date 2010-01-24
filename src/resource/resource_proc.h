@@ -1,20 +1,17 @@
 /* 
- * resource.h
+ * resource_proc.h
  * by WN @ Dec. 25, 2009
  */
 
-#ifndef __RESOURCE_H
-#define __RESOURCE_H
+#ifndef __RESOURCE_PROC_H
+#define __RESOURCE_PROC_H
 
 #include <common/functionor.h>
+#include <common/cache.h>
 #include <io/io.h>
 #include <stdint.h>
 
 #define MAX_IDLEN	(256)
-
-enum resource_type {
-	RESOURCE_BITMAP,
-};
 
 typedef void * (*deserializer_t)(struct io_t * io);
 
@@ -34,6 +31,7 @@ get_resource(const char * name,
 
 void
 delete_resource(const char * name);
+
 
 #endif
 

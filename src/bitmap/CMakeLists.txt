@@ -1,9 +1,11 @@
 SET(SRC
 	bitmap.h
 	bitmap.c
-	dummy_bitmap.c
-	png_bitmap.c
-	sdl_bitmap.c
+	bitmap_resource.h
+	bitmap_resource.c
+	dummy_bitmap_resource.c
+	png_bitmap_resource.c
+	sdl_bitmap_resource.c
 	)
 
 ADD_LIBRARY(bitmap STATIC ${SRC})

@@ -1,4 +1,5 @@
 #include <common/init_cleanup_list.h>
+#include <resource/resource_proc.h>
 #include <resource/resource.h>
 
 #include <common/debug.h>
@@ -31,7 +32,7 @@ int main()
 		do_init();
 		launch_resource_process();
 
-		struct bitmap_t * b = get_resource("bitmap:file:/tmp/xxx.png",
+		struct bitmap_t * b = get_resource("0:file:/tmp/xxx.png",
 				(deserializer_t)bitmap_deserialize);
 		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
 		free_bitmap(b);

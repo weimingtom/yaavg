@@ -22,8 +22,8 @@
 #include <common/dict.h>
 #include <common/cache.h>
 #include <yconf/yconf.h>
-#include <bitmap/bitmap.h>
 
+#include <resource/resource_proc.h>
 #include <resource/resource.h>
 
 
@@ -372,110 +372,39 @@ static struct cache_t res_cache;
 
 /* ******************************** */
 
-static struct bitmap_resource_t *
-get_bitmap_resource(const char * iot,
-		const char * name)
-{
-	struct bitmap_resource_t * r = NULL;
-	struct bitmap_resource_functionor_t * h =
-		get_bitmap_resource_handler(name);
-	assert(h != NULL);
-
-	struct io_t * io = NULL;
-
-	struct exception_t exp;
-	TRY(exp) {
-		io = io_open(iot, name);
-		assert(io != NULL);
-		TRACE(RESOURCE, "open io: %s\n", io->functionor->name);
-		r = h->load(io, name);
-	} FINALLY{
-		if (io != NULL)
-			io_close(io);
-	} CATCH(exp) {
-		switch (exp.type) {
-			case EXP_RESOURCE_NOT_FOUND:
-				print_exception(&exp);
-				extern struct bitmap_resource_functionor_t
-					dummy_bitmap_resource_functionor;
-				h = &dummy_bitmap_resource_functionor;
-				r = h->load(NULL, name);
-				break;
-			default:
-				RETHROW(exp);
-		}
-	}
-
-	return r;
-}
-
-static inline char *
-_strtok(char * str, char tok)
-{
-	while ((*str != '\0') && (*str != tok))
-		str ++;
-	if (*str == tok)
-		return str;
-	return NULL;
-}
-
 static void
-read_resource_worker(const char * __id)
+read_resource_worker(const char * id)
 {
-	assert(__id != NULL);
-	char * id = strdupa(__id);
+	assert(id != NULL);
 	TRACE(RESOURCE, "read resource %s\n", id);
 
-	/* format of an id:
-	 *
-	 * bitmap:file:xxxx/xxxx/xxxx.png
-	 * */
-	/* find the first `"' */
-	char * type, * iot, * name;
-	type = id;
-
-#define GET_PART(x, str)	\
-	do { \
-		x = _strtok(str, ':');	\
-		assert(x != NULL);		\
-		*x = '\0';				\
-		x ++;					\
-		assert(*x != '\0');		\
-	} while(0)
-
-	GET_PART(iot, type);
-	GET_PART(name, iot);
-
-#undef GET_PART
-
-	TRACE(RESOURCE, "resource type: %s\n", type);
-	TRACE(RESOURCE, "resource io type: %s\n", iot);
-	TRACE(RESOURCE, "resource name: %s\n", name);
-
-
-	/* check cache */
 	struct cache_entry_t * ce = cache_get_entry(
-			&res_cache, __id);
+			&res_cache, id);
 
-	if (strncmp(type, "bitmap", sizeof("bitmap")) == 0) {
-		struct bitmap_resource_t * r;
+	if (ce != NULL) {
+		struct resource_t * r = container_of(ce,
+				struct resource_t,
+				cache_entry);
+		r->serialize(r, &res_data_io);
+	} else {
+		
+		struct resource_t * r = NULL;
 
-		if (ce != NULL) {
-			r = container_of(ce,
-					struct bitmap_resource_t,
-					cache_entry);
-		} else {
-			r = get_bitmap_resource(iot, name);
-		}
+		r = load_resource(id);
 
-		/* r shouldn't be NULL!!! */
 		assert(r != NULL);
 		/* cache it */
+		struct cache_entry_t * ce = &r->cache_entry;
+		ce->id = r->id;
+		ce->data = r;
+		ce->sz = r->res_sz;
+		ce->destroy_arg = r;
+		ce->destroy = (cache_destroy_t)(r->destroy);
+		ce->cache = NULL;
+		ce->pprivate = NULL;
+
 		cache_insert(&res_cache, &r->cache_entry);
-		r->functionor->serialize(r, &res_data_io);
-	} else {
-		THROW(EXP_RESOURCE_PROCESS_FAILURE, "unknown resource type %s",
-				type);
+		r->serialize(r, &res_data_io);
 	}
 }
 
@@ -488,7 +417,7 @@ delete_resource_worker(const char * __id)
 }
 
 static void
-work(void)
+worker(void)
 {
 	VERBOSE(RESOURCE, "resource process start working\n");
 
@@ -595,7 +524,7 @@ launch_resource_process(void)
 	TRY(exp) {
 		VERBOSE(RESOURCE, "resource process is started\n");
 		/* begin the working flow */
-		work();
+		worker();
 	} FINALLY {
 		xclose(C_IN);
 		xclose(D_OUT);

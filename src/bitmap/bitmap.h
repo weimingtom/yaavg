@@ -29,6 +29,7 @@ enum bitmap_format {
  * */
 #define BITMAP_HEAD				\
 	char * id;			\
+	int id_sz;			\
 	enum bitmap_format format;	\
 	int bpp;		\
 	int w, h;					\
@@ -42,36 +43,12 @@ struct bitmap_t {
 	uint8_t __data[0];
 };
 
-/* 
- * this is the resource side bitmap
- */
-struct bitmap_resource_functionor_t;
-struct bitmap_resource_t {
-	BITMAP_HEAD
-	void * pprivate;
-	struct bitmap_resource_functionor_t * functionor;
-	struct cache_entry_t cache_entry;
-};
 
 static inline int
 bitmap_data_size(struct bitmap_t * s)
 {
 	return s->w * s->h * s->bpp;
 }
-
-struct bitmap_resource_functionor_t {
-	BASE_FUNCTIONOR
-	struct bitmap_resource_t * (*load)(struct io_t * io, const char * name);
-	void (*destroy)(struct bitmap_resource_t *);
-	void (*store)(struct bitmap_resource_t *, const char * path);
-	void (*serialize)(struct bitmap_resource_t *, struct io_t *);
-};
-
-extern struct bitmap_resource_functionor_t *
-get_bitmap_resource_handler(const char * name);
-
-extern
-struct function_class_t bitmap_resource_function_class;
 
 struct bitmap_t *
 bitmap_deserialize(struct io_t *);
@@ -80,7 +57,7 @@ void
 free_bitmap(struct bitmap_t * ptr);
 
 struct bitmap_t *
-alloc_bitmap(struct bitmap_t * head);
+alloc_bitmap(struct bitmap_t * head, int id_sz);
 
 __END_DECLS
 #endif

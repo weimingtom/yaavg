@@ -1,4 +1,6 @@
 SET(SRC
+	resource_proc.h
+	resource_proc.c
 	resource.h
 	resource.c
 	)

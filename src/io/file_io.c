@@ -17,7 +17,7 @@ file_open(const char * path, const char * mode)
 	assert(path != NULL);
 	FILE * fp = fopen(path, mode);
 	if (fp == NULL)
-		THROW(EXP_RESOURCE_NOT_FOUND, "unable to open file %s with mode %s",
+		THROW(EXP_RESOURCE_NOT_FOUND, "open file \"%s\" using \"%s\" failed",
 				path, mode);
 	struct io_t * r = calloc(1, sizeof(*r));
 	assert(r != NULL);

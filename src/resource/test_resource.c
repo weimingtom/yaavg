@@ -1,5 +1,5 @@
 #include <common/init_cleanup_list.h>
-#include <resource/resource.h>
+#include <resource/resource_proc.h>
 
 #include <common/debug.h>
 #include <common/exception.h>
