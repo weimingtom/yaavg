@@ -280,7 +280,7 @@ dbg_init(const char * fn)
 
 #if 0
 	/* open output_fp for debug output */
-	NOW WE NEEDN'T THIS CODE!
+	// NOW WE NEEDN'T THIS CODE!
 	if ((fn == NULL) || fn[0] == '\0') {
 		output_fp = stderr;
 	} else {

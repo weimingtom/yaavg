@@ -40,7 +40,7 @@ get_bitmap_resource_handler(const char * id)
 	assert(id != NULL);
 	int len = strlen(id);
 	assert(len >= 3);
-	TRACE(BITMAP, "find bitmap handler for %s\n", id);
+	DEBUG(BITMAP, "find bitmap handler for %s\n", id);
 
 	char format_str[4];
 
@@ -49,26 +49,33 @@ get_bitmap_resource_handler(const char * id)
 		format_str[i] = islower(c) ? toupper(c) : c;
 	}
 	format_str[3] = '\0';
-	TRACE(BITMAP, "format is %s\n", format_str);
+	DEBUG(BITMAP, "format is %s\n", format_str);
 
-	func = strdict_get(&bitmap_resource_functionors_dict, format_str).ptr;
-	if (func) {
-		TRACE(BITMAP, "get handler %s from dict\n",
-				func->name);
-		return (struct bitmap_resource_functionor_t *)func;
-	}
-
-	func = find_functionor(&bitmap_resource_function_class,
-			format_str);
-	assert(func != NULL);
-	DEBUG(BITMAP, "find handler %s for type %s\n",
-			func->name, format_str);
 	if (format_str[0] != '.') {
+		func = strdict_get(&bitmap_resource_functionors_dict, format_str).ptr;
+		if (func) {
+			DEBUG(BITMAP, "get handler %s from dict\n",
+					func->name);
+			return (struct bitmap_resource_functionor_t *)func;
+		}
+
+		func = find_functionor(&bitmap_resource_function_class,
+				format_str);
+		assert(func != NULL);
+
+		DEBUG(BITMAP, "find handler %s for type %s\n",
+				func->name, format_str);
 		bool_t rep = strdict_replace(&bitmap_resource_functionors_dict, format_str,
 				(dict_data_t)(void*)func, NULL);
 		assert(rep);
+		return (struct bitmap_resource_functionor_t *)func;
 	}
-	return (struct bitmap_resource_functionor_t *)func;
+
+	struct bitmap_resource_functionor_t * bfunc =
+		(struct bitmap_resource_functionor_t*)(&dummy_bitmap_resource_functionor);
+	DEBUG(BITMAP, "use dummy handler %s\n", bfunc->name);
+	return bfunc;
+
 }
 
 static struct resource_t *

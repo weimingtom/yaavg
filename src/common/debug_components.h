@@ -49,9 +49,9 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[VIDEO]		= DBG_LV_DEBUG,
 	[TIMER]		= DBG_LV_DEBUG,
 	[CACHE]		= DBG_LV_DEBUG,
-	[BITMAP]	= DBG_LV_DEBUG,
-	[IO]		= DBG_LV_DEBUG,
-	[RESOURCE]	= DBG_LV_DEBUG,
+	[BITMAP]	= DBG_LV_TRACE,
+	[IO]		= DBG_LV_TRACE,
+	[RESOURCE]	= DBG_LV_TRACE,
 };
 #endif
 #endif

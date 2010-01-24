@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <stdarg.h>
+#include <errno.h>
+#include <string.h>
+
 #include <common/debug.h>
 #include <common/exception.h>
 
@@ -135,6 +138,7 @@ print_exception(struct exception_t * exp)
 #endif
 	WARNING(SYSTEM, "\tmessage: %s\n", exp->msg);
 	WARNING(SYSTEM, "\twith value: %d(%p)\n", exp->u.val, exp->u.ptr);
+	WARNING(SYSTEM, "\twith errno: %d(%s)\n", errno, strerror(errno));
 }
 
 NORETURN ATTR_NORETURN 

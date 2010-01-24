@@ -131,8 +131,12 @@ xxwrite(int fd, void * buf, int len)
 {
 	TRACE(RESOURCE, "try to xxwrite %d bytes to %d\n",
 			len, fd);
-	while (len > 0)
-		len -= xwrite(fd, buf, len);
+	while (len > 0) {
+		int sz = xwrite(fd, buf, len);
+		len -= sz;
+		buf += sz;
+
+	}
 	TRACE(RESOURCE, "finish to xxwrite some bytes from %d\n", fd);
 }
 
@@ -194,6 +198,7 @@ __xxread(int fd, void * buf, int len, int peri_wait_usec)
 
 		err = xread(fd, buf, len);
 		len -= err;
+		buf += err;
 	}
 	assert(len == 0);
 	TRACE(RESOURCE, "finish to __xxread some bytes from %d\n", fd);
@@ -250,12 +255,14 @@ static ssize_t
 xxwritev(int fd, struct iovec * iovec,
 		int nr)
 {
-	ssize_t retval;
+	ssize_t retval = 0;
+	WARNING(RESOURCE, "start writev: nr_iovec=%d\n", nr);
 #ifdef HAVE_VMSPLICE
 	retval = vmsplice(fd, iovec, nr, 0);
 #else
 	retval = writev(fd, iovec, nr);
 #endif
+	WARNING(RESOURCE, "writev over, retval=%d\n", retval);
 
 	if (retval <= 0)
 		THROW(EXP_RESOURCE_PROCESS_FAILURE, "writev failed: return %d:%s",
@@ -376,7 +383,7 @@ static void
 read_resource_worker(const char * id)
 {
 	assert(id != NULL);
-	TRACE(RESOURCE, "read resource %s\n", id);
+	DEBUG(RESOURCE, "read resource %s\n", id);
 
 	struct cache_entry_t * ce = cache_get_entry(
 			&res_cache, id);
@@ -547,7 +554,7 @@ launch_resource_process(void)
 void
 shutdown_resource_process(void)
 {
-	TRACE(RESOURCE, "shutting down resource process %d, C_OUT=%d\n", resproc_pid,
+	VERBOSE(RESOURCE, "shutting down resource process %d, C_OUT=%d\n", resproc_pid,
 			C_OUT);
 	if (C_OUT == -1)
 		return;
@@ -558,7 +565,7 @@ shutdown_resource_process(void)
 	int i = 2;
 	xxwrite(C_OUT, &i, sizeof(i));
 	xxwrite(C_OUT, &x, sizeof(x));
-	TRACE(RESOURCE, "wait for process %d finish\n", resproc_pid);
+	VERBOSE(RESOURCE, "wait for process %d finish\n", resproc_pid);
 	waitpid(resproc_pid, NULL, 0);
 
 	resproc_pid = -1;

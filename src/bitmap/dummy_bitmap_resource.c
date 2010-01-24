@@ -42,6 +42,10 @@ dummy_serialize(struct resource_t * r, struct io_t * io)
 	struct bitmap_t head = b->head;
 	head.id = NULL;
 	head.pixels = NULL;
+
+	int sync = 0x10203040;
+	io_write(io, &sync, sizeof(sync), 1);
+
 	if (io->functionor->writev) {
 		struct iovec vecs[3];
 
