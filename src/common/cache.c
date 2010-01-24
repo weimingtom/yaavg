@@ -192,7 +192,7 @@ cache_cleanup(struct cache_t * cache)
 	assert(cache != NULL);
 	assert(cache->dict != NULL);
 
-	DEBUG(CACHE, "tring to shink cache %s\n", cache->name);
+	DEBUG(CACHE, "trying to shink cache %s\n", cache->name);
 
 	struct dict_t * dict = cache->dict;
 	for (struct dict_entry_t * de = dict_get_next(dict, NULL);

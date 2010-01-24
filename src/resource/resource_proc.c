@@ -120,7 +120,7 @@ xwrite(int fd, void * buf, int len)
 	if (err == 0)
 		THROW(EXP_RESOURCE_PROCESS_FAILURE,
 				"very strange: write returns 0");
-	TRACE(RESOURCE, "finish to xwrite %d bytes from %d\n",
+	TRACE(RESOURCE, "finish to xwrite %d bytes to %d\n",
 			len, fd);
 	return err;
 }
@@ -137,7 +137,7 @@ xxwrite(int fd, void * buf, int len)
 		buf += sz;
 
 	}
-	TRACE(RESOURCE, "finish to xxwrite some bytes from %d\n", fd);
+	TRACE(RESOURCE, "finish to xxwrite some bytes to %d\n", fd);
 }
 
 /* 
@@ -256,8 +256,17 @@ xxwritev(int fd, struct iovec * iovec,
 		int nr)
 {
 	ssize_t retval = 0;
+	TRACE(RESOURCE, "xxwritev %d iovecs to %d\n",
+			nr, fd);
 	WARNING(RESOURCE, "start writev: nr_iovec=%d\n", nr);
-#ifdef HAVE_VMSPLICE
+
+	for (int i = 0; i < nr; i++) {
+		WARNING(RESOURCE, "iovec %d: %p:%d\n", i,
+				iovec[i].iov_base,
+				iovec[i].iov_len);
+	}
+//#ifdef HAVE_VMSPLICE
+#if 1
 	retval = vmsplice(fd, iovec, nr, 0);
 #else
 	retval = writev(fd, iovec, nr);

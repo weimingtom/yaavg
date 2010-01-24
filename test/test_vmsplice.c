@@ -14,7 +14,7 @@
 
 //#define NR 100
 #define NR 100000
-//#define NR 1
+//#define NR 10
 #define SZ ((10 << 10) * 8)
 static int pp[2];
 
@@ -51,7 +51,7 @@ int main()
 				struct iovec vec;
 				vec.iov_base = data_send + (SZ - left);
 				vec.iov_len = left;
-#ifdef VMSPLICE
+#if 1
 				err = vmsplice(pp[POUT],
 						&vec, 1, 0);
 #else
@@ -80,7 +80,7 @@ int main()
 				x++;
 			}
 
-#if 0
+#if 1
 			if (x > 1)
 				printf("read for %d parts\n", x);
 			err = memcmp(data_send, data_recv, SZ);
@@ -95,6 +95,7 @@ int main()
 				fclose(fp);
 				assert(err == 0);
 			}
+			memset(data_recv, '\0', SZ);
 #endif
 		}
 	}
