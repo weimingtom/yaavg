@@ -139,6 +139,7 @@ print_exception(struct exception_t * exp)
 	WARNING(SYSTEM, "\tmessage: %s\n", exp->msg);
 	WARNING(SYSTEM, "\twith value: %d(%p)\n", exp->u.val, exp->u.ptr);
 	WARNING(SYSTEM, "\twith errno: %d(%s)\n", errno, strerror(errno));
+	errno = 0;
 }
 
 NORETURN ATTR_NORETURN 

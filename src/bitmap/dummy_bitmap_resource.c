@@ -73,6 +73,7 @@ dummy_serialize(struct resource_t * r, struct io_t * io)
 	 * it will dead right after we return from this function */
 	io_read(io, &sync, sizeof(sync), 1);
 	assert(sync == END_DESERIALIZE_SYNC);
+	TRACE(BITMAP, "got sync mark\n");
 
 	TRACE(BITMAP, "dummy bitmap %s send over\n",
 			b->head.id);

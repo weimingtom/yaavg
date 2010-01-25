@@ -7,6 +7,7 @@
 #define __DEBUG_H
 #include <common/defs.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <memory.h>	/* strdup */
 
 __BEGIN_DECLS
@@ -91,6 +92,10 @@ extern char *
 __wrap_strdup(const char * S, __dbg_info_param);
 extern void *
 __wrap_realloc(void * ptr, size_t newsize, __dbg_info_param);
+extern FILE *
+__wrap_fopen(const char * filename, const char * opentype, __dbg_info_param);
+extern int
+__wrap_fclose(FILE * stream, __dbg_info_param);
 
 #ifndef __DEBUG_C
 # define malloc(s)	__wrap_malloc(s, __FILE__, __FUNCTION__, __LINE__)
@@ -98,6 +103,8 @@ __wrap_realloc(void * ptr, size_t newsize, __dbg_info_param);
 # define free(ptr)		__wrap_free(ptr, __FILE__, __FUNCTION__, __LINE__)
 # define strdup(s)	__wrap_strdup(s, __FILE__, __FUNCTION__, __LINE__)
 # define realloc(p, n)	__wrap_realloc(p, n, __FILE__, __FUNCTION__, __LINE__)
+# define fopen(fn, t)	__wrap_fopen(fn, t, __FILE__, __FUNCTION__, __LINE__)
+# define fclose(fp)	__wrap_fclose(fp, __FILE__, __FUNCTION__, __LINE__)
 #endif
 
 #else

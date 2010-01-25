@@ -69,6 +69,7 @@ bitmap_deserialize(struct io_t * io)
 	/* write the sync */
 	sync = END_DESERIALIZE_SYNC;
 	io_write(io, &sync, sizeof(sync), 1);
+	TRACE(BITMAP, "send sync mark\n");
 	return r;
 }
 

@@ -33,7 +33,7 @@ enum video_exception {
 	VIDEXP_FATAL,
 };
 
-#define EXCEPTION_MSG_LEN_MAX	(256)
+#define EXCEPTION_MSG_LEN_MAX	(512)
 
 struct exception_t {
 	enum exception_type type;

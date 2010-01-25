@@ -36,6 +36,13 @@ int main()
 				(deserializer_t)bitmap_deserialize);
 		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
 		free_bitmap(b);
+
+		b = get_resource("0:file:./no_alpha.png",
+				(deserializer_t)bitmap_deserialize);
+		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		free_bitmap(b);
+
+
 	} FINALLY {
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)
 				&& (exp.type != EXP_RESOURCE_PROCESS_FAILURE)) {

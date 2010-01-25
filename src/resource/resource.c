@@ -71,6 +71,7 @@ load_resource(const char * __id)
 	} CATCH(exp) {
 		switch (exp.type) {
 			case EXP_RESOURCE_NOT_FOUND:
+			case EXP_BAD_RESOURCE:
 				print_exception(&exp);
 				r = loaders->dummy_loader(NULL, __id);
 				break;

@@ -12,6 +12,7 @@
 enum __debug_component {
 	SYSTEM	= 0,
 	MEMORY,
+	FILE_STREAM,
 	DICT,
 	YCONF,
 	VIDEO,
@@ -30,6 +31,7 @@ static const char *
 __debug_component_names[NR_DEBUG_COMPONENTS] = {
 	[SYSTEM]	= "SYS",
 	[MEMORY]	= "MEM",
+	[FILE_STREAM]	= "FIL",
 	[DICT]		= "DIC",
 	[YCONF]		= "COF",
 	[VIDEO]		= "VID",
@@ -44,6 +46,7 @@ static const enum __debug_level
 __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[SYSTEM]	= DBG_LV_VERBOSE,
 	[MEMORY]	= DBG_LV_VERBOSE,
+	[FILE_STREAM]	= DBG_LV_VERBOSE,
 	[DICT]		= DBG_LV_VERBOSE,
 	[YCONF]		= DBG_LV_DEBUG,
 	[VIDEO]		= DBG_LV_DEBUG,

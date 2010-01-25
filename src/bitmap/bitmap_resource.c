@@ -18,7 +18,7 @@ extern struct functionor_t dummy_bitmap_resource_functionor;
 extern struct functionor_t sdl_bitmap_resource_functionor;
 
 static struct functionor_t * functionors[] = {
-//	&sdl_bitmap_resource_functionor,
+	&sdl_bitmap_resource_functionor,
 //	&png_bitmap_resource_functionor,
 	&dummy_bitmap_resource_functionor,
 	NULL,

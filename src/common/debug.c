@@ -84,6 +84,8 @@ static int malloc_counter = 0;
 static int calloc_counter = 0;
 static int free_counter = 0;
 static int strdup_counter = 0;
+static int fopen_counter = 0;
+static int fclose_counter = 0;
 
 void *
 __wrap_malloc(size_t size,
@@ -131,7 +133,7 @@ __wrap_strdup(const char * S,
 	char * res = NULL;
 	res = strdup (S);
 	assert(res != NULL);
-	TRACE(MEMORY, "strdup(%s)@[%s:%d]=%p\n", S,
+	TRACE(MEMORY, "@q strdup(%s)@[%s:%d]=%p\n", S,
 			func, line,
 			res);
 	strdup_counter ++;
@@ -146,7 +148,7 @@ __wrap_realloc(void * ptr, size_t newsize,
 	void * res;
 	res = realloc(ptr, newsize);
 	assert(res != NULL);
-	TRACE(MEMORY, "realloc(%p, %d)@[%s:%d]=%p\n", ptr, newsize,
+	TRACE(MEMORY, "@q realloc(%p, %d)@[%s:%d]=%p\n", ptr, newsize,
 			func, line,
 			res);
 	if (ptr == NULL) {
@@ -154,6 +156,38 @@ __wrap_realloc(void * ptr, size_t newsize,
 	}
 	return res;
 }
+
+FILE *
+__wrap_fopen(const char * fn, const char * ot,
+		__dbg_info_param)
+{
+	assert(fn != NULL);
+	assert(ot != NULL);
+	FILE * fp = fopen(fn, ot);
+	if (fp != NULL) {
+		TRACE(FILE_STREAM, "@q fopen(%s, %s)@[%s:%d]=%p\n",
+				fn, ot,
+				func, line,
+				fp);
+		fopen_counter ++;
+	}
+	return fp;
+}
+
+int
+__wrap_fclose(FILE * fp,
+		__dbg_info_param)
+{
+	assert(fp != NULL);
+	int res = fclose(fp);
+	TRACE(FILE_STREAM, "@q fclose(%p)@[%s:%d]=%d\n",
+			fp,
+			func, line,
+			res);
+	fclose_counter ++;
+	return res;
+}
+
 #endif
 
 /* end memory leak detection */
@@ -175,6 +209,8 @@ sighandler_mem_stats(int signum)
 	MEM_MSG("calloc counter:\t%d\n", calloc_counter);
 	MEM_MSG("strdup counter:\t%d\n", strdup_counter);
 	MEM_MSG("free counter:\t%d\n", free_counter);
+	MEM_MSG("fopen counter:\t%d\n", fopen_counter);
+	MEM_MSG("fclose counter:\t%d\n", fclose_counter);
 #ifdef HAVE_MALLINFO
 	MEM_MSG("------ mallinfo ------\n");
 	struct mallinfo mi = mallinfo();
@@ -254,6 +290,8 @@ dbg_exit(void)
 	calloc_counter = 0;
 	free_counter = 0;
 	strdup_counter = 0;
+	fopen_counter = 0;
+	fclose_counter = 0;
 }
 
 void
