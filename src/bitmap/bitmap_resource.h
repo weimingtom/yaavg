@@ -39,6 +39,9 @@ load_bitmap_resource(struct io_t * io, const char * id);
 struct resource_t *
 load_dummy_bitmap_resource(struct io_t * io, const char * id);
 
+#define BEGIN_SERIALIZE_SYNC	(0x01020304)
+#define END_DESERIALIZE_SYNC	(0x10203040)
+
 #endif
 
 // vim:ts=4:sw=4

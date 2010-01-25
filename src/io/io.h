@@ -40,6 +40,8 @@ struct io_functionor_t {
 			int nr);
 	ssize_t (*writev)(struct io_t * io, struct iovec * iovec,
 			int nr);
+	ssize_t (*vmsplice)(struct io_t * io, struct iovec * iovec,
+			int nr);
 	int (*seek)(struct io_t * io, int offset,
 			int whence);
 	void (*close)(struct io_t * io);
@@ -104,6 +106,17 @@ io_writev(struct io_t * io, struct iovec * vecs, int nr)
 			(io->functionor->writev));
 	return io->functionor->writev(io, vecs, nr);
 }
+
+static inline int
+io_vmsplice(struct io_t * io, struct iovec * vecs, int nr)
+{
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->vmsplice));
+	return io->functionor->vmsplice(io, vecs, nr);
+}
+
+
 
 static inline int
 io_readv(struct io_t * io, struct iovec * vecs, int nr)

@@ -7,6 +7,8 @@
 #include <common/debug.h>
 #include <common/mm.h>
 #include <bitmap/bitmap.h>
+/* END_DESERIALIZE_SYNC and BEGIN_SERIALIZE_SYNC */
+#include <bitmap/bitmap_resource.h>
 #include <ctype.h>
 #include <string.h>
 #include <assert.h>
@@ -43,7 +45,7 @@ bitmap_deserialize(struct io_t * io)
 	/* read sync */
 	int sync = 0;
 	io_read(io, &sync, sizeof(sync), 1);
-	assert(sync == 0x10203040);
+	assert(sync == BEGIN_SERIALIZE_SYNC);
 	
 	/* read head */
 	io_read(io, &head, sizeof(head), 1);
@@ -63,6 +65,10 @@ bitmap_deserialize(struct io_t * io)
 
 	/* read pixels */
 	io_read(io, r->pixels, data_sz, 1);
+
+	/* write the sync */
+	sync = END_DESERIALIZE_SYNC;
+	io_write(io, &sync, sizeof(sync), 1);
 	return r;
 }
 

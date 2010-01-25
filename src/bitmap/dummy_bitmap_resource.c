@@ -43,27 +43,36 @@ dummy_serialize(struct resource_t * r, struct io_t * io)
 	head.id = NULL;
 	head.pixels = NULL;
 
-	int sync = 0x10203040;
+	int sync = BEGIN_SERIALIZE_SYNC;
 	io_write(io, &sync, sizeof(sync), 1);
 
-	if (io->functionor->writev) {
-		struct iovec vecs[3];
+	struct iovec vecs[3];
 
-		vecs[0].iov_base = &head;
-		vecs[0].iov_len = sizeof(head);
+	vecs[0].iov_base = &head;
+	vecs[0].iov_len = sizeof(head);
 
-		vecs[1].iov_base = b->head.id;
-		vecs[1].iov_len = b->head.id_sz;
+	vecs[1].iov_base = b->head.id;
+	vecs[1].iov_len = b->head.id_sz;
 
-		vecs[2].iov_base = b->head.pixels;
-		vecs[2].iov_len = bitmap_data_size(&head);
+	vecs[2].iov_base = b->head.pixels;
+	vecs[2].iov_len = bitmap_data_size(&head);
+
+
+	if (io->functionor->vmsplice) {
+		io_vmsplice(io, vecs, 3);
+	} else if (io->functionor->writev) {
 		io_writev(io, vecs, 3);
 	} else {
-		io_write(io, &head, sizeof(head), 1);
-		io_write(io, b->head.id, b->head.id_sz, 1);
-		io_write(io, b->head.pixels,
-				bitmap_data_size(&head), 1);
+		io_write(io, vecs[0].iov_base, vecs[0].iov_len, 1);
+		io_write(io, vecs[1].iov_base, vecs[1].iov_len, 1);
+		io_write(io, vecs[2].iov_base, vecs[2].iov_len, 1);
 	}
+
+	/* wait for sync */
+	/* end sync have to reside here because of the lifetime of head:
+	 * it will dead right after we return from this function */
+	io_read(io, &sync, sizeof(sync), 1);
+	assert(sync == END_DESERIALIZE_SYNC);
 
 	TRACE(BITMAP, "dummy bitmap %s send over\n",
 			b->head.id);

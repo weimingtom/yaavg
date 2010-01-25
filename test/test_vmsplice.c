@@ -13,8 +13,8 @@
 #define POUT STDOUT_FILENO
 
 //#define NR 100
-#define NR 100000
-//#define NR 10
+//#define NR 100000
+#define NR 20
 #define SZ ((10 << 10) * 8)
 static int pp[2];
 
@@ -40,63 +40,25 @@ int main()
 	assert(chld_pid >= 0);
 	if (chld_pid == 0) {
 		close(pp[PIN]);
+		char cc[10];
 		for (int i = 0; i < NR; i++) {
-#ifdef NORMAL_WRITE
-			err = write(pp[POUT], data_send, SZ);
-			assert(err == SZ);
-#else
-			int left = SZ;
-			x = 0;
-			while (left > 0) {
-				struct iovec vec;
-				vec.iov_base = data_send + (SZ - left);
-				vec.iov_len = left;
-#if 1
-				err = vmsplice(pp[POUT],
-						&vec, 1, 0);
-#else
-				err = writev(pp[POUT],
-						&vec, 1);
-#endif
-				assert(err >= 0);
-				left -= err;
-				x++;
-			}
-//			if (x > 1)
-//				printf("send as %d parts, last err = %d\n", x, err);
-#endif
+			memset(cc, '1', 9);
+			cc[9] = '\0';
+
+			struct iovec vec;
+			vec.iov_base = cc;
+			vec.iov_len = 10;
+			vmsplice(pp[POUT], &vec, 1, 0);
+			memset(cc, '0' + i, 9);
+			sleep(2);
 		}
 	} else {
 		close(pp[POUT]);
 		for (int i = 0; i < NR; i++) {
-			int left = SZ;
-			void * ptr = data_recv;
-			x = 0;
-			while (left > 0) {
-				err = read(pp[PIN], ptr, left);
-				assert(err >= 0);
-				left -= err;
-				ptr += err;
-				x++;
-			}
-
-#if 1
-			if (x > 1)
-				printf("read for %d parts\n", x);
-			err = memcmp(data_send, data_recv, SZ);
-			if (err != 0) {
-				printf("err=%d\n", err);
-				FILE * fp = fopen("/tmp/send", "wb");
-				fwrite(data_send, SZ, 1, fp);
-				fclose(fp);
-
-				fp = fopen("/tmp/recv", "wb");
-				fwrite(data_recv, SZ, 1, fp);
-				fclose(fp);
-				assert(err == 0);
-			}
-			memset(data_recv, '\0', SZ);
-#endif
+			char cc[10];
+			sleep(1);
+			read(pp[PIN], cc, 10);
+			printf("%s\n", cc);
 		}
 	}
 

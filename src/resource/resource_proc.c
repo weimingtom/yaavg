@@ -251,27 +251,22 @@ xxreadv(int fd, struct iovec * iovec,
 	return total_read;
 }
 
-static ssize_t
-xxwritev(int fd, struct iovec * iovec,
-		int nr)
+static inline ssize_t
+xx_aio_write(int fd, struct iovec * iovec,
+		int nr, bool_t use_vmsplice)
 {
 	ssize_t retval = 0;
-	TRACE(RESOURCE, "xxwritev %d iovecs to %d\n",
+	TRACE(RESOURCE, "xx_aio_writev %d iovecs to %d\n",
 			nr, fd);
-	WARNING(RESOURCE, "start writev: nr_iovec=%d\n", nr);
 
-	for (int i = 0; i < nr; i++) {
-		WARNING(RESOURCE, "iovec %d: %p:%d\n", i,
-				iovec[i].iov_base,
-				iovec[i].iov_len);
+#ifdef HAVE_VMSPLICE
+	if (use_vmsplice) {
+		TRACE(RESOURCE, "using vmsplice\n");
+		retval = vmsplice(fd, iovec, nr, 0);
 	}
-//#ifdef HAVE_VMSPLICE
-#if 0
-	retval = vmsplice(fd, iovec, nr, 0);
-#else
-	retval = writev(fd, iovec, nr);
+	else
 #endif
-	WARNING(RESOURCE, "writev over, retval=%d\n", retval);
+	retval = writev(fd, iovec, nr);
 
 	if (retval <= 0)
 		THROW(EXP_RESOURCE_PROCESS_FAILURE, "writev failed: return %d:%s",
@@ -300,6 +295,22 @@ xxwritev(int fd, struct iovec * iovec,
 	return total_write;
 }
 
+static ssize_t
+xxwritev(int fd, struct iovec * iovec,
+		int nr)
+{
+	return xx_aio_write(fd, iovec, nr, FALSE);
+}
+
+#ifdef HAVE_VMSPLICE
+static ssize_t
+xxvmsplice(int fd, struct iovec * iovec,
+		int nr)
+{
+	return xx_aio_write(fd, iovec, nr, TRUE);
+}
+#endif
+
 
 static void
 sigpipe_handler(int signum)
@@ -311,75 +322,190 @@ sigpipe_handler(int signum)
 }
 
 /* ******************************** */
-static struct io_t res_data_io;
+static struct io_t data_side_io;
+static struct io_t cmd_side_io;
+
+static inline int
+__ioread(int fd, void * ptr, int size, int nr)
+{
+	assert(ptr != NULL);
+	if (size * nr == 0)
+		return 0;
+	xxread_imm(fd, ptr, size * nr);
+	return nr;
+}
+
+static inline int
+__iowrite(int fd, void * ptr, int size, int nr)
+{
+	assert(ptr != NULL);
+	if (size * nr == 0)
+		return 0;
+	xxwrite(fd, ptr, size * nr);
+	return nr;
+}
+
+
+static inline ssize_t
+__ioreadv(int fd, struct iovec * iovec, int nr)
+{
+	if (nr <= 0)
+		return 0;
+	assert(iovec != NULL);
+	return xxreadv(fd, iovec, nr);
+}
+
+static inline ssize_t
+__iowritev(int fd, struct iovec * iovec, int nr)
+{
+	if (nr <= 0)
+		return 0;
+	assert(iovec != NULL);
+	return xxwritev(fd, iovec, nr);
+}
+
+#ifdef HAVE_VMSPLICE
+static inline ssize_t
+__iovmsplice(int fd, struct iovec * iovec, int nr)
+{
+	if (nr <= 0)
+		return 0;
+	assert(iovec != NULL);
+	return xxvmsplice(fd, iovec, nr);
+}
+#endif
+
+
 
 static int
 read_data(struct io_t * io, void * ptr,
 		int size, int nr)
 {
-	assert(io == &res_data_io);
-	assert(ptr != NULL);
-	if (size * nr == 0)
-		return 0;
-	xxread_imm(D_IN, ptr, size * nr);
-	return nr;
+	assert(io == &cmd_side_io);
+	return __ioread(D_IN, ptr, size, nr);
+}
+
+static int
+read_cmd(struct io_t * io, void * ptr,
+		int size, int nr)
+{
+	assert(io == &data_side_io);
+	return __ioread(C_IN, ptr, size, nr);
 }
 
 static int
 write_data(struct io_t * io, void * ptr,
 		int size, int nr)
 {
-	assert(io == &res_data_io);
-	assert(ptr != NULL);
-	if (size * nr == 0)
-		return 0;
-	xxwrite(D_OUT, ptr, size * nr);
-	return nr;
+	assert(io == &data_side_io);
+	return __iowrite(D_OUT, ptr, size, nr);
+}
+
+static int
+write_cmd(struct io_t * io, void * ptr,
+		int size, int nr)
+{
+	assert(io == &cmd_side_io);
+	return __iowrite(C_OUT, ptr, size, nr);
 }
 
 static ssize_t
 readv_data(struct io_t * io, struct iovec * iovec,
 		int nr)
 {
-	assert(io == &res_data_io);
-	if (nr <= 0)
-		return 0;
-	assert(iovec != NULL);
-
-	return xxreadv(D_IN, iovec, nr);
+	assert(io == &cmd_side_io);
+	return __ioreadv(D_IN, iovec, nr);
 }
 
+static ssize_t
+readv_cmd(struct io_t * io, struct iovec * iovec,
+		int nr)
+{
+	assert(io == &data_side_io);
+	return __ioreadv(C_IN, iovec, nr);
+}
 
 static ssize_t
 writev_data(struct io_t * io, struct iovec * iovec, int nr)
 {
-	assert(io == &res_data_io);
-	if (nr <= 0)
-		return 0;
-	assert(iovec != NULL);
-	return xxwritev(D_OUT, iovec, nr);
+	assert(io == &data_side_io);
+	return __iowritev(D_OUT, iovec, nr);
 }
 
+static ssize_t
+writev_cmd(struct io_t * io, struct iovec * iovec, int nr)
+{
+	assert(io == &cmd_side_io);
+	return __iowritev(C_OUT, iovec, nr);
+}
 
-static struct io_functionor_t res_data_io_functionor = {
-	.name = "ResourceIOFunctionor",
+#ifdef HAVE_VMSPLICE
+static ssize_t
+vmsplice_data(struct io_t * io, struct iovec * iovec, int nr)
+{
+	assert(io == &data_side_io);
+	return __iovmsplice(D_OUT, iovec, nr);
+}
+
+static ssize_t
+vmsplice_cmd(struct io_t * io, struct iovec * iovec, int nr)
+{
+	assert(io == &cmd_side_io);
+	return __iovmsplice(C_OUT, iovec, nr);
+}
+
+#endif
+
+static struct io_functionor_t data_side_io_functionor = {
+	.name = "ResourceIODataSizeFunctionor",
+	.fclass = FC_IO,
+	.check_usable = NULL,
+	.open = NULL,
+	.open_write = NULL,
+	.read = read_cmd,
+	.write = write_data,
+	.readv = readv_cmd,
+	.writev = writev_data,
+#ifdef HAVE_VMSPLICE
+	.vmsplice = vmsplice_data,
+#endif
+	.seek = NULL,
+	.close = NULL,
+};
+
+static struct io_functionor_t cmd_side_io_functionor = {
+	.name = "ResourceIOCmdSizeFunctionor",
 	.fclass = FC_IO,
 	.check_usable = NULL,
 	.open = NULL,
 	.open_write = NULL,
 	.read = read_data,
-	.write = write_data,
+	.write = write_cmd,
 	.readv = readv_data,
-	.writev = writev_data,
+	.writev = writev_cmd,
+#ifdef HAVE_VMSPLICE
+	.vmsplice = vmsplice_cmd,
+#endif
 	.seek = NULL,
 	.close = NULL,
 };
 
-static struct io_t res_data_io = {
-	.functionor = &res_data_io_functionor,
+
+static struct io_t data_side_io = {
+	.functionor = &data_side_io_functionor,
 	.rdwr = IO_READ | IO_WRITE,
 	.pprivate = NULL,
 };
+
+static struct io_t cmd_side_io = {
+	.functionor = &cmd_side_io_functionor,
+	.rdwr = IO_READ | IO_WRITE,
+	.pprivate = NULL,
+};
+
+
+#if 0
+#endif
 
 /* ******************************** */
 /* CACHE!!! */
@@ -401,7 +527,7 @@ read_resource_worker(const char * id)
 		struct resource_t * r = container_of(ce,
 				struct resource_t,
 				cache_entry);
-		r->serialize(r, &res_data_io);
+		r->serialize(r, &data_side_io);
 	} else {
 		
 		struct resource_t * r = NULL;
@@ -420,7 +546,7 @@ read_resource_worker(const char * id)
 		ce->pprivate = NULL;
 
 		cache_insert(&res_cache, &r->cache_entry);
-		r->serialize(r, &res_data_io);
+		r->serialize(r, &data_side_io);
 	}
 }
 
@@ -623,7 +749,7 @@ get_resource(const char * name,
 
 	xxwritev(C_OUT, vecs, 3);
 
-	return deserializer(&res_data_io);
+	return deserializer(&cmd_side_io);
 }
 
 // vim:ts=4:sw=4
