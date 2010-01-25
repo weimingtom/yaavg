@@ -266,7 +266,7 @@ xxwritev(int fd, struct iovec * iovec,
 				iovec[i].iov_len);
 	}
 //#ifdef HAVE_VMSPLICE
-#if 1
+#if 0
 	retval = vmsplice(fd, iovec, nr, 0);
 #else
 	retval = writev(fd, iovec, nr);
