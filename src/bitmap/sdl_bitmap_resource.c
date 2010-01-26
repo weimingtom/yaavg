@@ -15,27 +15,7 @@
 #include <string.h>
 #include <assert.h>
 
-#ifdef HAVE_SDL
-# ifdef HAVE_SDLIMAGE
-#  define SDLIMAGE_ENABLE
-# endif
-#endif
-
-#ifdef SDLIMAGE_ENABLE
-# include <SDL/SDL_image.h>
-#endif
-
-static void inline
-check_sdl_image(void)
-{
-#ifdef SDLIMAGE_ENABLE
-	return;
-#else
-	THROW(EXP_UNCATCHABLE, "shouldn't be here: SDLIMAGE is disabled");
-#endif
-
-}
-
+#include <SDL/SDL_image.h>
 
 struct bitmap_resource_functionor_t
 sdl_bitmap_resource_functionor;
@@ -45,8 +25,7 @@ sdl_check_usable(const char * param)
 {
 	assert(param != NULL);
 	assert(strnlen(param, 4) >= 3);
-	TRACE(BITMAP, "%s:%s\n", __func__, param);
-#ifdef SDLIMAGE_ENABLE
+	DEBUG(BITMAP, "%s:%s\n", __func__, param);
 	if (strncmp(param, "BMP", 3) == 0)
 		return TRUE;
 	if (strncmp(param, "GIF", 3) == 0)
@@ -69,14 +48,12 @@ sdl_check_usable(const char * param)
 		return TRUE;
 	if (strncmp(param, "XV", 2) == 0)
 		return TRUE;
-#endif
 	return FALSE;
 }
 
 static void
 sdl_serialize(struct resource_t * r, struct io_t * io)
 {
-	check_sdl_image();
 	assert(r != NULL);
 	assert(io != NULL);
 }
@@ -84,9 +61,7 @@ sdl_serialize(struct resource_t * r, struct io_t * io)
 static void
 sdl_destroy(struct resource_t * r)
 {
-	check_sdl_image();
 }
-
 
 struct wrap_rwops {
 	struct SDL_RWops rwops;
@@ -146,10 +121,9 @@ wrap_close(struct SDL_RWops * ops, const void * ptr,
 static struct bitmap_resource_t *
 sdl_load(struct io_t * io, const char * id)
 {
-	check_sdl_image();
 	assert(io != NULL);
 
-	TRACE(BITMAP, "loading image %s use sdl loader, io is %s\n",
+	DEBUG(BITMAP, "loading image %s use sdl loader, io is %s\n",
 			id, io->functionor->name);
 	/* build SDL_rwops */
 	struct wrap_rwops rwops;
@@ -173,34 +147,38 @@ sdl_load(struct io_t * io, const char * id)
 				id, io->functionor->name, SDL_GetError());
 
 	/* trace the information of img */
-	TRACE(BITMAP, "format of %s:\n", id);
-	TRACE(BITMAP, "\tsize: %dx%d\n", img->w, img->h);
+	DEBUG(BITMAP, "format of %s:\n", id);
+	DEBUG(BITMAP, "\tsize: %dx%d\n", img->w, img->h);
 	struct SDL_PixelFormat * f = img->format;
-	TRACE(BITMAP, "\tbits pre pixel: %d\n", f->BitsPerPixel);
-	TRACE(BITMAP, "\tbytes pre pixel: %d\n", f->BytesPerPixel);
-	TRACE(BITMAP, "\t(R, G, B, A)loss=(%d, %d, %d, %d)\n",
+	DEBUG(BITMAP, "\tbits pre pixel: %d\n", f->BitsPerPixel);
+	DEBUG(BITMAP, "\tbytes pre pixel: %d\n", f->BytesPerPixel);
+	DEBUG(BITMAP, "\t(R, G, B, A)loss=(%d, %d, %d, %d)\n",
 			f->Rloss,
 			f->Gloss,
 			f->Bloss,
 			f->Aloss);
-	TRACE(BITMAP, "\t(R, G, B, A)shift=(%d, %d, %d, %d)\n",
+	DEBUG(BITMAP, "\t(R, G, B, A)shift=(%d, %d, %d, %d)\n",
 			f->Rshift,
 			f->Gshift,
 			f->Bshift,
 			f->Ashift);
-	TRACE(BITMAP, "\t(R, G, B, A)mask=(0x%x, 0x%x, 0x%x, 0x%x)\n",
+	DEBUG(BITMAP, "\t(R, G, B, A)mask=(0x%x, 0x%x, 0x%x, 0x%x)\n",
 			f->Rmask,
 			f->Gmask,
 			f->Bmask,
 			f->Amask);
-	TRACE(BITMAP, "\tcolorkey=0x%x\n",
+	DEBUG(BITMAP, "\tcolorkey=0x%x\n",
 			f->colorkey);
-	TRACE(BITMAP, "\talpha=0x%x\n",
+	DEBUG(BITMAP, "\talpha=0x%x\n",
 			f->alpha);
+	DEBUG(BITMAP, "\tfirst 4 bytes: 0x%x\n",
+			((uint32_t*)(img->pixels))[0]);
 
 	SDL_FreeSurface(img);
 	THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s\n",
 			id, io->functionor->name, SDL_GetError());
+
+
 	/* lock before free */
 	SDL_LockSurface(img);
 	return NULL;

@@ -15,10 +15,14 @@
 #include <assert.h>
 
 extern struct functionor_t dummy_bitmap_resource_functionor;
+#ifdef HAVE_SDLIMAGE
 extern struct functionor_t sdl_bitmap_resource_functionor;
+#endif
 
 static struct functionor_t * functionors[] = {
+#ifdef HAVE_SDLIMAGE
 	&sdl_bitmap_resource_functionor,
+#endif
 //	&png_bitmap_resource_functionor,
 	&dummy_bitmap_resource_functionor,
 	NULL,
@@ -42,13 +46,32 @@ get_bitmap_resource_handler(const char * id)
 	assert(len >= 3);
 	DEBUG(BITMAP, "find bitmap handler for %s\n", id);
 
-	char format_str[4];
+	char __format_str[16], *format_str = NULL;
 
-	for (int i = 0; i < 3; i++) {
-		int c = id[len - 3 + i];
-		format_str[i] = islower(c) ? toupper(c) : c;
+	/* find the last '.' */
+	if (*id != '.') {
+		const char * cp;
+		int i;
+		for (i = 15, cp = id + strlen(id);
+				((i >= 0) && (cp >= id)); i--, cp --) {
+			char c = *cp;
+			__format_str[i] = islower(c) ? toupper(c) : c;
+			if (c == '.') {
+				format_str = &__format_str[i+1];
+				break;
+			}
+		}
+		if (format_str == NULL)
+			THROW(EXP_UNSUPPORT_RESOURCE, "cannot find handler for id %s\n",
+					id);
+	} else {
+		format_str = "...";
 	}
-	format_str[3] = '\0';
+
+	/* dirty work */
+	if (strcmp(format_str, "JPEG") == 0)
+		format_str = "JPG";
+
 	DEBUG(BITMAP, "format is %s\n", format_str);
 
 	if (format_str[0] != '.') {
@@ -67,7 +90,9 @@ get_bitmap_resource_handler(const char * id)
 				func->name, format_str);
 		bool_t rep = strdict_replace(&bitmap_resource_functionors_dict, format_str,
 				(dict_data_t)(void*)func, NULL);
-		assert(rep);
+		if (!rep)
+			THROW(EXP_UNSUPPORT_RESOURCE, "cannot find handler for bitmap format %s\n",
+				format_str);
 		return (struct bitmap_resource_functionor_t *)func;
 	}
 

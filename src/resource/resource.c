@@ -70,6 +70,7 @@ load_resource(const char * __id)
 			io_close(io);
 	} CATCH(exp) {
 		switch (exp.type) {
+			case EXP_UNSUPPORT_RESOURCE:
 			case EXP_RESOURCE_NOT_FOUND:
 			case EXP_BAD_RESOURCE:
 				print_exception(&exp);

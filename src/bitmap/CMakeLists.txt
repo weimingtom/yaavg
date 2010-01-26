@@ -5,10 +5,15 @@ SET(SRC
 	bitmap_resource.c
 	dummy_bitmap_resource.c
 	png_bitmap_resource.c
-	sdl_bitmap_resource.c
 	)
 
-ADD_LIBRARY(bitmap STATIC ${SRC})
+IF (HAVE_SDLIMAGE)
+	SET(SDLSRC sdl_bitmap_resource.c)
+ELSE (HAVE_SDLIMAGE)
+	SET(SDLSRC "")
+ENDIF (HAVE_SDLIMAGE)
+
+ADD_LIBRARY(bitmap STATIC ${SRC} ${SDLSRC})
 
 IF (HAVE_SDL)
 	INCLUDE_DIRECTORIES(${SDL_INCLUDE_DIR})

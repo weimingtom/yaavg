@@ -18,7 +18,7 @@ dummy_bitmap_resource_functionor;
 static bool_t
 dummy_check_usable(const char * param)
 {
-	TRACE(BITMAP, "%s:%s\n", __func__, param);
+	DEBUG(BITMAP, "%s:%s\n", __func__, param);
 	return TRUE;
 }
 
@@ -36,7 +36,7 @@ dummy_serialize(struct resource_t * r, struct io_t * io)
 	struct bitmap_resource_t * b = container_of(r,
 			struct bitmap_resource_t,
 			resource);
-	TRACE(BITMAP, "serializing dummy bitmap %s\n",
+	DEBUG(BITMAP, "serializing dummy bitmap %s\n",
 			b->head.id);
 
 	struct bitmap_t head = b->head;
@@ -73,9 +73,9 @@ dummy_serialize(struct resource_t * r, struct io_t * io)
 	 * it will dead right after we return from this function */
 	io_read(io, &sync, sizeof(sync), 1);
 	assert(sync == END_DESERIALIZE_SYNC);
-	TRACE(BITMAP, "got sync mark\n");
+	DEBUG(BITMAP, "got sync mark\n");
 
-	TRACE(BITMAP, "dummy bitmap %s send over\n",
+	DEBUG(BITMAP, "dummy bitmap %s send over\n",
 			b->head.id);
 }
 
@@ -87,7 +87,7 @@ dummy_destroy(struct resource_t * r)
 			struct bitmap_resource_t,
 			resource);
 	xfree(r);
-	TRACE(BITMAP, "dummy bitmap %s destroied\n",
+	DEBUG(BITMAP, "dummy bitmap %s destroied\n",
 			b->head.id);
 }
 

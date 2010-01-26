@@ -42,6 +42,20 @@ int main()
 		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
 		free_bitmap(b);
 
+		b = get_resource("0:file:./have_alpha.png",
+				(deserializer_t)bitmap_deserialize);
+		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		free_bitmap(b);
+
+		b = get_resource("0:file:./largepng.png",
+				(deserializer_t)bitmap_deserialize);
+		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		free_bitmap(b);
+
+		b = get_resource("0:file:./jpegtest.jpeg",
+				(deserializer_t)bitmap_deserialize);
+		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		free_bitmap(b);
 
 	} FINALLY {
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)
