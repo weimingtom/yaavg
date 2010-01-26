@@ -570,7 +570,6 @@ worker(void)
 	xxwrite(D_OUT, &ok, sizeof(ok));
 
 	for(;;) {
-		int err;
 		int cmd_len;
 		char cmd[MAX_IDLEN];
 
@@ -584,7 +583,7 @@ worker(void)
 		if ((cmd_len > MAX_IDLEN) || (cmd_len < 0))
 			THROW(EXP_RESOURCE_PROCESS_FAILURE,
 					"cmd_len=%d is incorrect",
-					err);
+					cmd_len);
 
 		/* read the command */
 		xxread(C_IN, cmd, cmd_len);

@@ -284,6 +284,7 @@ dbg_exit(void)
 	}
 	output_fp = NULL;
 
+#ifdef YAAVG_DEBUG
 	/* reset the counters */
 	/* see comment at dbg_init */
 	malloc_counter = 0;
@@ -292,6 +293,7 @@ dbg_exit(void)
 	strdup_counter = 0;
 	fopen_counter = 0;
 	fclose_counter = 0;
+#endif
 }
 
 void

@@ -145,7 +145,7 @@ sdl_load(struct io_t * io, const char * id)
 
 	SDL_Surface * img = IMG_Load_RW(&rwops.rwops, 0);
 	if (img == NULL)
-		THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s\n",
+		THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s",
 				id, io->functionor->name, SDL_GetError());
 
 	/* trace the information of img */
@@ -177,7 +177,7 @@ sdl_load(struct io_t * io, const char * id)
 			((uint32_t*)(img->pixels))[0]);
 
 	SDL_FreeSurface(img);
-	THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s\n",
+	THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s",
 			id, io->functionor->name, SDL_GetError());
 
 

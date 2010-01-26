@@ -83,11 +83,13 @@ static void
 dummy_destroy(struct resource_t * r)
 {
 	assert(r != NULL);
+#ifdef YAAVG_DEBUG
 	struct bitmap_resource_t * b = container_of(r,
 			struct bitmap_resource_t,
 			resource);
 	DEBUG(BITMAP, "dummy bitmap %s(%p) destroied\n",
 			b->head.id, b->head.id);
+#endif
 	xfree(r);
 }
 
