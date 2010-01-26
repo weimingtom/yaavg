@@ -86,9 +86,9 @@ dummy_destroy(struct resource_t * r)
 	struct bitmap_resource_t * b = container_of(r,
 			struct bitmap_resource_t,
 			resource);
+	DEBUG(BITMAP, "dummy bitmap %s(%p) destroied\n",
+			b->head.id, b->head.id);
 	xfree(r);
-	DEBUG(BITMAP, "dummy bitmap %s destroied\n",
-			b->head.id);
 }
 
 static struct bitmap_resource_t *
