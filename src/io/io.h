@@ -44,6 +44,7 @@ struct io_functionor_t {
 			int nr);
 	int (*seek)(struct io_t * io, int offset,
 			int whence);
+	int (*tell)(struct io_t * io);
 	void (*close)(struct io_t * io);
 };
 
@@ -88,6 +89,17 @@ io_seek(struct io_t * io, int offset,
 	return io->functionor->seek(io, offset,
 			whence);
 }
+
+static inline int
+io_tell(struct io_t * io)
+{
+	assert(io &&
+			(io->functionor) &&
+			(io->functionor->seek));
+	return io->functionor->tell(io);
+}
+
+
 
 static inline void
 io_close(struct io_t * io)

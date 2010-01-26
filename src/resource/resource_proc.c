@@ -470,6 +470,7 @@ static struct io_functionor_t data_side_io_functionor = {
 	.vmsplice = vmsplice_data,
 #endif
 	.seek = NULL,
+	.tell = NULL,
 	.close = NULL,
 };
 
@@ -487,6 +488,7 @@ static struct io_functionor_t cmd_side_io_functionor = {
 	.vmsplice = vmsplice_cmd,
 #endif
 	.seek = NULL,
+	.tell = NULL,
 	.close = NULL,
 };
 

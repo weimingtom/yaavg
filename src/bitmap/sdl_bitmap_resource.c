@@ -81,18 +81,21 @@ get_io(struct SDL_RWops * rwops)
 static int
 wrap_seek(struct SDL_RWops * ops, int offset, int whence)
 {
-	TRACE(BITMAP, "ops=%p, seek %d, %d\n", ops, offset, whence);
+	TRACE(IO, "ops=%p, seek %d, %d\n", ops, offset, whence);
 	struct io_t * io = get_io(ops);
-	TRACE(BITMAP, "io=%p\n", io);
+	TRACE(IO, "io=%p\n", io);
 	assert(io != NULL);
-	return io_seek(io, offset, whence);
+	int ret = io_seek(io, offset, whence);
+	if (ret == 0)
+		return io_tell(io);
+	return ret;
 }
 
 static int
 wrap_read(struct SDL_RWops * ops, void * ptr,
 		int size, int maxnum)
 {
-	TRACE(BITMAP, "read %p, %d, %d\n", ptr, size, maxnum);
+	TRACE(IO, "ops=%p, read %p, %d, %d\n", ops, ptr, size, maxnum);
 	struct io_t * io = get_io(ops);
 	assert(io != NULL);
 	return io_read(io, ptr, size, maxnum);
@@ -109,8 +112,7 @@ wrap_write(struct SDL_RWops * ops, const void * ptr,
 }
 
 static int
-wrap_close(struct SDL_RWops * ops, const void * ptr,
-		int size, int maxnum)
+wrap_close(struct SDL_RWops * ops)
 {
 	/* don't close io_t! */
 	struct io_t * io = get_io(ops);

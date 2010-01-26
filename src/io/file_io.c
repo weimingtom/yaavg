@@ -57,7 +57,11 @@ file_read(struct io_t * io, void * ptr,
 
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
-	return fread(ptr, size, nr, fp);
+	int ret = fread(ptr, size, nr, fp);
+	if (ret < 0)
+		THROW(EXP_BAD_RESOURCE, "read(%d, %d) file %p return %d\n",
+				size, nr, fp, ret);
+	return ret;
 }
 
 static int
@@ -83,7 +87,28 @@ file_seek(struct io_t * io, int offset,
 	assert(io->functionor->seek == file_seek);
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
-	return fseek(fp, offset, whence);
+	int ret = fseek(fp, offset, whence);
+	if (ret < 0)
+		THROW(EXP_BAD_RESOURCE, "seek(%d, %d) file %p return %d\n",
+				offset, whence, fp, ret);
+	return ret;
+}
+
+static int
+file_tell(struct io_t * io)
+{
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->tell == file_tell);
+
+	FILE * fp = io->pprivate;
+	assert(fp != NULL);
+
+	int ret = ftell(fp);
+	if (ret < 0)
+		THROW(EXP_BAD_RESOURCE, "tell file %p return %d\n",
+				fp, ret);
+	return ret;
 }
 
 static void
@@ -116,6 +141,7 @@ struct io_functionor_t file_io_functionor = {
 	.read = file_read,
 	.write = file_write,
 	.seek = file_seek,
+	.tell = file_tell,
 	.close = file_close,
 };
 
