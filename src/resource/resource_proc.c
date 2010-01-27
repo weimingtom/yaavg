@@ -21,6 +21,7 @@
 #include <common/mm.h>
 #include <common/dict.h>
 #include <common/cache.h>
+#include <utils/timer.h>
 #include <yconf/yconf.h>
 
 #include <resource/resource_proc.h>
@@ -66,7 +67,7 @@ xread(int fd, void * buf, int len)
 		THROW(EXP_RESOURCE_PEER_SHUTDOWN,
 				"seems host peer has shutdown\n");
 	TRACE(RESOURCE, "finish to xread %d bytes from %d\n",
-			len, fd);
+			err, fd);
 	return err;
 }
 
@@ -252,62 +253,85 @@ xxreadv(int fd, struct iovec * iovec,
 }
 
 static inline ssize_t
-xx_aio_write(int fd, struct iovec * iovec,
-		int nr, bool_t use_vmsplice)
+xx_splicev(int fd, struct iovec * __iovec,
+		int __nr, bool_t use_vmsplice, bool_t write)
 {
 	ssize_t retval = 0;
-	TRACE(RESOURCE, "xx_aio_writev %d iovecs to %d\n",
-			nr, fd);
+	size_t total_spliced = 0;
+	TRACE(RESOURCE, "xx_splicev %d iovecs to %d\n",
+			__nr, fd);
+	struct iovec * iovec = alloca(sizeof(*iovec) * __nr);
+	memcpy(iovec, __iovec, sizeof(*iovec) * __nr);
+	int nr = __nr;
 
 #ifdef HAVE_VMSPLICE
-	if (use_vmsplice) {
+	if (use_vmsplice)
 		TRACE(RESOURCE, "using vmsplice\n");
-		retval = vmsplice(fd, iovec, nr, 0);
-	}
-	else
 #endif
-	retval = writev(fd, iovec, nr);
-
-	if (retval <= 0)
-		THROW(EXP_RESOURCE_PROCESS_FAILURE, "writev failed: return %d:%s",
-				retval, strerror(errno));
-
-	size_t total_sz = 0;
-	for (int i = 0; i < nr; i++)
-		total_sz += iovec[i].iov_len;
-	TRACE(RESOURCE, "xx_aio_write: write %d bytes, return %d\n",
-			total_sz, retval);
-	if (retval >= total_sz)
-		return retval;
-
-	size_t total_write = retval;
-	size_t s = 0;
-	/* use normal write to read left data */
-	for (int i = 0; i < nr; i++) {
-		s += iovec[i].iov_len;
-		if (s > total_write) {
-			int len = s - total_write;
-			void * ptr = iovec[i].iov_base + iovec[i].iov_len - len;
-			xxwrite(fd, ptr, len);
-			total_write += len;
+	do {
+#ifdef HAVE_VMSPLICE
+		if (use_vmsplice) {
+			retval = vmsplice(fd, iovec, nr, 0);
 		}
-	}
-	return total_write;
+		else
+#endif
+		if (write)
+			retval = writev(fd, iovec, nr);
+		else
+			retval = readv(fd, iovec, nr);
+
+		if (retval < 0) {
+			THROW(EXP_RESOURCE_PROCESS_FAILURE, "readv/writev/vmsplice failed: return %d:%s",
+					retval, strerror(errno));
+		} else if (retval == 0) {
+			WARNING(RESOURCE, "readv/writev/vmsplice return 0, very strange, sleep 0.01 sec\n");
+			force_delay(10);
+		}
+		total_spliced += retval;
+
+		/* compute bytes left */
+		int transfered_sz = 0;
+		int i;
+		for (i = 0; i < nr; i++) {
+			transfered_sz += iovec[i].iov_len;
+			if (transfered_sz > retval) {
+				/* adjust current iovec */
+				size_t left = transfered_sz - retval;
+				iovec[i].iov_base +=
+					iovec[i].iov_len - left;
+				iovec[i].iov_len = left;
+				break;
+			}
+		}
+		nr = (nr - i);
+		iovec += i;
+	} while (nr > 0);
+
+	TRACE(RESOURCE, "xx_splicev over, total splice %d bytes\n",
+			total_spliced);
+	return total_spliced;
 }
 
 static ssize_t
 xxwritev(int fd, struct iovec * iovec,
 		int nr)
 {
-	return xx_aio_write(fd, iovec, nr, FALSE);
+	return xx_splicev(fd, iovec, nr, FALSE, TRUE);
 }
 
 #ifdef HAVE_VMSPLICE
 static ssize_t
-xxvmsplice(int fd, struct iovec * iovec,
+xxvmsplice_read(int fd, struct iovec * iovec,
 		int nr)
 {
-	return xx_aio_write(fd, iovec, nr, TRUE);
+	return xx_splicev(fd, iovec, nr, TRUE, FALSE);
+}
+
+static ssize_t
+xxvmsplice_write(int fd, struct iovec * iovec,
+		int nr)
+{
+	return xx_splicev(fd, iovec, nr, TRUE, TRUE);
 }
 #endif
 
@@ -366,13 +390,23 @@ __iowritev(int fd, struct iovec * iovec, int nr)
 
 #ifdef HAVE_VMSPLICE
 static inline ssize_t
-__iovmsplice(int fd, struct iovec * iovec, int nr)
+__iovmsplice_read(int fd, struct iovec * iovec, int nr)
 {
 	if (nr <= 0)
 		return 0;
 	assert(iovec != NULL);
-	return xxvmsplice(fd, iovec, nr);
+	return xxvmsplice_read(fd, iovec, nr);
 }
+
+static inline ssize_t
+__iovmsplice_write(int fd, struct iovec * iovec, int nr)
+{
+	if (nr <= 0)
+		return 0;
+	assert(iovec != NULL);
+	return xxvmsplice_write(fd, iovec, nr);
+}
+
 #endif
 
 
@@ -441,17 +475,31 @@ writev_cmd(struct io_t * io, struct iovec * iovec, int nr)
 
 #ifdef HAVE_VMSPLICE
 static ssize_t
-vmsplice_data(struct io_t * io, struct iovec * iovec, int nr)
+vmsplice_write_data(struct io_t * io, struct iovec * iovec, int nr)
 {
 	assert(io == &data_side_io);
-	return __iovmsplice(D_OUT, iovec, nr);
+	return __iovmsplice_write(D_OUT, iovec, nr);
 }
 
 static ssize_t
-vmsplice_cmd(struct io_t * io, struct iovec * iovec, int nr)
+vmsplice_write_cmd(struct io_t * io, struct iovec * iovec, int nr)
 {
 	assert(io == &cmd_side_io);
-	return __iovmsplice(C_OUT, iovec, nr);
+	return __iovmsplice_write(C_OUT, iovec, nr);
+}
+
+static ssize_t
+vmsplice_read_data(struct io_t * io, struct iovec * iovec, int nr)
+{
+	assert(io == &cmd_side_io);
+	return __iovmsplice_read(D_IN, iovec, nr);
+}
+
+static ssize_t
+vmsplice_read_cmd(struct io_t * io, struct iovec * iovec, int nr)
+{
+	assert(io == &data_side_io);
+	return __iovmsplice_read(C_IN, iovec, nr);
 }
 
 #endif
@@ -467,7 +515,8 @@ static struct io_functionor_t data_side_io_functionor = {
 	.readv = readv_cmd,
 	.writev = writev_data,
 #ifdef HAVE_VMSPLICE
-	.vmsplice = vmsplice_data,
+	.vmsplice_write = vmsplice_write_data,
+	.vmsplice_read = vmsplice_read_cmd,
 #endif
 	.seek = NULL,
 	.tell = NULL,
@@ -485,7 +534,8 @@ static struct io_functionor_t cmd_side_io_functionor = {
 	.readv = readv_data,
 	.writev = writev_cmd,
 #ifdef HAVE_VMSPLICE
-	.vmsplice = vmsplice_cmd,
+	.vmsplice_write = vmsplice_write_cmd,
+	.vmsplice_read = vmsplice_read_data,
 #endif
 	.seek = NULL,
 	.tell = NULL,

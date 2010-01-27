@@ -13,6 +13,7 @@
 init_func_t init_funcs[] = {
 	__dbg_init,
 	__yconf_init,
+	__timer_init,
 	NULL,
 };
 
@@ -22,6 +23,17 @@ cleanup_func_t cleanup_funcs[] = {
 	__dbg_cleanup,
 	NULL,
 };
+
+static void inline
+print_bitmap(struct bitmap_t * b)
+{
+	VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+	VERBOSE(SYSTEM, "first 4 bytes: 0x%x, 0x%x, 0x%x, 0x%x\n",
+			b->pixels[0],
+			b->pixels[1],
+			b->pixels[2],
+			b->pixels[3]);
+}
 
 int main()
 {
@@ -34,29 +46,35 @@ int main()
 
 		struct bitmap_t * b = get_resource("0:file:/tmp/xxx.png",
 				(deserializer_t)bitmap_deserialize);
-		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		print_bitmap(b);
 		free_bitmap(b);
 
-		for (int i = 0; i < 1000; i++) {
+
+		b = get_resource("0:file:./no_alpha.png",
+				(deserializer_t)bitmap_deserialize);
+		print_bitmap(b);
+		free_bitmap(b);
+#if 0
+		for (int i = 0; i < 10000; i++) {
 			b = get_resource("0:file:./no_alpha.png",
 					(deserializer_t)bitmap_deserialize);
-			VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
 			free_bitmap(b);
 		}
+#endif
 
 		b = get_resource("0:file:./have_alpha.png",
 				(deserializer_t)bitmap_deserialize);
-		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		print_bitmap(b);
 		free_bitmap(b);
 
 		b = get_resource("0:file:./largepng.png",
 				(deserializer_t)bitmap_deserialize);
-		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		print_bitmap(b);
 		free_bitmap(b);
 
 		b = get_resource("0:file:./jpegtest.jpeg",
 				(deserializer_t)bitmap_deserialize);
-		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+		print_bitmap(b);
 		free_bitmap(b);
 
 	} FINALLY {

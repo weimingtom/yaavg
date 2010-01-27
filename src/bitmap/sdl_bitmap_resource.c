@@ -186,10 +186,11 @@ sdl_load(struct io_t * io, const char * id)
 			f->colorkey);
 	DEBUG(BITMAP, "\talpha=0x%x\n",
 			f->alpha);
-	DEBUG(BITMAP, "\tfirst 4 bytes: 0x%x\n",
-			((uint32_t*)(img->pixels))[0]);
-
-
+	DEBUG(BITMAP, "\tfirst 4 bytes: (0x%x, 0x%x, 0x%x, 0x%x)\n",
+			((uint8_t*)(img->pixels))[0],
+			((uint8_t*)(img->pixels))[1],
+			((uint8_t*)(img->pixels))[2],
+			((uint8_t*)(img->pixels))[3]);
 
 	struct bitmap_resource_t * b = NULL;
 	struct exception_t exp;

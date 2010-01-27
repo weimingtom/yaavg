@@ -164,8 +164,8 @@ common_bitmap_serialize(struct resource_t * r, struct io_t * io)
 	vecs[2].iov_base = b->head.pixels;
 	vecs[2].iov_len = bitmap_data_size(&head);
 
-	if (io->functionor->vmsplice) {
-		io_vmsplice(io, vecs, 3);
+	if (io->functionor->vmsplice_write) {
+		io_vmsplice_write(io, vecs, 3);
 	} else if (io->functionor->writev) {
 		io_writev(io, vecs, 3);
 	} else {

@@ -12,6 +12,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <assert.h>
+#include <aio.h>
+
 
 struct bitmap_t *
 alloc_bitmap(struct bitmap_t * phead, int id_sz)
@@ -64,8 +66,14 @@ bitmap_deserialize(struct io_t * io)
 	DEBUG(BITMAP, "read id: %s\n", r->id);
 
 	/* read pixels */
-	io_read(io, r->pixels, data_sz, 1);
-
+	if (io->functionor->vmsplice_read) {
+		struct iovec vec;
+		vec.iov_base = r->pixels;
+		vec.iov_len = data_sz;
+		io_vmsplice_read(io, &vec, 1);
+	} else {
+		io_read(io, r->pixels, data_sz, 1);
+	}
 	/* write the sync */
 	sync = END_DESERIALIZE_SYNC;
 	io_write(io, &sync, sizeof(sync), 1);
