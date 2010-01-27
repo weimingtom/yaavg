@@ -275,7 +275,7 @@ xx_aio_write(int fd, struct iovec * iovec,
 	size_t total_sz = 0;
 	for (int i = 0; i < nr; i++)
 		total_sz += iovec[i].iov_len;
-	TRACE(RESOURCE, "writev: write %d bytes, return %d\n",
+	TRACE(RESOURCE, "xx_aio_write: write %d bytes, return %d\n",
 			total_sz, retval);
 	if (retval >= total_sz)
 		return retval;
@@ -672,6 +672,7 @@ launch_resource_process(void)
 		xclose(C_IN);
 		xclose(D_OUT);
 	} CATCH(exp) {
+		VERBOSE(RESOURCE, "resource worker end\n");
 		switch (exp.type) {
 			case EXP_RESOURCE_PEER_SHUTDOWN:
 				VERBOSE(RESOURCE, "resource process end normally\n");

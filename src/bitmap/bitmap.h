@@ -20,6 +20,8 @@ __BEGIN_DECLS
 enum bitmap_format {
 	BITMAP_RGB,
 	BITMAP_RGBA,
+	BITMAP_BGR,
+	BITMAP_BGRA,
 };
 
 /* data should be fixed when deserializing */

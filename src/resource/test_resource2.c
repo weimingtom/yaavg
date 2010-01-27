@@ -37,10 +37,12 @@ int main()
 		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
 		free_bitmap(b);
 
-		b = get_resource("0:file:./no_alpha.png",
-				(deserializer_t)bitmap_deserialize);
-		VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
-		free_bitmap(b);
+		for (int i = 0; i < 1000; i++) {
+			b = get_resource("0:file:./no_alpha.png",
+					(deserializer_t)bitmap_deserialize);
+			VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);
+			free_bitmap(b);
+		}
 
 		b = get_resource("0:file:./have_alpha.png",
 				(deserializer_t)bitmap_deserialize);

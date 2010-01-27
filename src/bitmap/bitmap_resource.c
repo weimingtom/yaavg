@@ -23,7 +23,9 @@ static struct functionor_t * functionors[] = {
 #ifdef HAVE_SDLIMAGE
 	&sdl_bitmap_resource_functionor,
 #endif
+#ifdef HAVE_LIBPNG
 //	&png_bitmap_resource_functionor,
+#endif
 	&dummy_bitmap_resource_functionor,
 	NULL,
 };
@@ -131,6 +133,56 @@ struct resource_t *
 load_dummy_bitmap_resource(struct io_t * io, const char * id)
 {
 	return __load_bitmap_resource(NULL, id, "...");
+}
+
+void
+common_bitmap_serialize(struct resource_t * r, struct io_t * io)
+{
+	assert(r != NULL);
+	assert(io != NULL);
+	struct bitmap_resource_t * b = container_of(r,
+			struct bitmap_resource_t,
+			resource);
+	DEBUG(BITMAP, "serializing common bitmap %s\n",
+			b->head.id);
+
+	struct bitmap_t head = b->head;
+	head.id = NULL;
+	head.pixels = NULL;
+
+	int sync = BEGIN_SERIALIZE_SYNC;
+	io_write(io, &sync, sizeof(sync), 1);
+
+	struct iovec vecs[3];
+
+	vecs[0].iov_base = &head;
+	vecs[0].iov_len = sizeof(head);
+
+	vecs[1].iov_base = b->head.id;
+	vecs[1].iov_len = b->head.id_sz;
+
+	vecs[2].iov_base = b->head.pixels;
+	vecs[2].iov_len = bitmap_data_size(&head);
+
+	if (io->functionor->vmsplice) {
+		io_vmsplice(io, vecs, 3);
+	} else if (io->functionor->writev) {
+		io_writev(io, vecs, 3);
+	} else {
+		io_write(io, vecs[0].iov_base, vecs[0].iov_len, 1);
+		io_write(io, vecs[1].iov_base, vecs[1].iov_len, 1);
+		io_write(io, vecs[2].iov_base, vecs[2].iov_len, 1);
+	}
+
+	/* wait for sync */
+	/* end sync have to reside here because of the lifetime of head:
+	 * it will dead right after we return from this function */
+	io_read(io, &sync, sizeof(sync), 1);
+	assert(sync == END_DESERIALIZE_SYNC);
+	DEBUG(BITMAP, "got sync mark\n");
+
+	DEBUG(BITMAP, "common bitmap %s send over\n",
+			b->head.id);
 }
 
 

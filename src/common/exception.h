@@ -4,6 +4,8 @@
  */
 /* 
  * support for TRY---CATCH---FINALLY.
+ *
+ * THIS IS NOT C++, NEVER RETURN IN TRY BLOCK!!!!!
  */
 
 #ifndef __EXCEPTION_H

@@ -5,6 +5,7 @@
 
 
 #include <config.h>
+
 #include <common/debug.h>
 #include <common/exception.h>
 #include <common/defs.h>
@@ -14,6 +15,12 @@
 
 #include <string.h>
 #include <assert.h>
+
+#include <endian.h>
+
+#if ! __BYTE_ORDER == __LITTLE_ENDIAN
+# error Please tell me the value of SDLs RGBA mask in big endian machine.
+#endif
 
 #include <SDL/SDL_image.h>
 
@@ -52,15 +59,21 @@ sdl_check_usable(const char * param)
 }
 
 static void
-sdl_serialize(struct resource_t * r, struct io_t * io)
-{
-	assert(r != NULL);
-	assert(io != NULL);
-}
-
-static void
 sdl_destroy(struct resource_t * r)
 {
+	assert(r != NULL);
+	DEBUG(BITMAP, "destroying sdl image %s\n", r->id);
+	/* retrive the bitmap resource structure */
+	struct bitmap_resource_t * b = container_of(r,
+			struct bitmap_resource_t,
+			resource);
+	assert(b == r->ptr);
+	SDL_Surface * img = r->pprivate;
+	assert(img != NULL);
+	SDL_UnlockSurface(img);
+	SDL_FreeSurface(img);
+	DEBUG(BITMAP, "sdl image %s destroyed\n", r->id);
+	xfree(b);
 }
 
 struct wrap_rwops {
@@ -176,14 +189,85 @@ sdl_load(struct io_t * io, const char * id)
 	DEBUG(BITMAP, "\tfirst 4 bytes: 0x%x\n",
 			((uint32_t*)(img->pixels))[0]);
 
-	SDL_FreeSurface(img);
-	THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s",
-			id, io->functionor->name, SDL_GetError());
 
 
-	/* lock before free */
-	SDL_LockSurface(img);
-	return NULL;
+	struct bitmap_resource_t * b = NULL;
+	struct exception_t exp;
+	TRY(exp) {
+		/* check whether the pixel format is correct */
+		if ((f->BytesPerPixel != 3) && (f->BytesPerPixel != 4))
+			THROW(EXP_UNSUPPORT_FORMAT, "bitmap %s bytes_pre_pixel is %d",
+					id, f->BytesPerPixel);
+		
+		/* select a format */
+		enum bitmap_format format;
+		if (f->BytesPerPixel == 3) {
+			/* RGBA or BGRA */
+			/* we assume we are in a little endian machine,
+			 * see the head of this file */
+			if ((f->Rmask == 0xff) &&
+					(f->Gmask == 0xff00) &&
+					(f->Bmask == 0xff0000))
+				format = BITMAP_RGB;
+			else if ((f->Bmask == 0xff) &&
+					(f->Gmask == 0xff00) &&
+					(f->Rmask == 0xff0000))
+				format = BITMAP_BGR;
+			else
+				THROW(EXP_UNSUPPORT_FORMAT, "bitmap %s rgb mask is strange: (0x%x, 0x%x, 0x%x)",
+						id, f->Rmask, f->Gmask, f->Bmask);
+		} else {
+			assert(f->BytesPerPixel == 4);
+
+			if ((f->Rmask == 0xff) &&
+					(f->Gmask == 0xff00) &&
+					(f->Bmask == 0xff0000) &&
+					(f->Amask == 0xff000000))
+				format = BITMAP_RGBA;
+			else if ((f->Bmask == 0xff) &&
+					(f->Gmask == 0xff00) &&
+					(f->Rmask == 0xff0000) &&
+					(f->Amask == 0xff000000))
+				format = BITMAP_BGRA;
+			else
+				THROW(EXP_UNSUPPORT_FORMAT, "bitmap %s rgba mask is strange: (0x%x, 0x%x, 0x%x, 0x%x)",
+						id, f->Rmask, f->Gmask, f->Bmask, f->Amask);
+		}
+
+		int id_sz = strlen(id) + 1;
+		/* create resource structure */
+		b = xcalloc(1, sizeof(*b) + id_sz);
+		assert(b != NULL);
+		struct resource_t * r = &b->resource;
+		struct bitmap_t * h = &b->head;
+
+		strcpy((void*)b->__data, id);
+		h->id = (void*)b->__data;
+		h->id_sz = id_sz;
+		h->format = format;
+		h->bpp = f->BytesPerPixel;
+		h->w = img->w;
+		h->h = img->h;
+		h->pixels = (uint8_t*)(img->pixels);
+
+		r->id = h->id;
+		/* only an estimation */
+		r->res_sz = sizeof(*img) + bitmap_data_size(h) + id_sz;
+		r->serialize = common_bitmap_serialize;
+		r->destroy = sdl_destroy;
+		r->ptr = b;
+
+		r->pprivate = img;
+		SDL_LockSurface(img);
+	} FINALLY {	}
+	CATCH(exp) {
+		SDL_FreeSurface(img);
+		RETHROW(exp);
+	}
+
+	if (b == NULL)
+		THROW(EXP_UNCATCHABLE, "we shouldn't get here");
+	return b;
 }
 
 
