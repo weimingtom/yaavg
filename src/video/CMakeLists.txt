@@ -8,7 +8,8 @@ ADD_LIBRARY(video STATIC ${SRC})
 
 SET(tests
 	test_video_timer
+	test_video
 	)
 
-build_tests("${tests}" "yconf;utils;video;common")
+build_tests("${tests}" "yconf;utils;video;resource;common")
 

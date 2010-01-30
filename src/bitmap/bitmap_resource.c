@@ -136,7 +136,7 @@ load_dummy_bitmap_resource(struct io_t * io, const char * id)
 }
 
 void
-common_bitmap_serialize(struct resource_t * r, struct io_t * io)
+generic_bitmap_serialize(struct resource_t * r, struct io_t * io)
 {
 	assert(r != NULL);
 	assert(io != NULL);

@@ -6,6 +6,8 @@ SET(SRC
 	)
 
 ADD_LIBRARY(resource STATIC ${SRC})
+TARGET_LINK_LIBRARIES(resource bitmap io)
+
 
 SET(
 	tests

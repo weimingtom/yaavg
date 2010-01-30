@@ -68,7 +68,7 @@ dummy_load(struct io_t * io, const char * id)
 
 	r->id = h->id;
 	r->res_sz = total_sz;
-	r->serialize = common_bitmap_serialize;
+	r->serialize = generic_bitmap_serialize;
 	r->destroy = dummy_destroy;
 	r->ptr = b;
 	r->pprivate = NULL;

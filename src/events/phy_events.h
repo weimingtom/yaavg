@@ -98,6 +98,11 @@ struct phy_event {
 	union _phy_event u;
 };
 
+static void inline print_event(struct phy_event * e)
+{
+	return;
+}
+
 #endif
 
 // vim:ts=4:sw=4

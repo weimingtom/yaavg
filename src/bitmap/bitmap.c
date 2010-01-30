@@ -26,13 +26,21 @@ alloc_bitmap(struct bitmap_t * phead, int id_sz)
 	*res = *phead;
 	res->id = (char *)(res->__data);
 	res->pixels = PIXELS_PTR(res->__data + id_sz);
+	res->destroy_bitmap = NULL;
 	return res;
 }
 
 void
 free_bitmap(struct bitmap_t * ptr)
 {
-	xfree(ptr);
+	TRACE(BITMAP, "freeing bitmap %p\n", ptr);
+	if (ptr->destroy_bitmap == NULL) {
+		xfree(ptr);
+		return;
+	}
+
+	ptr->destroy_bitmap(ptr);
+	return;
 }
 
 struct bitmap_t *

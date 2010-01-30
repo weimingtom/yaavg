@@ -147,7 +147,7 @@ finish_frame(void)
 	dtick_t render_ms = current - controller.last_frame_tick;
 	TRACE(TIMER, "render 1 frame use %d ms\n", render_ms);
 	TRACE(TIMER, "real_fps is %f\n", controller.real_fps);
-	if (render_ms < 0)
+	if (render_ms < 1)
 		render_ms = 1;
 
 	if (render_ms < controller.mspf) {

@@ -254,7 +254,7 @@ sdl_load(struct io_t * io, const char * id)
 		r->id = h->id;
 		/* only an estimation */
 		r->res_sz = sizeof(*img) + bitmap_data_size(h) + id_sz;
-		r->serialize = common_bitmap_serialize;
+		r->serialize = generic_bitmap_serialize;
 		r->destroy = sdl_destroy;
 		r->ptr = b;
 

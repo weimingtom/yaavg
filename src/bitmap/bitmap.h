@@ -35,13 +35,14 @@ enum bitmap_format {
 	enum bitmap_format format;	\
 	int bpp;		\
 	int w, h;					\
-	uint8_t * pixels;
+	uint8_t * pixels;	\
 
 /* 
  * this is the host side bitmap
  */
 struct bitmap_t {
 	BITMAP_HEAD
+	void (*destroy_bitmap)(struct bitmap_t * b);
 	uint8_t __data[0];
 };
 
