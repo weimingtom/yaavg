@@ -128,7 +128,8 @@ static inline void list_del(struct list_head *entry)
 	entry->prev = LIST_POISON2;
 }
 
-static inline int list_head_deleted(const struct list_head * head)
+static inline int
+list_head_deleted(const struct list_head * head)
 {
 	if ((head->next == LIST_POISON1) || (head->prev == LIST_POISON2))
 		return TRUE;

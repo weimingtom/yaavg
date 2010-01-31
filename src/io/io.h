@@ -8,10 +8,13 @@
 
 #include <sys/uio.h>
 #include <common/functionor.h>
+#include <common/exception.h>
 #include <assert.h>
 
 /* for ssize_t */
 #include <stdio.h>
+
+#include <endian.h>
 
 #define IO_READ	(1)
 #define IO_WRITE	(2)
@@ -19,7 +22,9 @@ struct io_functionor_t;
 struct io_t {
 	struct io_functionor_t * functionor;
 	int rdwr;
+	const char * id;
 	void * pprivate;
+	char __data[0];
 };
 
 extern struct function_class_t
@@ -30,6 +35,7 @@ io_function_class;
 
 struct io_functionor_t {
 	BASE_FUNCTIONOR
+	bool_t inited;
 	struct io_t * (*open)(const char *);
 	struct io_t * (*open_write)(const char *);
 	int (*read)(struct io_t * io, void * ptr,
@@ -44,14 +50,32 @@ struct io_functionor_t {
 			int nr);
 	ssize_t (*vmsplice_read)(struct io_t * io, struct iovec * iovec,
 			int nr);
-	int (*seek)(struct io_t * io, int offset,
+	int (*seek)(struct io_t * io, int64_t offset,
 			int whence);
-	int (*tell)(struct io_t * io);
+	int64_t (*tell)(struct io_t * io);
 	void (*close)(struct io_t * io);
+	void (*command)(const char * cmd);
 };
 
 extern struct io_functionor_t *
 get_io_handler(const char * proto);
+
+static void inline
+io_init(struct io_functionor_t * r, const char * proto)
+{
+	if (r == NULL)
+		return;
+	if (!r->inited) {
+		if (r->check_usable)
+			if(!(r->check_usable(proto)))
+				THROW(EXP_UNSUPPORT_IO,
+						"IO for \"%s\" is unsupported currently",
+						proto);
+		if (r->init)
+			r->init();
+		r->inited = TRUE;
+	}
+}
 
 struct io_t *
 io_open(const char * proto, const char * name);
@@ -82,7 +106,7 @@ io_write(struct io_t * io, void * ptr,
 }
 
 static inline int
-io_seek(struct io_t * io, int offset,
+io_seek(struct io_t * io, int64_t offset,
 		int whence)
 {
 	assert(io &&
@@ -92,7 +116,7 @@ io_seek(struct io_t * io, int offset,
 			whence);
 }
 
-static inline int
+static inline int64_t
 io_tell(struct io_t * io)
 {
 	assert(io &&
@@ -141,8 +165,6 @@ io_vmsplice_read(struct io_t * io, struct iovec * vecs, int nr)
 	return io->functionor->vmsplice_read(io, vecs, nr);
 }
 
-
-
 static inline int
 io_readv(struct io_t * io, struct iovec * vecs, int nr)
 {
@@ -150,6 +172,81 @@ io_readv(struct io_t * io, struct iovec * vecs, int nr)
 			(io->functionor) &&
 			(io->functionor->readv));
 	return io->functionor->readv(io, vecs, nr);
+}
+
+static inline void
+io_read_force(struct io_t * io, void * data, int sz)
+{
+	int err;
+	assert(io != NULL);
+	if (sz <= 0)
+		return;
+	assert(data != NULL);
+	err = io_read(io, data, 1, sz);
+	if (err != sz)
+		THROW(EXP_BAD_RESOURCE, "read file %s failed: expect %d but read %d",
+				io->id, sz, err);
+}
+
+
+static inline uint8_t
+io_read_byte(struct io_t * io)
+{
+	int err;
+	uint8_t x;
+	err = io_read(io, &x, sizeof(x), 1);
+	if (err != 1)
+		THROW(EXP_BAD_RESOURCE, "read byte from %s failed: return %d",
+				io->id, err);
+	return x;
+}
+
+static inline uint64_t
+io_read_le64(struct io_t * io)
+{
+	int err;
+	uint64_t x;
+	err = io_read(io, &x, sizeof(x), 1);
+	if (err != 1)
+		THROW(EXP_BAD_RESOURCE, "read uin64 (le) from %s failed: return %d",
+				io->id, err);
+	return le64toh(x);
+}
+
+static inline uint64_t
+io_read_be64(struct io_t * io)
+{
+	int err;
+	uint32_t x;
+	err = io_read(io, &x, sizeof(x), 1);
+	if (err != 1)
+		THROW(EXP_BAD_RESOURCE, "read uin64 (be) from %s failed: return %d",
+				io->id, err);
+	return be64toh(x);
+}
+
+static inline uint32_t
+io_read_le32(struct io_t * io)
+{
+	int err;
+	uint32_t x;
+	err = io_read(io, &x, sizeof(x), 1);
+	if (err != 1)
+		THROW(EXP_BAD_RESOURCE, "read uin32 (le) from %s failed: return %d",
+				io->id, err);
+	return le32toh(x);
+}
+
+static inline uint32_t
+io_read_be32(struct io_t * io)
+{
+	int err;
+	uint32_t x;
+	err = io_read(io, &x, sizeof(x), 1);
+	if (err != 1)
+		THROW(EXP_BAD_RESOURCE, "read uin32 (be) from %s failed: return %d",
+				io->id, err);
+	return be32toh(x);
 }
 
 

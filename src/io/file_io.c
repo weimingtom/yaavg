@@ -19,10 +19,12 @@ file_open(const char * path, const char * mode)
 	if (fp == NULL)
 		THROW(EXP_RESOURCE_NOT_FOUND, "open file \"%s\" using \"%s\" failed",
 				path, mode);
-	struct io_t * r = calloc(1, sizeof(*r));
+	struct io_t * r = xcalloc(1, sizeof(*r) + strlen(path) + 1);
 	assert(r != NULL);
 	r->functionor = &file_io_functionor;
 	r->pprivate = fp;
+	strcpy(r->__data, path);
+	r->id = r->__data;
 	return r;
 }
 
@@ -58,7 +60,7 @@ file_read(struct io_t * io, void * ptr,
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	int ret = fread(ptr, size, nr, fp);
-	if (ret < 0)
+	if (ret != nr)
 		THROW(EXP_BAD_RESOURCE, "read(%d, %d) file %p return %d\n",
 				size, nr, fp, ret);
 	return ret;
@@ -79,7 +81,7 @@ file_write(struct io_t * io, void * ptr,
 }
 
 static int
-file_seek(struct io_t * io, int offset,
+file_seek(struct io_t * io, int64_t offset,
 		int whence)
 {
 	assert(io != NULL);
@@ -87,14 +89,14 @@ file_seek(struct io_t * io, int offset,
 	assert(io->functionor->seek == file_seek);
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
-	int ret = fseek(fp, offset, whence);
+	int ret = fseeko64(fp, offset, whence);
 	if (ret < 0)
-		THROW(EXP_BAD_RESOURCE, "seek(%d, %d) file %p return %d\n",
+		THROW(EXP_BAD_RESOURCE, "seek(%Ld, %d) file %p return %d\n",
 				offset, whence, fp, ret);
 	return ret;
 }
 
-static int
+static int64_t
 file_tell(struct io_t * io)
 {
 	assert(io != NULL);
@@ -104,9 +106,9 @@ file_tell(struct io_t * io)
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 
-	int ret = ftell(fp);
+	int64_t ret = ftello64(fp);
 	if (ret < 0)
-		THROW(EXP_BAD_RESOURCE, "tell file %p return %d\n",
+		THROW(EXP_BAD_RESOURCE, "tell file %p return %Ld\n",
 				fp, ret);
 	return ret;
 }
@@ -134,6 +136,7 @@ file_check_usable(const char * param)
 
 struct io_functionor_t file_io_functionor = {
 	.name = "libc file",
+	.inited = TRUE,
 	.fclass = FC_IO,
 	.check_usable = file_check_usable,
 	.open = file_read_open,

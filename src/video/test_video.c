@@ -74,7 +74,7 @@ main()
 		/* begin frame loop */
 		render();
 	} FINALLY {
-		video_destroy();
+		video_cleanup();
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)
 				&& (exp.type != EXP_RESOURCE_PROCESS_FAILURE)) {
 			shutdown_resource_process();

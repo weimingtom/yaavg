@@ -32,7 +32,7 @@ dummy_init(void)
 }
 
 static void
-dummy_destroy(void)
+dummy_cleanup(void)
 {
 	DEBUG(VIDEO, "dummy video destroying\n");
 }
@@ -65,11 +65,12 @@ struct video_functionor_t dummy_video_functionor = {
 	.name = "DummyVideo",
 	.fclass = FC_VIDEO,
 	.check_usable = dummy_check_usable,
+	.init = dummy_init,
+
+	.cleanup = dummy_cleanup,
 	.command_list = NULL,
 	.reinit_hook_list = NULL,
 
-	.init = dummy_init,
-	.destroy = dummy_destroy,
 	.poll_events = dummy_poll_events,
 };
 

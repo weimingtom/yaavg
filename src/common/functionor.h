@@ -22,7 +22,9 @@ enum FunctionClass {
 #define BASE_FUNCTIONOR	\
 	const char * name; 	\
 	enum FunctionClass fclass;	\
-	bool_t (*check_usable)(const char * params);
+	bool_t (*check_usable)(const char * params);	\
+	void (*init)(void);			\
+	void (*cleanup)(void);
 
 struct functionor_t {
 	BASE_FUNCTIONOR

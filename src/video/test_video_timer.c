@@ -49,8 +49,8 @@ main()
 			finish_frame();
 		}
 	} FINALLY {
-		if ((vid) && (vid->destroy))
-			vid->destroy();
+		if ((vid) && (vid->cleanup))
+			vid->cleanup();
 		vid = NULL;
 	}
 	CATCH(exp) {

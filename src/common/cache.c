@@ -191,6 +191,10 @@ cache_cleanup(struct cache_t * cache)
 {
 	assert(cache != NULL);
 	assert(cache->dict != NULL);
+	if (cache->nr == 0)
+		return;
+	if (cache->total_sz == 0)
+		return;
 
 	DEBUG(CACHE, "trying to shink cache %s\n", cache->name);
 
@@ -209,6 +213,8 @@ cache_cleanup(struct cache_t * cache)
 		strdict_invalid_entry(dict, de);
 		cache_entry_destroy(ce);
 	}
+	assert(cache->nr == 0);
+	assert(cache->total_sz == 0);
 }
 
 void
@@ -226,17 +232,24 @@ caches_shrink(void)
 }
 
 void
+cache_destroy(struct cache_t * c)
+{
+	if (c->dict != NULL) {
+		cache_cleanup(c);
+		strdict_destroy(c->dict);
+	}
+	c->dict = NULL;
+	if (!list_head_deleted(&(c->list)))
+		list_del(&(c->list));
+}
+
+void
 __caches_cleanup(void)
 {
 	struct cache_t * c = NULL;
 	struct cache_t * n;
 	list_for_each_entry_safe(c, n, &__cache_list, list) {
-		if (c->dict != NULL) {
-			cache_cleanup(c);
-			strdict_destroy(c->dict);
-		}
-		c->dict = NULL;
-		list_del(&(c->list));
+		cache_destroy(c);
 	}
 }
 

@@ -12,8 +12,10 @@
 #include <string.h>
 
 extern struct functionor_t file_io_functionor;
+extern struct functionor_t xp3_io_functionor;
 
 static struct functionor_t * functionors[] = {
+	&xp3_io_functionor,
 	&file_io_functionor,
 	NULL,
 };
@@ -37,9 +39,12 @@ get_io_handler(const char * proto)
 	TRACE(IO, "find io handler for proto \"%s\"\n",
 			p);
 	r = strdict_get(&io_functionors_dict, p).ptr;
+
+	/* io_init is no reenter problem */
 	if (r != NULL) {
 		TRACE(IO, "get handler \"%s\" from dict for proto \"%s\"\n",
 				r->name, p);
+		io_init(r, proto);
 		return r;
 	}
 
@@ -51,6 +56,7 @@ get_io_handler(const char * proto)
 	bool_t rep = strdict_replace(&io_functionors_dict,
 			p, (dict_data_t)(void*)r, NULL);
 	assert(rep);
+	io_init(r, proto);
 	return r;
 }
 
@@ -72,6 +78,16 @@ io_open_write(const char * proto, const char * name)
 	return f->open_write(name);
 }
 
+void
+__io_cleanup(void)
+{
+	struct functionor_t ** pos = functionors;
+	while (*pos != NULL) {
+		if ((*pos)->cleanup)
+			(*pos)->cleanup();
+		pos ++;
+	}
+}
 
 // vim:ts=4:sw=4
 

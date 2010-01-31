@@ -31,9 +31,7 @@ struct video_functionor_t {
 	void (*set_mouse_pos)(float x, float y);
 	void (*set_mouse_pos_int)(int x, int y);
 
-	void (*init)(void);
 	void (*reinit)(void);
-	void (*destroy)(void);
 	void (*reshape)(int w, int h);
 
 	void (*begin_frame)(void);
@@ -87,7 +85,7 @@ set_video_reinit_hook_list(struct list_head * l)
 
 #define video_set_caption(v)	VID_VOIDFUNC(set_caption, (v))
 #define video_init()			VID_VOIDFUNC(init)
-#define video_destroy()			VID_VOIDFUNC(destroy)
+#define video_cleanup()			VID_VOIDFUNC(cleanup)
 #define video_begin_frame()		VID_VOIDFUNC(begin_frame)
 #define video_render_frame()	VID_VOIDFUNC(render_frame)
 #define video_end_frame()		VID_VOIDFUNC(end_frame)

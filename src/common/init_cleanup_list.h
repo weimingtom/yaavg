@@ -32,6 +32,7 @@ extern void __yconf_cleanup(void);
 
 extern void __timer_init(void);
 extern void __caches_cleanup(void);
+extern void __io_cleanup(void);
 
 __END_DECLS
 #endif

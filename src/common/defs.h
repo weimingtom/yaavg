@@ -5,6 +5,7 @@
 #include <config.h>
 #include <sys/cdefs.h>
 #include <stdint.h>
+#include <endian.h>
 
 #ifdef HAVE_STDBOOL_H
 #include <stdbool.h>

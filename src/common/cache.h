@@ -58,6 +58,9 @@ cache_init(struct cache_t * c, const char * name,
 		int limit_sz);
 
 extern void
+cache_destroy(struct cache_t * c);
+
+extern void
 cache_insert(struct cache_t * cache,
 		struct cache_entry_t * entry);
 
