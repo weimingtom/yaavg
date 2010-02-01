@@ -32,10 +32,10 @@ struct xp3_package {
 
 struct xp3_file {
 	struct cache_entry_t ce;
-	int total_sz;
 	int file_sz;
-	int name_sz;
 	char * utf8_name;
+	char * package_name;
+	char * id;
 	uint8_t * data;
 	uint8_t __data[0];
 };
@@ -45,6 +45,7 @@ struct xp3_io_t {
 	char * phy_fn;
 	char * fn;
 	char * id;
+	uint64_t file_sz;
 	int64_t pos;
 	char __id[0];
 	/* the content of __id:
@@ -61,7 +62,7 @@ struct xp3_index_item_segment {
 };
 
 struct xp3_index_item {
-	uint8_t * utf8_name;
+	char * utf8_name;
 	/* name_sz contain the last '\0' */
 	int name_sz;
 	uint32_t file_hash;
@@ -72,9 +73,21 @@ struct xp3_index_item {
 	uint8_t __data[0];
 };
 
+static inline char *
+_strtok(char * str, char x)
+{
+	assert(str != NULL);
+	while ((*str != '\0') && (*str != x)) {
+		str ++;
+	}
+	if (*str == '\0')
+		return NULL;
+	return str;
+}
+
 /* if src == NULL, only compute the utf8 len */
 static int
-ucs2le_to_utf8(uint8_t * dest, int dest_len,
+ucs2le_to_utf8(char * dest, int dest_len,
 		const uint16_t * src, int nr_chars)
 {
 	int len = 0;
@@ -169,9 +182,7 @@ check_xp3_head(struct io_t * io)
 		  /* mark2 */
 		  0x8b, 0x67, 0x01};
 	uint8_t mark[XP3_HEAD_SZ+1];
-	int err;
-	err = io_read(io, mark, XP3_HEAD_SZ, 1);
-	assert(err == 1);
+	io_read_force(io, mark, XP3_HEAD_SZ);
 	if (memcmp(XP3Mark, mark, XP3_HEAD_SZ) != 0)
 		THROW(EXP_BAD_RESOURCE, "xp3 file %s magic mismatch",
 				io->id);
@@ -201,6 +212,7 @@ destroy_xp3_index_item(struct dict_entry_t * e, uintptr_t unused)
 static void
 destroy_xp3_package(struct xp3_package * pkg)
 {
+	TRACE(IO, "destroying xp3 package %s\n", pkg->phy_fn);
 	if (pkg == NULL) {
 		WARNING(IO, "shouldn't receive NULL here\n");
 		return;
@@ -210,6 +222,13 @@ destroy_xp3_package(struct xp3_package * pkg)
 		dict_destroy(pkg->index_dict,
 				destroy_xp3_index_item, 0);
 	xfree(pkg);
+}
+
+static void
+destroy_xp3_file(struct xp3_file * file)
+{
+	TRACE(IO, "destroying xp3 file %s\n", file->id);
+	xfree(file);
 }
 
 static struct cache_t xp3_package_cache;
@@ -276,7 +295,7 @@ init_xp3_package(const char * phy_fn)
 						THROW(EXP_BAD_RESOURCE, "uncompress failed: dest_len=%lu, index_size=%d",
 								dest_len, index_size);
 				}
-					break;
+				break;
 				case TVP_XP3_INDEX_ENCODE_RAW: {
 					uint64_t r_index_size = io_read_le64(phy_io);
 					if (r_index_size > 0x7fffffff)
@@ -289,9 +308,9 @@ init_xp3_package(const char * phy_fn)
 					assert(index_data != NULL);
 					io_read_force(phy_io, index_data, index_size);
 				}
-					break;
+				break;
 				default:
-					THROW(EXP_BAD_RESOURCE, "compress method unknown");
+				THROW(EXP_BAD_RESOURCE, "compress method unknown");
 			}
 
 			/* read index information from memory */
@@ -375,7 +394,7 @@ init_xp3_package(const char * phy_fn)
 				struct xp3_index_item * pitem = xcalloc(1, item_sz);
 				assert(pitem != NULL);
 
-				pitem->utf8_name = pitem->__data;
+				pitem->utf8_name = (char*)pitem->__data;
 				pitem->name_sz = name_sz;
 				/* name_sz contain the last '\0' */
 				pitem->segments = ALIGN_UP((void*)(&(pitem->__data[name_sz])), 8);
@@ -412,6 +431,9 @@ init_xp3_package(const char * phy_fn)
 						pos->is_compressed = TRUE;
 					} else if (seg_cm == TVP_XP3_INDEX_ENCODE_RAW) {
 						pos->is_compressed = FALSE;
+						if (s.ori_sz != s.arch_sz)
+							THROW(EXP_BAD_RESOURCE, "uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
+									s.arch_sz, s.ori_sz);
 					} else {
 						THROW(EXP_BAD_RESOURCE, "segment compress method unknown: 0x%x",
 								seg_cm);
@@ -430,8 +452,7 @@ init_xp3_package(const char * phy_fn)
 				dict_data_t data, tmpdata;
 				data.ptr = pitem;
 				GET_DICT_DATA_REAL_SZ(data) = item_sz;
-				tmpdata = strdict_insert(index_dict, (char*)(pitem->utf8_name),
-						data);
+				tmpdata = strdict_insert(index_dict, pitem->utf8_name, data);
 				if (!(GET_DICT_DATA_FLAGS(tmpdata) & DICT_DATA_FL_VANISHED)) {
 					WARNING(IO, "xp3 file %s has duplicate index entry %s\n",
 							phy_io->id, pitem->utf8_name);
@@ -442,6 +463,10 @@ init_xp3_package(const char * phy_fn)
 			xfree(index_data);
 			index_data = NULL;
 		} while (index_flag & TVP_XP3_INDEX_CONTINUE);
+
+
+		if (index_dict == NULL)
+			THROW(EXP_BAD_RESOURCE, "xp3 file doesn't contain index");
 
 		/* now create cache entry of xp3 package */
 		/* it is possible that phy_io->id is diferent from
@@ -487,14 +512,11 @@ init_xp3_package(const char * phy_fn)
 				RETHROW(exp);
 		}
 	}
+
 	return p_xp3_package;
 }
 
-/* ********************************************** */
-
-struct io_functionor_t xp3_io_functionor;
-
-struct xp3_package *
+static struct xp3_package *
 get_xp3_package(const char * phy_fn)
 {
 	struct cache_entry_t * ce =
@@ -510,6 +532,161 @@ get_xp3_package(const char * phy_fn)
 	}
 	return xp3;
 }
+
+
+
+/* ********************************************** */
+
+static struct xp3_file *
+init_xp3_file(const char * __id)
+{
+	char * id = strdupa(__id);
+	char * phy_fn = id;
+	char * fn = _strtok(id, ':');
+	int total_sz = 0;
+
+	void * tmp_storage = NULL;
+	assert(fn != NULL);
+	*fn = '\0';
+	fn ++;
+
+	int fn_sz = strlen(fn) + 1;
+	int phy_fn_sz = strlen(phy_fn) + 1;
+	int id_sz = fn_sz + phy_fn_sz;
+	assert(id_sz == strlen(__id) + 1);
+
+	TRACE(IO, "init xp3 file %s:%s\n", phy_fn, fn);
+	struct xp3_package * xp3 = get_xp3_package(phy_fn);
+	assert(xp3 != NULL);
+	assert(xp3->index_dict != NULL);
+	assert(xp3->io != NULL);
+
+	struct xp3_file * file = NULL;
+	struct exception_t exp;
+	TRY(exp) {
+
+		/* search from index */
+		dict_data_t dd = strdict_get(
+				xp3->index_dict,
+				fn);
+		if (GET_DICT_DATA_FLAGS(dd) & DICT_DATA_FL_VANISHED)
+			THROW(EXP_RESOURCE_NOT_FOUND, "resource %s in xp3 package %s not found",
+					fn, phy_fn);
+		struct xp3_index_item * item = dd.ptr;
+		assert(item != NULL);
+
+		total_sz = sizeof(*file) + phy_fn_sz + fn_sz  + id_sz + item->ori_sz + 7;
+		file = xmalloc(total_sz);
+		assert(file != NULL);
+
+		file->package_name = (char*)file->__data;
+		file->utf8_name = file->package_name + phy_fn_sz;
+		file->id = file->utf8_name + fn_sz;
+		file->data = ALIGN_UP((void*)(file->id + id_sz), 8);
+
+		strcpy(file->package_name, phy_fn);
+		strcpy(file->utf8_name, fn);
+		strcpy(file->id, __id);
+
+		TRACE(IO, "file %s, ori_sz=%Ld, arch_sz=%Ld\n",
+				fn, item->ori_sz, item->arch_sz);
+		file->file_sz = item->ori_sz;
+		/* copy the data */
+		int64_t total_ori_sz = 0;
+		int64_t total_arch_sz = 0;
+		for (int i = 0; i < item->nr_segments; i++) {
+			struct xp3_index_item_segment * seg = &item->segments[i];
+			TRACE(IO, "segment %d: ori_sz=%Ld, arch_sz=%Ld, start=0x%Lx, offset=0x%Lx\n",
+					i, seg->ori_sz, seg->arch_sz, seg->start, seg->offset);
+
+			if (seg->is_compressed) {
+				tmp_storage = xrealloc(tmp_storage, seg->arch_sz);
+				assert(tmp_storage != NULL);
+				/* read tmp_storage */
+				io_seek(xp3->io, seg->start, SEEK_SET);
+				io_read_force(xp3->io, tmp_storage, seg->arch_sz);
+
+				/* uncompress */
+				void * dest = file->data + seg->offset;
+				unsigned long dest_len = item->ori_sz - seg->offset;
+				int result = uncompress(
+						dest,
+						&dest_len,
+						tmp_storage,
+						seg->arch_sz);
+				DEBUG(IO, "unzip, result=%d, dest_len=%lu\n",
+						result, dest_len);
+				if ((result != Z_OK) || (dest_len != seg->ori_sz))
+					THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d, dest_len=%lu, expect %Ld",
+							result, dest_len, seg->ori_sz);
+			} else {
+				if (seg->arch_sz != seg->ori_sz)
+					THROW(EXP_BAD_RESOURCE, "uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
+							seg->arch_sz, seg->ori_sz);
+				io_seek(xp3->io, seg->start, SEEK_SET);
+				io_read_force(xp3->io, file->data + seg->offset, seg->arch_sz);
+			}
+
+			total_ori_sz += seg->ori_sz;
+			total_arch_sz += seg->arch_sz;
+		}
+
+		if ((total_ori_sz != item->ori_sz) ||
+				(total_arch_sz != item->arch_sz))
+			THROW(EXP_BAD_RESOURCE, "arch file %s in xp3 package %s is corrupted: ori_sz: (%Ld, %Ld); "
+					"arch_sz: (%Ld, %Ld)",
+					fn, phy_fn,
+					total_ori_sz, item->ori_sz,
+					total_arch_sz, item->arch_sz);
+
+		WARNING(IO, "which filter should use?\n");
+
+		/* fill the cache entry */
+		struct cache_entry_t * ce = &(file->ce);
+		ce->id = file->id;
+		TRACE(IO, "fill cache: id=%s\n", ce->id);
+		ce->data = file;
+		ce->sz = total_sz;
+		ce->destroy_arg = file;
+		ce->destroy = (cache_destroy_t)(destroy_xp3_file);
+		ce->cache = NULL;
+		ce->pprivate = NULL;
+
+	} FINALLY {
+		if (tmp_storage != NULL)
+			xfree(tmp_storage);
+	} CATCH(exp) {
+		if (file != NULL)
+			xfree(file);
+		print_exception(&exp);
+		THROW(EXP_BAD_RESOURCE, "error when init file %s from xp3 package %s",
+				fn, phy_fn);
+	}
+	return file;
+}
+
+static struct xp3_file *
+get_xp3_file(const char * __id)
+{
+	struct cache_entry_t * ce =
+		cache_get_entry(&xp3_file_cache, __id);
+	struct xp3_file * file = NULL;
+	if (ce == NULL) {
+		file = init_xp3_file(__id);
+		assert(file != NULL);
+		cache_insert(&xp3_file_cache, &(file->ce));
+	} else {
+		assert(ce->data != NULL);
+		file = ce->data;
+	}
+	return file;
+}
+
+
+
+/* ********************************************** */
+
+struct io_functionor_t xp3_io_functionor;
 
 static void
 xp3_init(void)
@@ -536,47 +713,38 @@ xp3_check_usable(const char * param)
 	return FALSE;
 }
 
-static char *
-_strtok(char * str, char x)
-{
-	assert(str != NULL);
-	while ((*str != '\0') && (*str != x)) {
-		str ++;
-	}
-	if (*str == '\0')
-		return NULL;
-	return str;
-}
-
 static struct io_t *
-xp3_open(const char * __path)
+xp3_open(const char * __id)
 {
-	assert(__path != NULL);
-	char * path = strdupa(__path);
-	char * phy_fn = path;
-	char * fn = _strtok(path, ':');
+	assert(__id != NULL);
+	char * id = strdupa(__id);
+	char * phy_fn = id;
+	char * fn = _strtok(id, ':');
 	assert(fn != NULL);
 	*fn = '\0';
 	fn ++;
+
+	int fn_sz = strlen(fn) + 1;
+	int phy_fn_sz = strlen(phy_fn) + 1;
+	int id_sz = fn_sz + phy_fn_sz;
+	assert(id_sz == strlen(__id) + 1);
 	
 	/* alloc xp_io_t */
-	int sz_phy_fn = strlen(phy_fn) + 1;
-	int sz_fn = strlen(fn) + 1;
 
 	struct xp3_io_t * r = xcalloc(1, sizeof(*r) +
-			sz_phy_fn * 2 +
-			sz_fn * 2);
+			phy_fn_sz +
+			fn_sz +
+			id_sz);
 	assert(r != NULL);
 
 	r->pos = 0;
 	r->phy_fn = r->__id;
-	r->fn = r->__id + sz_phy_fn;
-	r->id = r->__id + sz_phy_fn + sz_fn;
+	r->fn = r->phy_fn + phy_fn_sz;
+	r->id = r->fn + fn_sz;
 
-	strncpy(r->phy_fn, phy_fn, sz_phy_fn);
-	strncpy(r->fn, fn, sz_fn);
-	snprintf(r->id, sz_phy_fn + sz_fn,  "%s:%s",
-			r->phy_fn, r->fn);
+	strncpy(r->phy_fn, phy_fn, phy_fn_sz);
+	strncpy(r->fn, fn, fn_sz);
+	strncpy(r->id, __id, id_sz);
 
 	r->io.functionor = &xp3_io_functionor;
 	r->io.pprivate = r;
@@ -586,7 +754,74 @@ xp3_open(const char * __path)
 	DEBUG(IO, "open xp3 file: phy_fn=%s; fn=%s, id=%s\n",
 			r->phy_fn, r->fn, r->id);
 
+	/* check whether the file correct, and insert into cache */
+	struct xp3_file * fp = get_xp3_file(r->id);
+	assert(fp != NULL);
+
+	r->file_sz = fp->file_sz;
+
 	return &(r->io);
+}
+
+static int
+xp3_read(struct io_t * __io, void * ptr, int size, int nr)
+{
+	assert(__io != NULL);
+	
+	if (ptr == NULL) {
+		assert(size * nr == 0);
+		return 0;
+	}
+
+	if (size * nr == 0)
+		return 0;
+
+	struct xp3_io_t * io = container_of(__io,
+			struct xp3_io_t, io);
+	assert(io == __io->pprivate);
+
+	struct xp3_file * file = get_xp3_file(io->id);
+	assert(file != NULL);
+
+	assert(io->file_sz == file->file_sz);
+	assert((0 <= io->pos) && (io->pos <= io->file_sz));
+
+	int i;
+	for (i = 0; i < nr; i++) {
+		if (io->pos + size <= io->file_sz) {
+			memcpy(ptr, file->data + io->pos,
+					size);
+			io->pos += size;
+		} else {
+			memcpy(ptr, file->data + io->pos,
+					io->file_sz - io->pos);
+			io->pos += io->file_sz;
+			return i + 1;
+		}
+	}
+	return i;
+}
+
+static void *
+xp3_get_internal_buffer(struct io_t * __io)
+{
+	assert(__io != NULL);
+	struct xp3_io_t * io = container_of(__io,
+			struct xp3_io_t, io);
+	assert(io == __io->pprivate);
+
+	struct xp3_file * file = get_xp3_file(io->id);
+	assert(file != NULL);
+
+	lock_cache(&xp3_file_cache);
+	return file->data;
+}
+
+static void
+xp3_release_internal_buffer(struct io_t * io, void * ptr)
+{
+	unlock_cache(&xp3_file_cache);
+
 }
 
 static void
@@ -642,7 +877,7 @@ xp3_readdir(const char * fn)
 		if (de != NULL) {
 			struct xp3_index_item * item = de->data.ptr;
 			/* copy file name */
-			memcpy(ptr, (char*)(item->utf8_name), item->name_sz);
+			memcpy(ptr, item->utf8_name, item->name_sz);
 			/* register table entry */
 			table[nr_fn] = ptr;
 			ptr += item->name_sz;
@@ -669,7 +904,8 @@ xp3_command(const char * cmd, void * arg)
 	return NULL;
 }
 
-static int64_t xp3_tell(struct io_t * __io)
+static int64_t
+xp3_tell(struct io_t * __io)
 {
 	struct xp3_io_t * io = container_of(__io,
 			struct xp3_io_t, io);
@@ -677,15 +913,41 @@ static int64_t xp3_tell(struct io_t * __io)
 	return io->pos;
 }
 
-static int64_t xp3_seek(struct io_t * __io, int64_t offset,
+static int
+xp3_seek(struct io_t * __io, int64_t offset,
 		int whence)
 {
 	struct xp3_io_t * io = container_of(__io,
 			struct xp3_io_t, io);
 	assert(io == __io->pprivate);
-	return io->pos;
+
+	int64_t pos = io->pos;
+	switch (whence) {
+		case SEEK_SET:
+			pos = offset;
+			break;
+		case SEEK_CUR:
+			pos += offset;
+			break;
+		default:
+			pos = io->file_sz + offset;
+			break;
+	}
+	if ((pos < 0) || (pos > io->file_sz))
+		THROW(EXP_BAD_RESOURCE, "seek xp3 file %s (%Ld, %d) failed: out of range. max pos is %Ld",
+				io->id, offset, whence, io->file_sz);
+	io->pos = pos;
+	return 0;
 }
 
+static int64_t
+xp3_get_sz(struct io_t * __io)
+{
+	struct xp3_io_t * io = container_of(__io,
+			struct xp3_io_t, io);
+	assert(io == __io->pprivate);
+	return io->file_sz;
+}
 
 struct io_functionor_t xp3_io_functionor = {
 	.name = "xp3 compress file",
@@ -696,6 +958,11 @@ struct io_functionor_t xp3_io_functionor = {
 	.seek = xp3_seek,
 	.tell = xp3_tell,
 	.close = xp3_close,
+	.get_sz = xp3_get_sz,
+	.map_to_mem = NULL,
+	.release_map = NULL,
+	.get_internal_buffer = xp3_get_internal_buffer,
+	.release_internal_buffer = xp3_release_internal_buffer,
 	.init = xp3_init,
 	.cleanup = xp3_cleanup,
 	.command = xp3_command,

@@ -8,6 +8,7 @@
 #include <common/exception.h>
 #include <io/io.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 struct io_functionor_t file_io_functionor;
 
@@ -60,7 +61,7 @@ file_read(struct io_t * io, void * ptr,
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	int ret = fread(ptr, size, nr, fp);
-	if (ret != nr)
+	if (ret < 0)
 		THROW(EXP_BAD_RESOURCE, "read(%d, %d) file %p return %d\n",
 				size, nr, fp, ret);
 	return ret;
@@ -134,6 +135,22 @@ file_check_usable(const char * param)
 	return FALSE;
 }
 
+static int64_t
+file_get_sz(struct io_t * io)
+{
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->get_sz == file_get_sz);
+
+	int err;
+	struct stat64 buf;
+	err = stat64(io->id, &buf);
+	if (err < 0)
+		THROW(EXP_BAD_RESOURCE, "resource %s stat64 failed with retval %d",
+				io->id, err);
+	return buf.st_size;
+}
+
 struct io_functionor_t file_io_functionor = {
 	.name = "libc file",
 	.inited = TRUE,
@@ -146,6 +163,7 @@ struct io_functionor_t file_io_functionor = {
 	.seek = file_seek,
 	.tell = file_tell,
 	.close = file_close,
+	.get_sz = file_get_sz,
 };
 
 // vim:ts=4:sw=4

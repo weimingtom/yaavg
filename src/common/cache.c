@@ -103,7 +103,7 @@ cache_insert(struct cache_t * cache,
 		if (list_empty(&cache->lru_head)) {
 			ERROR(CACHE, "cache %s, limit_sz=%d, total_sz=%d, nr=%d but lru list is empty\n",
 					cache->name, cache->limit_sz, cache->total_sz, cache->nr);
-			THROW(EXP_UNCATCHABLE, "cache %s is corruptted", cache->name);
+			THROW(EXP_UNCATCHABLE, "cache %s is corrupted", cache->name);
 			break;
 		}
 		cache_remove_entry(cache,

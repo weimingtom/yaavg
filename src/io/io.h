@@ -9,6 +9,7 @@
 #include <sys/uio.h>
 #include <common/functionor.h>
 #include <common/exception.h>
+#include <common/mm.h>
 #include <assert.h>
 
 /* for ssize_t */
@@ -38,6 +39,8 @@ struct io_functionor_t {
 	bool_t inited;
 	struct io_t * (*open)(const char *);
 	struct io_t * (*open_write)(const char *);
+	/* read shouldn't return error. If error, it should issue an exception */
+	/* however, retval of read may different from nr. see io_read_force */
 	int (*read)(struct io_t * io, void * ptr,
 			int size, int nr);
 	int (*write)(struct io_t * io, void * ptr,
@@ -50,9 +53,20 @@ struct io_functionor_t {
 			int nr);
 	ssize_t (*vmsplice_read)(struct io_t * io, struct iovec * iovec,
 			int nr);
+	/* seek and tell should return 0 only, if error, it should issue an exception */
 	int (*seek)(struct io_t * io, int64_t offset,
 			int whence);
 	int64_t (*tell)(struct io_t * io);
+	int64_t (*get_sz)(struct io_t * io);
+
+	void * (*map_to_mem)(struct io_t * io);
+	void (*release_map)(struct io_t * io, void * ptr);
+
+	/* below 2 functions provide a fast way to access memory mapped file buffer.
+	 * it will lock cache, doesn't allow any cache operation happed before release_internal_buffer */
+	void * (*get_internal_buffer)(struct io_t * io);
+	void * (*release_internal_buffer)(struct io_t * io);
+
 	void (*close)(struct io_t * io);
 	void * (*command)(const char * cmd, void * arg);
 };
@@ -136,6 +150,30 @@ io_close(struct io_t * io)
 	io->functionor->close(io);
 }
 
+static inline int64_t
+io_get_sz(struct io_t * io)
+{
+	assert(io && (io->functionor));
+	
+	if (io->functionor->get_sz) {
+		return io->functionor->get_sz(io);
+	}
+
+	int64_t pos_save, pos;
+	int err;
+	pos_save = io_tell(io);
+	err = io_seek(io, 0, SEEK_END);
+	if (err < 0)
+		THROW(EXP_BAD_RESOURCE, "io %s seek(%Ld, %d) failed",
+				io->id, 0LL, SEEK_END);
+	pos = io_tell(io);
+	err = io_seek(io, pos_save, SEEK_SET);
+	if (err < 0)
+		THROW(EXP_BAD_RESOURCE, "io %s seek(%Ld, %d) failed",
+				io->id, pos_save, SEEK_SET);
+	return pos;
+}
+
 static inline int
 io_writev(struct io_t * io, struct iovec * vecs, int nr)
 {
@@ -189,6 +227,34 @@ io_read_force(struct io_t * io, void * data, int sz)
 }
 
 static inline void *
+io_map_to_mem(struct io_t * io)
+{
+	assert(io && (io->functionor));
+	if (io->functionor->map_to_mem)
+		return io->functionor->map_to_mem(io);
+	int64_t sz = io_get_sz(io);
+	assert(sz < 0x7fffffff);
+
+	void * ptr = xmalloc((int)sz);
+	assert(ptr != NULL);
+	int64_t save_pos = io_tell(io);
+	io_read_force(io, ptr, sz);
+	io_seek(io, save_pos, SEEK_SET);
+	return ptr;
+}
+
+static inline void
+io_release_map(struct io_t * io, void * ptr)
+{
+	assert(io && (io->functionor));
+	if (io->functionor->release_map)
+		return io->functionor->release_map(io, ptr);
+	xfree(ptr);
+}
+
+
+
+static inline void *
 iof_command(struct io_functionor_t * iof, const char * cmd, void * arg)
 {
 	assert(iof);
@@ -209,60 +275,40 @@ io_command(struct io_t * io, const char * cmd, void * arg)
 static inline uint8_t
 io_read_byte(struct io_t * io)
 {
-	int err;
 	uint8_t x;
-	err = io_read(io, &x, sizeof(x), 1);
-	if (err != 1)
-		THROW(EXP_BAD_RESOURCE, "read byte from %s failed: return %d",
-				io->id, err);
+	io_read_force(io, &x, sizeof(x));
 	return x;
 }
 
 static inline uint64_t
 io_read_le64(struct io_t * io)
 {
-	int err;
 	uint64_t x;
-	err = io_read(io, &x, sizeof(x), 1);
-	if (err != 1)
-		THROW(EXP_BAD_RESOURCE, "read uin64 (le) from %s failed: return %d",
-				io->id, err);
+	io_read_force(io, &x, sizeof(x));
 	return le64toh(x);
 }
 
 static inline uint64_t
 io_read_be64(struct io_t * io)
 {
-	int err;
 	uint32_t x;
-	err = io_read(io, &x, sizeof(x), 1);
-	if (err != 1)
-		THROW(EXP_BAD_RESOURCE, "read uin64 (be) from %s failed: return %d",
-				io->id, err);
+	io_read_force(io, &x, sizeof(x));
 	return be64toh(x);
 }
 
 static inline uint32_t
 io_read_le32(struct io_t * io)
 {
-	int err;
 	uint32_t x;
-	err = io_read(io, &x, sizeof(x), 1);
-	if (err != 1)
-		THROW(EXP_BAD_RESOURCE, "read uin32 (le) from %s failed: return %d",
-				io->id, err);
+	io_read_force(io, &x, sizeof(x));
 	return le32toh(x);
 }
 
 static inline uint32_t
 io_read_be32(struct io_t * io)
 {
-	int err;
 	uint32_t x;
-	err = io_read(io, &x, sizeof(x), 1);
-	if (err != 1)
-		THROW(EXP_BAD_RESOURCE, "read uin32 (be) from %s failed: return %d",
-				io->id, err);
+	io_read_force(io, &x, sizeof(x));
 	return be32toh(x);
 }
 

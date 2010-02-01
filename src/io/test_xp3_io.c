@@ -34,14 +34,27 @@ int main()
 		char ** table = iof_command(io_f, "readdir:/home/wn/Windows/Fate/data.xp3", NULL);
 		assert(table != NULL);
 		char ** ptr = table;
+
 		while (*ptr != NULL) {
 			VERBOSE(SYSTEM, "%p, %s\n", *ptr, *ptr);
 			ptr ++;
 		}
 		xfree(table);
 
-		struct io_t * io = io_open("XP3", "/home/wn/Windows/Fate/data.xp3:startup.tjs");
+		struct io_t * io = io_open("XP3", "/home/wn/Windows/Fate/data.xp3:rule/r2l_ss.png");
 		assert(io != NULL);
+		VERBOSE(SYSTEM, "size=%Ld\n", io_get_sz(io));
+
+		struct io_t * file = io_open_write("FILE", "/tmp/r2l_ss.png");
+		assert(file != NULL);
+		
+		void * buffer = io_get_internal_buffer(io);
+		assert(buffer != NULL);
+		io_write_force(file, buffer, io_get_sz(io));
+		io_release_internal_buffer(io, buffer);
+
+		io_close(file);
+
 		io_close(io);
 
 	} FINALLY {}
