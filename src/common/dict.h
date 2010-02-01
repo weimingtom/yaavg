@@ -26,10 +26,11 @@ typedef union {
 		float flt;
 		bool_t bol;
 		/* void* is the longest field of the above fields */
-		unsigned char flags[sizeof(void*) + 1];
+		unsigned char flags[sizeof(void*) + 8];
 } dict_data_t;
 
-#define GET_DICT_DATA_FLAGS(d)	((d).flags[sizeof(void*)])
+#define GET_DICT_DATA_FLAGS(d)		((d).flags[sizeof(void*)])
+#define GET_DICT_DATA_REAL_SZ(d)	(*((uint32_t*)(&((d).flags[sizeof(void*) + 4]))))
 
 
 struct dict_entry_t {
@@ -43,6 +44,7 @@ struct dict_t {
 	int nr_used;	/* active */
 	uint32_t mask;		/* mask is size - 1; size is always power of 2 */
 	uint32_t flags;
+	uint32_t real_data_sz;
 	uintptr_t private;	/* dict contains private data */
 	uintptr_t compare_key_arg;	/* the 3rd argument passed to compare_key */
 	bool_t (*compare_key)(void*, void*, uintptr_t);
@@ -60,6 +62,10 @@ struct dict_t {
  * use DICT_SMALL_SIZE instead) */
 #define DICT_FL_FIXED	(4)
 
+/* if DICT_FL_MAINTAIN_REAL_SZ is set, the dict->real_sz is meanful.
+ * if not, don't rely on it */
+#define DICT_FL_MAINTAIN_REAL_SZ	(8)
+
 /* if compare_key is NULL:
  * if DICT_FL_STRKEY is set, then use strcmp to compare keys;
  * else, unless 2 pointers are same, two keys are different. */
@@ -75,6 +81,19 @@ extern void
 dict_destroy(struct dict_t * dict,
 		void (*destroy_entry)(struct dict_entry_t * entry, uintptr_t arg),
 		uintptr_t arg);
+
+static inline int
+dict_get_size(struct dict_t * dict)
+{
+	return (dict->mask + 1) * sizeof(struct dict_entry_t);
+}
+
+static inline int
+dict_get_nr_used(struct dict_t * dict)
+{
+	return dict->nr_used;
+}
+
 
 /* the return value is a copy of target entry.
  * data == NULL indicates an empty slot. */
@@ -162,6 +181,7 @@ dict_invalid_entry(struct dict_t * d, struct dict_entry_t * e);
 #define STRDICT_FL_DUPKEY	(1)
 #define STRDICT_FL_DUPDATA	(2)
 #define STRDICT_FL_FIXED	(4)
+#define STRDICT_FL_MAINTAIN_REAL_SZ	(8)
 
 extern struct dict_t *
 strdict_create(int hint, uint32_t flags);

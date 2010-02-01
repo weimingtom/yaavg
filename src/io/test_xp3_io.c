@@ -27,7 +27,16 @@ int main()
 	do_init();
 	struct exception_t exp;
 	TRY(exp) {
-		struct io_t * io = io_open("XP3",
+		struct io_t * io = NULL;
+#if 0
+		io = io_open("XP3",
+				"./archive.xp3:bbb.png");
+		io_close(io);
+		io = io_open("XP3",
+				"./test.xp3:bbb.png");
+		io_close(io);
+#endif
+		io = io_open("XP3",
 				"/home/wn/Windows/Fate/data.xp3:bbb.png");
 		io_close(io);
 	} FINALLY {}

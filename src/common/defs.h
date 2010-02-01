@@ -72,14 +72,18 @@ typedef int bool_t;
 #endif
 #endif
 
-#define ALIGN_DOWN(v, a)	((uint32_t)(v) & (~((a) - 1)))
-#define ALIGN_UP(v, a)		(ALIGN_DOWN((v) + (a) - 1, (a)))
+#define ALIGN_DOWN(v, a)	(typeof(v))((uint32_t)(v) & (~((a) - 1)))
+#define ALIGN_UP(v, a)		(typeof(v))(ALIGN_DOWN((v) + (a) - 1, (a)))
 
 enum process_number {
 	MAIN_PROCESS,
 	RESOURCE_PROCESS,
 	AUDIO_PROCESS,
 };
+
+#define read_le16(p)	(le16toh((*((uint16_t*)(p)))))
+#define read_le32(p)	(le32toh((*((uint32_t*)(p)))))
+#define read_le64(p)	(le64toh((*((uint64_t*)(p)))))
 
 __END_DECLS
 

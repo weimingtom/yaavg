@@ -68,6 +68,8 @@ dict_create(int hint, uint32_t flags,
 
 	new_dict->ptable = &(new_dict->smalltable[0]);
 
+	new_dict->real_data_sz = sizeof(*new_dict);
+
 	TRACE(DICT, "a new dict is creating\n");
 	if (IS_FIXED(new_dict)) {
 		assert(hint > 0);
@@ -85,6 +87,7 @@ dict_create(int hint, uint32_t flags,
 			/* all field in ptable should have been zeroed */
 
 			new_dict->mask = hint - 1;
+			new_dict->real_data_sz += sizeof(struct dict_entry_t) * hint;
 		} else {
 			new_dict->mask = DICT_SMALL_SIZE - 1;
 		}
@@ -92,6 +95,7 @@ dict_create(int hint, uint32_t flags,
 		TRACE(DICT, "creating a dynamic size dict\n");
 		new_dict->mask = DICT_SMALL_SIZE - 1;
 	}
+
 
 	return new_dict;
 }
@@ -215,6 +219,7 @@ __dict_insert_clean(struct dict_t * dict, struct dict_entry_t * oep)
 		ep = &ep0[i & mask];
 	}
 	*ep = *oep;
+	dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
 	dict->nr_fill ++;
 	dict->nr_used ++;
 }
@@ -258,6 +263,10 @@ __expand_dict(struct dict_t * dict, int minused)
 	dict->ptable = new_table;
 
 	/* drain all entries into the new table */
+	dict->real_data_sz = sizeof(*dict);
+	if (new_table != dict->smalltable)
+		dict->real_data_sz += new_size * sizeof(struct dict_entry_t);
+
 	for (int i = 0; i < old_size; i++) {
 		struct dict_entry_t * oep = &old_table[i];
 		if (oep->key == NULL)
@@ -329,6 +338,9 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 
 	if (ep->key == dummy_key) {
 		*ep = *entry;
+
+		dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
+
 		dict->nr_used ++;
 		retval.key = retval.data.ptr = NULL;
 		GET_DICT_DATA_FLAGS(retval.data) |= DICT_DATA_FL_VANISHED;
@@ -349,12 +361,16 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 		GET_DICT_DATA_FLAGS(retval.data) |= DICT_DATA_FL_VANISHED;
 		retval.hash = entry->hash;
 		*ep = *entry;
+		dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
 		return retval;
 	}
 
 	/* the key is already inside the dict */
 	retval = *ep;
+	
+	dict->real_data_sz -= GET_DICT_DATA_REAL_SZ(ep->data);
 	*ep = *entry;
+	dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
 	assert(retval.hash == entry->hash);
 	return retval;
 }
@@ -377,9 +393,11 @@ __dict_replace(struct dict_t * dict, void * key, hashval_t hash,
 		return FALSE;
 	}
 	assert(ep->hash == hash);
+	dict->real_data_sz -= GET_DICT_DATA_REAL_SZ(ep->data);
 	if (pold_data != NULL)
 		*pold_data = ep->data;
 	ep->data = new_data;
+	dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
 	return TRUE;
 }
 
@@ -450,6 +468,10 @@ dict_invalid_entry(struct dict_t * d, struct dict_entry_t * e)
 {
 	assert(d != NULL);
 	assert(e != NULL);
+	
+	d->real_data_sz -= GET_DICT_DATA_REAL_SZ(e->data);
+	GET_DICT_DATA_REAL_SZ(e->data) = 0;
+
 	e->key = (void*)dummy_key;
 	e->hash = 0;
 	e->data.ptr = NULL;
@@ -530,6 +552,8 @@ strdict_create(int hint, uint32_t flags)
 	uint32_t real_flags = DICT_FL_STRKEY;
 	if (flags & STRDICT_FL_FIXED)
 		real_flags |= DICT_FL_FIXED;
+	if (flags & STRDICT_FL_MAINTAIN_REAL_SZ)
+		real_flags |= DICT_FL_MAINTAIN_REAL_SZ;
 	struct dict_t * dict = dict_create(hint, real_flags, NULL, 0);
 	assert(dict != NULL);
 	dict->private = (uintptr_t)flags;

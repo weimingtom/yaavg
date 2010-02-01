@@ -20,6 +20,14 @@
 			___ptr; \
 		})
 
+#define xrealloc(___old_ptr, ___new_sz)	({	\
+		void * ___ptr;		\
+		___ptr = realloc(___old_ptr, ___new_sz);\
+		if (___ptr == NULL)	\
+			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			___ptr; \
+		})
+
 #define xcalloc(___count, ___eltsize)	({	\
 		void * ___ptr;		\
 		___ptr = calloc((___count), (___eltsize));\
