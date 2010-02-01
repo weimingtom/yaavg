@@ -212,7 +212,7 @@ init_xp3_package(const char * phy_fn)
 {
 	struct io_t * phy_io = NULL;
 	uint8_t * index_data = NULL;
-	struct xp3_package * p_xp3_package;
+	struct xp3_package * p_xp3_package = NULL;
 	struct dict_t * index_dict = NULL;
 	int index_size;
 	uint8_t index_flag = 0;
@@ -589,6 +589,82 @@ xp3_close(struct io_t * __io)
 }
 
 
+static char **
+xp3_readdir(const char * fn)
+{
+	/* init the phy file */
+	DEBUG(IO, "readdir for xp3 package %s\n", fn);
+	struct cache_entry_t * ce =
+		cache_get_entry(&xp3_package_cache, fn);
+	struct xp3_package * xp3 = NULL;
+	if (ce == NULL) {
+		xp3 = init_xp3_package(fn);
+		assert(xp3 != NULL);
+		cache_insert(&xp3_package_cache, &(xp3->ce));
+	} else {
+		assert(ce->data != NULL);
+		xp3 = ce->data;
+	}
+
+	struct dict_t * d = xp3->index_dict;
+	int total_fn_sz = 0;
+	int nr_fn = 0;
+	struct dict_entry_t * de = NULL;
+	/* iterate over each index entry, compute the size of all filename */
+	do {
+		de = dict_get_next(d, de);
+		if (de != NULL) {
+			struct xp3_index_item * item = de->data.ptr;
+			total_fn_sz += item->name_sz;
+			nr_fn ++;
+		}
+	} while (de != NULL);
+	DEBUG(IO, "file %s contains %d files, total filename length is %d\n",
+			xp3->phy_fn, nr_fn, total_fn_sz);
+
+	if ((nr_fn <= 0) || (total_fn_sz <= 0)) {
+		THROW(EXP_BAD_RESOURCE, "xp3 package %s doesn't contain any file, or file name error: (%d, %d)\n",
+				xp3->phy_fn, nr_fn, total_fn_sz);
+		return NULL;
+	}
+
+	char ** table = xmalloc((nr_fn + 1) * sizeof(char*) + total_fn_sz);
+	/* notice: table's type is char **, + nr_fn is actually +4*nr_fn */
+	char * ptr = (char*)(&table[nr_fn + 1]);
+	nr_fn = 0;
+	/* iterate again */
+	do {
+		de = dict_get_next(d, de);
+		if (de != NULL) {
+			struct xp3_index_item * item = de->data.ptr;
+			/* copy file name */
+			memcpy(ptr, (char*)(item->utf8_name), item->name_sz);
+			/* register table entry */
+			table[nr_fn] = ptr;
+			ptr += item->name_sz;
+			nr_fn ++;
+		}
+	} while (de != NULL);
+	/* the last NULL */
+	table[nr_fn] = NULL;
+	return table;
+}
+
+/* special method for XP3 */
+/* syntax of cmd:
+ *	readdir:<xp3file> (return a table of string containing all file names in that xp3 package)
+ *					(the return value of readdir **MUST** be freed manually)
+ */
+static void *
+xp3_command(const char * cmd, void * arg)
+{
+	DEBUG(IO, "run command %s for xp3 io\n", cmd);
+	if (strncmp("readdir:", cmd,
+				sizeof("readdir:") - 1) == 0)
+		return xp3_readdir(cmd + sizeof("readdir:") - 1);
+	return NULL;
+}
+
 struct io_functionor_t xp3_io_functionor = {
 	.name = "xp3 compress file",
 	.fclass = FC_IO,
@@ -597,6 +673,7 @@ struct io_functionor_t xp3_io_functionor = {
 	.close = xp3_close,
 	.init = xp3_init,
 	.cleanup = xp3_cleanup,
+	.command = xp3_command,
 };
 
 
@@ -608,10 +685,17 @@ xp3_check_usable(const char * proto)
 	return FALSE;
 }
 
+static void *
+xp3_command(const char * cmd, void * arg)
+{
+	return NULL,
+}
+
 struct io_functionor_t xp3_io_functionor = {
 	.name = "xp3 compress file",
 	.fclass = FC_IO,
 	.cleck_usable = xp3_check_usable,
+	.commoand = xp3_command,
 };
 
 #endif

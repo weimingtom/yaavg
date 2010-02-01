@@ -27,8 +27,9 @@ int main()
 	do_init();
 	struct exception_t exp;
 	TRY(exp) {
-		struct io_t * io = NULL;
+		struct io_functionor_t * io_f = NULL;
 #if 0
+		struct io_t * io = NULL;
 		io = io_open("XP3",
 				"./archive.xp3:bbb.png");
 		io_close(io);
@@ -36,9 +37,21 @@ int main()
 				"./test.xp3:bbb.png");
 		io_close(io);
 #endif
+#if 0
 		io = io_open("XP3",
 				"/home/wn/Windows/Fate/data.xp3:bbb.png");
 		io_close(io);
+#endif
+		io_f = get_io_handler("XP3");
+		assert(io_f != NULL);
+		char ** table = iof_command(io_f, "readdir:/home/wn/Windows/Fate/data.xp3", NULL);
+		assert(table != NULL);
+		char ** ptr = table;
+		while (*ptr != NULL) {
+			VERBOSE(SYSTEM, "%p, %s\n", *ptr, *ptr);
+			ptr ++;
+		}
+		xfree(table);
 	} FINALLY {}
 	CATCH(exp) {
 		RETHROW(exp);

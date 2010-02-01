@@ -54,7 +54,7 @@ struct io_functionor_t {
 			int whence);
 	int64_t (*tell)(struct io_t * io);
 	void (*close)(struct io_t * io);
-	void (*command)(const char * cmd);
+	void * (*command)(const char * cmd, void * arg);
 };
 
 extern struct io_functionor_t *
@@ -188,6 +188,23 @@ io_read_force(struct io_t * io, void * data, int sz)
 				io->id, sz, err);
 }
 
+static inline void *
+iof_command(struct io_functionor_t * iof, const char * cmd, void * arg)
+{
+	assert(iof);
+	if (iof->command == NULL)
+		return NULL;
+	return iof->command(cmd, arg);
+}
+
+
+static inline void *
+io_command(struct io_t * io, const char * cmd, void * arg)
+{
+	assert(io != NULL);
+	assert(io->functionor);
+	return iof_command(io->functionor, cmd, arg);
+}
 
 static inline uint8_t
 io_read_byte(struct io_t * io)
