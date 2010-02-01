@@ -28,20 +28,7 @@ int main()
 	struct exception_t exp;
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
-#if 0
-		struct io_t * io = NULL;
-		io = io_open("XP3",
-				"./archive.xp3:bbb.png");
-		io_close(io);
-		io = io_open("XP3",
-				"./test.xp3:bbb.png");
-		io_close(io);
-#endif
-#if 0
-		io = io_open("XP3",
-				"/home/wn/Windows/Fate/data.xp3:bbb.png");
-		io_close(io);
-#endif
+
 		io_f = get_io_handler("XP3");
 		assert(io_f != NULL);
 		char ** table = iof_command(io_f, "readdir:/home/wn/Windows/Fate/data.xp3", NULL);
@@ -52,6 +39,11 @@ int main()
 			ptr ++;
 		}
 		xfree(table);
+
+		struct io_t * io = io_open("XP3", "/home/wn/Windows/Fate/data.xp3:startup.tjs");
+		assert(io != NULL);
+		io_close(io);
+
 	} FINALLY {}
 	CATCH(exp) {
 		RETHROW(exp);

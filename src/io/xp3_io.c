@@ -6,6 +6,7 @@
  */
 
 #include <config.h>
+#include <common/defs.h>
 #include <common/mm.h>
 #include <common/debug.h>
 #include <common/exception.h>
@@ -31,16 +32,23 @@ struct xp3_package {
 
 struct xp3_file {
 	struct cache_entry_t ce;
-	size_t sz;
+	int total_sz;
+	int file_sz;
+	int name_sz;
+	char * utf8_name;
+	uint8_t * data;
 	uint8_t __data[0];
 };
 
 struct xp3_io_t {
 	struct io_t io;
-	int pos;
 	char * phy_fn;
 	char * fn;
+	char * id;
+	int64_t pos;
 	char __id[0];
+	/* the content of __id:
+	 * phy_fn, fn, id*/
 };
 
 struct xp3_index_item_segment {
@@ -183,7 +191,7 @@ destroy_xp3_index_item(struct dict_entry_t * e, uintptr_t unused)
 		return;
 	}
 
-	DEBUG(IO, "freeing a %d bytes item %s\n",
+	TRACE(IO, "freeing a %d bytes item %s\n",
 			GET_DICT_DATA_REAL_SZ(e->data),
 			item->utf8_name);
 	xfree(item);
@@ -294,7 +302,7 @@ init_xp3_package(const char * phy_fn)
 				struct chunk_head file_h;
 				const uint8_t * fc_start = find_chunk(pindex, (uint8_t*)"File",
 						&file_h, index_end, FALSE);
-				DEBUG(IO, "File chunk start at %p, size=%Ld\n",
+				TRACE(IO, "File chunk start at %p, size=%Ld\n",
 						fc_start, file_h.chunk_sz);
 				if (fc_start == NULL)
 					break;
@@ -303,21 +311,21 @@ init_xp3_package(const char * phy_fn)
 				struct chunk_head info_h;
 				const uint8_t * info_start = find_chunk(fc_start, (uint8_t*)"info",
 						&info_h, fc_start + file_h.chunk_sz, TRUE);
-				DEBUG(IO, "info chunk start at %p, size=%Ld\n",
+				TRACE(IO, "info chunk start at %p, size=%Ld\n",
 						info_start, info_h.chunk_sz);
 
 				/* segments trunk */
 				struct chunk_head segments_h;
 				const uint8_t * segments_start = find_chunk(fc_start, (uint8_t*)"segm",
 						&segments_h, fc_start + file_h.chunk_sz, TRUE);
-				DEBUG(IO, "segments chunk found at %p, size=%Ld\n",
+				TRACE(IO, "segments chunk found at %p, size=%Ld\n",
 						segments_start, segments_h.chunk_sz);
 
 				/* adlr chunk */
 				struct chunk_head adlr_h;
 				const uint8_t * adlr_start = find_chunk(fc_start, (uint8_t*)"adlr",
 						&adlr_h, fc_start + file_h.chunk_sz, TRUE);
-				DEBUG(IO, "adlr chunk start at %p, size=%Ld\n",
+				TRACE(IO, "adlr chunk start at %p, size=%Ld\n",
 						adlr_start, adlr_h.chunk_sz);
 
 				/* read info */
@@ -337,7 +345,7 @@ init_xp3_package(const char * phy_fn)
 				ih.arch_sz	= le32toh(ih.arch_sz);
 				ih.name_len	= le32toh(ih.name_len);
 
-				DEBUG(IO, "flags=0x%x, ori_sz=%Ld, arch_sz=%Ld, name_len=%d\n",
+				TRACE(IO, "flags=0x%x, ori_sz=%Ld, arch_sz=%Ld, name_len=%d\n",
 						ih.flags, ih.ori_sz, ih.arch_sz, ih.name_len);
 
 				/* +1 for the last '\0' */
@@ -380,7 +388,7 @@ init_xp3_package(const char * phy_fn)
 						p_ih->ucs2le_name, ih.name_len);
 				pitem->utf8_name[name_sz - 1] = '\0';
 
-				DEBUG(IO, "xp3 item name = %s\n", pitem->utf8_name);
+				TRACE(IO, "xp3 item name = %s\n", pitem->utf8_name);
 
 				/* fill segments */
 				uint64_t offset_in_archive = 0;
@@ -391,7 +399,7 @@ init_xp3_package(const char * phy_fn)
 					s.start = le64toh(s.start);
 					s.ori_sz = le64toh(s.ori_sz);
 					s.arch_sz = le64toh(s.arch_sz);
-					DEBUG(IO, "segment %d: flags=0x%x, start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
+					TRACE(IO, "segment %d: flags=0x%x, start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
 							i, s.flags, s.start, s.ori_sz, s.arch_sz);
 
 					struct xp3_index_item_segment * pos = &(pitem->segments[i]);
@@ -482,8 +490,26 @@ init_xp3_package(const char * phy_fn)
 	return p_xp3_package;
 }
 
+/* ********************************************** */
 
 struct io_functionor_t xp3_io_functionor;
+
+struct xp3_package *
+get_xp3_package(const char * phy_fn)
+{
+	struct cache_entry_t * ce =
+		cache_get_entry(&xp3_package_cache, phy_fn);
+	struct xp3_package * xp3 = NULL;
+	if (ce == NULL) {
+		xp3 = init_xp3_package(phy_fn);
+		assert(xp3 != NULL);
+		cache_insert(&xp3_package_cache, &(xp3->ce));
+	} else {
+		assert(ce->data != NULL);
+		xp3 = ce->data;
+	}
+	return xp3;
+}
 
 static void
 xp3_init(void)
@@ -538,40 +564,27 @@ xp3_open(const char * __path)
 	int sz_fn = strlen(fn) + 1;
 
 	struct xp3_io_t * r = xcalloc(1, sizeof(*r) +
-			sz_phy_fn +
-			sz_fn);
+			sz_phy_fn * 2 +
+			sz_fn * 2);
 	assert(r != NULL);
 
 	r->pos = 0;
 	r->phy_fn = r->__id;
 	r->fn = r->__id + sz_phy_fn;
+	r->id = r->__id + sz_phy_fn + sz_fn;
+
+	strncpy(r->phy_fn, phy_fn, sz_phy_fn);
+	strncpy(r->fn, fn, sz_fn);
+	snprintf(r->id, sz_phy_fn + sz_fn,  "%s:%s",
+			r->phy_fn, r->fn);
 
 	r->io.functionor = &xp3_io_functionor;
 	r->io.pprivate = r;
 	r->io.rdwr = IO_READ;
-	r->io.id = r->fn;
+	r->io.id = r->id;
 
-
-	strncpy(r->phy_fn, phy_fn, sz_phy_fn);
-	strncpy(r->fn, fn, sz_fn);
-
-	TRACE(IO, "open xp3 file: phy_fn=%s; fn=%s\n",
-			r->phy_fn, r->fn);
-
-	/* init the phy file */
-	struct cache_entry_t * ce =
-		cache_get_entry(&xp3_package_cache, r->phy_fn);
-	struct xp3_package * xp3 = NULL;
-	if (ce == NULL) {
-		xp3 = init_xp3_package(r->phy_fn);
-		assert(xp3 != NULL);
-		cache_insert(&xp3_package_cache, &(xp3->ce));
-	} else {
-		assert(ce->data != NULL);
-		xp3 = ce->data;
-	}
-
-	TRACE(IO, "xp3 package is %s\n", xp3->phy_fn);
+	DEBUG(IO, "open xp3 file: phy_fn=%s; fn=%s, id=%s\n",
+			r->phy_fn, r->fn, r->id);
 
 	return &(r->io);
 }
@@ -583,8 +596,8 @@ xp3_close(struct io_t * __io)
 	assert(__io->functionor == &xp3_io_functionor);
 	struct xp3_io_t * r =
 		(struct xp3_io_t*)(__io->pprivate);
-	TRACE(IO, "close xp3 file %s:%s\n",
-			r->phy_fn, r->fn);
+	TRACE(IO, "close xp3 file %s\n",
+			r->id);
 	xfree(r);
 }
 
@@ -594,17 +607,8 @@ xp3_readdir(const char * fn)
 {
 	/* init the phy file */
 	DEBUG(IO, "readdir for xp3 package %s\n", fn);
-	struct cache_entry_t * ce =
-		cache_get_entry(&xp3_package_cache, fn);
-	struct xp3_package * xp3 = NULL;
-	if (ce == NULL) {
-		xp3 = init_xp3_package(fn);
-		assert(xp3 != NULL);
-		cache_insert(&xp3_package_cache, &(xp3->ce));
-	} else {
-		assert(ce->data != NULL);
-		xp3 = ce->data;
-	}
+	struct xp3_package * xp3 = get_xp3_package(fn);
+	assert(xp3 != NULL);
 
 	struct dict_t * d = xp3->index_dict;
 	int total_fn_sz = 0;
@@ -665,11 +669,32 @@ xp3_command(const char * cmd, void * arg)
 	return NULL;
 }
 
+static int64_t xp3_tell(struct io_t * __io)
+{
+	struct xp3_io_t * io = container_of(__io,
+			struct xp3_io_t, io);
+	assert(io == __io->pprivate);
+	return io->pos;
+}
+
+static int64_t xp3_seek(struct io_t * __io, int64_t offset,
+		int whence)
+{
+	struct xp3_io_t * io = container_of(__io,
+			struct xp3_io_t, io);
+	assert(io == __io->pprivate);
+	return io->pos;
+}
+
+
 struct io_functionor_t xp3_io_functionor = {
 	.name = "xp3 compress file",
 	.fclass = FC_IO,
 	.check_usable = xp3_check_usable,
 	.open = xp3_open,
+	.read = xp3_read,
+	.seek = xp3_seek,
+	.tell = xp3_tell,
 	.close = xp3_close,
 	.init = xp3_init,
 	.cleanup = xp3_cleanup,
