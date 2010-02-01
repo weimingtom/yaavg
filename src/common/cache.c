@@ -15,11 +15,49 @@
 #include <assert.h>
 
 static LIST_HEAD(__cache_list);
+static bool_t cache_global_lock = FALSE;
+
+bool_t
+is_cache_locked(struct cache_t * cache)
+{
+	bool_t locked = FALSE;
+	if (cache != NULL)
+		locked = ((cache_global_lock) || (cache->locked));
+	else
+		locked = cache_global_lock;
+	return locked;
+}
+
+void
+test_cache_locked(struct cache_t * cache)
+{
+	if (is_cache_locked(cache))
+		THROW(EXP_CACHE_LOCKED, "cache is locked");
+}
+
+
+void
+lock_caches(void)
+{
+	if (cache_global_lock)
+		WARNING(CACHE, "global cache lock and unlock is not paired\n");
+	cache_global_lock = TRUE;
+}
+
+void
+unlock_caches(void)
+{
+	if (!cache_global_lock)
+		WARNING(CACHE, "global cache lock and unlock is not paired\n");
+	cache_global_lock = FALSE;
+}
+
 
 void
 cache_init(struct cache_t * c, const char * name,
 		ssize_t limit_sz)
 {
+	test_cache_locked(NULL);
 	assert(c != NULL);
 	assert(limit_sz > 0);
 	c->name = name;
@@ -33,6 +71,7 @@ cache_init(struct cache_t * c, const char * name,
 	c->nr = 0;
 	c->total_sz = 0;
 	c->limit_sz = limit_sz;
+	c->locked = FALSE;
 
 	list_add_tail(&(c->list), &__cache_list);
 	INIT_LIST_HEAD(&(c->lru_head));
@@ -85,6 +124,8 @@ cache_insert(struct cache_t * cache,
 	assert(entry != NULL);
 	assert(entry->sz > 0);
 
+	test_cache_locked(cache);
+
 	/* the entry is already in the cache */
 	if (entry->cache != NULL) {
 		assert(entry->cache == cache);
@@ -124,6 +165,7 @@ cache_remove_entry(struct cache_t * cache,
 	assert(cache != NULL);
 	assert(cache->dict != NULL);
 	assert(id != NULL);
+	test_cache_locked(cache);
 
 	dict_data_t od;
 	struct dict_t * dict = cache->dict;
@@ -190,6 +232,9 @@ static void
 cache_cleanup(struct cache_t * cache)
 {
 	assert(cache != NULL);
+
+	test_cache_locked(cache);
+
 	assert(cache->dict != NULL);
 	if (cache->nr == 0)
 		return;

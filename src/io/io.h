@@ -63,9 +63,10 @@ struct io_functionor_t {
 	void (*release_map)(struct io_t * io, void * ptr);
 
 	/* below 2 functions provide a fast way to access memory mapped file buffer.
-	 * it will lock cache, doesn't allow any cache operation happed before release_internal_buffer */
+	 * some implementation locks cache, doesn't allow any cache operation before
+	 * release_internal_buffer */
 	void * (*get_internal_buffer)(struct io_t * io);
-	void * (*release_internal_buffer)(struct io_t * io);
+	void (*release_internal_buffer)(struct io_t * io, void * ptr);
 
 	void (*close)(struct io_t * io);
 	void * (*command)(const char * cmd, void * arg);
@@ -226,6 +227,22 @@ io_read_force(struct io_t * io, void * data, int sz)
 				io->id, sz, err);
 }
 
+
+static inline void
+io_write_force(struct io_t * io, void * data, int sz)
+{
+	int err;
+	assert(io != NULL);
+	if (sz <= 0)
+		return;
+	assert(data != NULL);
+	err = io_write(io, data, 1, sz);
+	if (err != sz)
+		THROW(EXP_BAD_RESOURCE, "write file %s failed: expect %d but read %d",
+				io->id, sz, err);
+}
+
+
 static inline void *
 io_map_to_mem(struct io_t * io)
 {
@@ -252,6 +269,22 @@ io_release_map(struct io_t * io, void * ptr)
 	xfree(ptr);
 }
 
+static inline void *
+io_get_internal_buffer(struct io_t * io)
+{
+	assert(io && (io->functionor));
+	if (io->functionor->get_internal_buffer)
+		return io->functionor->get_internal_buffer(io);
+	return io_map_to_mem(io);
+}
+static inline void
+io_release_internal_buffer(struct io_t * io, void * ptr)
+{
+	assert(io && (io->functionor));
+	if (io->functionor->release_internal_buffer)
+		return io->functionor->release_internal_buffer(io, ptr);
+	return io_release_map(io, ptr);
+}
 
 
 static inline void *

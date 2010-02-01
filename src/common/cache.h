@@ -8,6 +8,7 @@
 
 #include <common/defs.h>
 #include <common/mm.h>
+#include <common/debug.h>
 #include <common/dict.h>
 #include <common/list.h>
 #include <common/init_cleanup_list.h>
@@ -21,6 +22,7 @@
 
 typedef void (*cache_destroy_t)(void * arg);
 struct cache_t {
+	bool_t locked;
 	const char * name;
 	struct dict_t * dict;
 	struct list_head list;
@@ -93,6 +95,35 @@ cache_shrink(struct cache_t * cache);
 extern void
 caches_shrink(void);
 
+static inline void
+lock_cache(struct cache_t * cache)
+{
+	if (cache->locked)
+		WARNING(CACHE, "cache lock and unlock is not paired\n");
+	cache->locked = TRUE;
+}
+
+static inline void
+unlock_cache(struct cache_t * cache)
+{
+	if (!cache->locked)
+		WARNING(CACHE, "cache lock and unlock is not paired\n");
+	cache->locked = FALSE;
+
+}
+
+extern void
+lock_caches(void);
+
+extern void
+unlock_caches(void);
+
+extern bool_t
+if_cache_locked(struct cache_t * cache);
+
+/* if cache is locked, throw an EXP_CACHE_LOCKED exception */
+extern void
+test_cache_locked(struct cache_t * cache);
 #endif
 
 // vim:ts=4:sw=4

@@ -13,4 +13,6 @@ def_exp_type(EXP_FUNCTIONOR_NOT_FOUND, "cannot find suitable functionor")
 def_exp_type(EXP_CORRUPTED_CONF, "faulty configuration")
 def_exp_type(EXP_RESOURCE_PROCESS_FAILURE, "faulty of resource process")
 def_exp_type(EXP_RESOURCE_PEER_SHUTDOWN, "peer process shutdown")
+def_exp_type(EXP_CACHE_LOCKED, "cache operation called when cache locked")
+
 
