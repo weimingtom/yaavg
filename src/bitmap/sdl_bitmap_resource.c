@@ -111,7 +111,18 @@ wrap_read(struct SDL_RWops * ops, void * ptr,
 	TRACE(IO, "ops=%p, read %p, %d, %d\n", ops, ptr, size, maxnum);
 	struct io_t * io = get_io(ops);
 	assert(io != NULL);
-	return io_read(io, ptr, size, maxnum);
+	int err;
+	err = io_read(io, ptr, size, maxnum);
+#if 0
+	TRACE(IO, "io_read return %d\n", err);
+	for (int i = 0; i < size * maxnum; i++) {
+		if (i % 10 == 0)
+			TRACE(IO, "@q\n");
+		TRACE(IO, "@q0x%x, ", *(unsigned char*)(ptr + i));
+	}
+	TRACE(IO, "@q\n");
+#endif
+	return err;
 }
 
 static int

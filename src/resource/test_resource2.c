@@ -19,6 +19,7 @@ init_func_t init_funcs[] = {
 
 cleanup_func_t cleanup_funcs[] = {
 	__yconf_cleanup,
+	__io_cleanup,
 	__caches_cleanup,
 	__dbg_cleanup,
 	NULL,
@@ -73,6 +74,16 @@ int main()
 		free_bitmap(b);
 
 		b = get_resource("0:file:./jpegtest.jpeg",
+				(deserializer_t)bitmap_deserialize);
+		print_bitmap(b);
+		free_bitmap(b);
+
+		b = get_resource("0:file:./out/RNImage/allcl1.jpg",
+				(deserializer_t)bitmap_deserialize);
+		print_bitmap(b);
+		free_bitmap(b);
+
+		b = get_resource("0:XP3:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3:allcl1.jpg",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);

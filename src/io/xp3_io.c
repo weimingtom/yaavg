@@ -644,8 +644,12 @@ init_xp3_package(const char * phy_fn)
 						p_xp3_package->io->id);
 			if ((!(GET_DICT_DATA_FLAGS(data) & DICT_DATA_FL_VANISHED)) &&
 				(data.bol))
+			{
+				WARNING(IO, "xp3 package file %s is permanent mapped into memory, this is not recommended\n",
+						p_xp3_package->io->id);
 				io_command(p_xp3_package->io,
 						"permanentmap", NULL);
+			}
 		}
 
 	} FINALLY {
@@ -991,6 +995,7 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 			memcpy(ptr, file->u.data + io->pos,
 					s);
 			io->pos += s;
+			ptr += s;
 			if (s != size)
 				return i;
 		}
@@ -1041,6 +1046,7 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 		}
 
 		io->pos += s;
+		ptr += s;
 		if (s != size)
 			break;
 	}
@@ -1225,7 +1231,7 @@ xp3_readdir(const char * fn)
 static void *
 xp3_permanentmap(const char * fn)
 {
-	WARNING(IO, "issuing permanentmap command, this is not recommanded!!!\n");
+	WARNING(IO, "issuing permanentmap command, this is not recommended!!!\n");
 	/* insert the fn into permanent_map_dict */
 	dict_data_t data;
 	data.bol = TRUE;
