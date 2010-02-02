@@ -22,7 +22,7 @@ SET(MARCH ${CMAKE_SYSTEM_PROCESSOR} CACHE STRING
 SET(MARCH_CFLAGS "-march=${MARCH} -mtune=${MARCH}")
 SET(CMAKE_C_FLAGS "-std=gnu99 -Wall -D_GNU_SOURCE ${MARCH_CFLAGS}" CACHE
 	STRING "Flags used by the compiler during all build types." FORCE)
-SET(CMAKE_C_FLAGS_DEBUG "-g -O0 -DYAAVG_DEBUG" CACHE
+SET(CMAKE_C_FLAGS_DEBUG "-g -rdynamic -O0 -DYAAVG_DEBUG" CACHE
 	STRING "Flags used by the compiler during debug builds." FORCE)
 SET(CMAKE_C_FLAGS_RELEASE "-O2" CACHE
 	STRING "Flags used by the compiler during release builds." FORCE)

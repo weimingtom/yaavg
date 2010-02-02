@@ -181,15 +181,15 @@ struct chunk_head {
 	uint64_t chunk_sz;
 } ATTR(packed);
 
-static const uint8_t *
-find_chunk(const uint8_t * data, const uint8_t * name,
-		struct chunk_head * ph, const uint8_t * end, bool_t if_throw)
+static const void *
+find_chunk(const void * data, const uint8_t * name,
+		struct chunk_head * ph, const void * end, bool_t if_throw)
 {
 	assert(data != NULL);
 	assert(name != NULL);
 	assert(ph != NULL);
 
-	const uint8_t * pos = data;
+	const void * pos = data;
 
 	do {
 		*ph = *((struct chunk_head *)(pos));
@@ -272,11 +272,259 @@ destroy_xp3_file(struct xp3_file * file)
 static struct cache_t xp3_package_cache;
 static struct cache_t xp3_file_cache;
 
+
+/* 
+ * the purpose of extract_index is to move some code out from
+ * init_xp3_package.
+ */
+static void *
+extract_index(struct io_t * phy_io, uint8_t * index_flag, int * pindex_sz,
+		void * index_data)
+{
+	uint64_t index_offset = io_read_le64(phy_io);
+	DEBUG(IO, "index offset=0x%Lx\n", index_offset);
+	io_seek(phy_io, index_offset, SEEK_SET);
+
+	*index_flag = io_read_byte(phy_io);
+	DEBUG(IO, "index_flag = 0x%x\n", *index_flag);
+
+	uint8_t cm = *index_flag & TVP_XP3_INDEX_ENCODE_METHOD_MASK;
+	int index_size;
+
+	switch (cm) {
+		case TVP_XP3_INDEX_ENCODE_ZLIB: {
+			uint64_t r_compressed_size = io_read_le64(phy_io);
+			uint64_t r_index_size = io_read_le64(phy_io);
+
+			DEBUG(IO, "r_compressed_size = %Ld\n", r_compressed_size);
+			DEBUG(IO, "r_index_size = %Ld\n", r_index_size);
+			if ((r_compressed_size > 0x7fffffff) || (r_index_size > 0x7fffffff))
+				THROW(EXP_BAD_RESOURCE, "r_compressed_size or r_index_size too large(%Lu, %Lu)",
+						r_compressed_size, r_index_size);
+
+			index_size = r_index_size;
+			*pindex_sz = index_size;
+			int compressed_size = r_compressed_size;
+
+			index_data = xrealloc(index_data, index_size);
+			assert(index_data != NULL);
+			uint8_t * compressed_data = alloca(compressed_size);
+			assert(compressed_data != NULL);
+
+			io_read_force(phy_io, compressed_data, compressed_size);
+
+			unsigned long dest_len = index_size;
+			int result = uncompress(
+					index_data,
+					&dest_len,
+					compressed_data,
+					compressed_size);
+			DEBUG(IO, "unzip, result=%d, dest_len=%lu\n",
+					result, dest_len);
+			if (result != Z_OK)
+				THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d",
+						result);
+			if ((int)dest_len != index_size)
+				THROW(EXP_BAD_RESOURCE, "uncompress failed: dest_len=%lu, index_size=%d",
+						dest_len, index_size);
+		}
+		break;
+		case TVP_XP3_INDEX_ENCODE_RAW: {
+			uint64_t r_index_size = io_read_le64(phy_io);
+			if (r_index_size > 0x7fffffff)
+				THROW(EXP_BAD_RESOURCE, "too large index %Lu",
+						r_index_size);
+
+			index_size = r_index_size;
+			DEBUG(IO, "index_size=%d\n", index_size);
+			index_data = xrealloc(index_data, index_size);
+			assert(index_data != NULL);
+			io_read_force(phy_io, index_data, index_size);
+		}
+		break;
+		default:
+		THROW(EXP_BAD_RESOURCE, "compress method unknown");
+	}
+	return index_data;
+}
+
+static bool_t
+load_chunks(const void * start,
+		struct chunk_head * file_h,
+		struct chunk_head * info_h,
+		struct chunk_head * segments_h,
+		struct chunk_head * adlr_h,
+		void const ** fc_start,
+		void const ** info_start,
+		void const ** segments_start,
+		void const ** adlr_start,
+		const void * index_end)
+{
+	*fc_start = find_chunk(start, (uint8_t*)"File",
+			file_h, index_end, FALSE);
+	TRACE(IO, "File chunk start at %p, size=%Ld\n",
+			*fc_start, file_h->chunk_sz);
+	if (*fc_start == NULL)
+		return FALSE;
+
+	/* info trunk */
+	*info_start = find_chunk(*fc_start, (uint8_t*)"info",
+			info_h, *fc_start + file_h->chunk_sz, TRUE);
+	TRACE(IO, "info chunk start at %p, size=%Ld\n",
+			*info_start, info_h->chunk_sz);
+
+	/* segments trunk */
+	*segments_start = find_chunk(*fc_start, (uint8_t*)"segm",
+			segments_h, *fc_start + file_h->chunk_sz, TRUE);
+	TRACE(IO, "segments chunk found at %p, size=%Ld\n",
+			*segments_start, segments_h->chunk_sz);
+
+	/* adlr chunk */
+	*adlr_start = find_chunk(*fc_start, (uint8_t*)"adlr",
+			adlr_h, *fc_start + file_h->chunk_sz, TRUE);
+	TRACE(IO, "adlr chunk start at %p, size=%Ld\n",
+			*adlr_start, adlr_h->chunk_sz);
+	return TRUE;
+}
+
+static struct xp3_index_item *
+build_struct_item(const void * info_start,
+		const void * segments_start,
+		const void * adlr_start,
+		int segments_chunk_sz,
+		int * item_sz)
+{
+	struct xp3_index_item * pitem = NULL;
+	/* read info */
+	struct info_head {
+		uint32_t flags;
+		uint64_t ori_sz;
+		uint64_t arch_sz;
+		uint16_t name_len;
+		uint16_t ucs2le_name[0];
+	} ATTR(packed);
+
+	const struct info_head * p_ih = (const struct info_head*)(info_start);
+	struct info_head ih = *p_ih;
+
+	ih.flags	= le32toh(ih.flags);
+	ih.ori_sz	= le32toh(ih.ori_sz);
+	ih.arch_sz	= le32toh(ih.arch_sz);
+	ih.name_len	= le32toh(ih.name_len);
+
+	TRACE(IO, "flags=0x%x, ori_sz=%Ld, arch_sz=%Ld, name_len=%d\n",
+			ih.flags, ih.ori_sz, ih.arch_sz, ih.name_len);
+
+	/* +1 for the last '\0' */
+	int name_sz = ucs2le_to_utf8(
+			NULL,
+			0,
+			p_ih->ucs2le_name,
+			ih.name_len) + 1;
+
+	/* process segments */
+	struct segment {
+		uint32_t flags;
+		uint64_t start;
+		uint64_t ori_sz;
+		uint64_t arch_sz;
+	} ATTR(packed);
+
+	if (segments_chunk_sz % sizeof(struct segment) != 0)
+		THROW(EXP_BAD_RESOURCE, "corrupted segments chunk: size=%d",
+				segments_chunk_sz);
+
+	int nr_segments = segments_chunk_sz / sizeof(struct segment);
+
+	/* now we can alloc dict entry */
+	*item_sz = sizeof(struct xp3_index_item) + name_sz +
+		sizeof(struct xp3_index_item_segment) * nr_segments + 7;
+
+	pitem = xcalloc(1, *item_sz);
+	assert(pitem != NULL);
+
+	struct exception_t exp;
+	TRY(exp) {
+		pitem->utf8_name = (char*)pitem->__data;
+		/* name_sz contain the last '\0' */
+		pitem->segments = ALIGN_UP((void*)(&(pitem->__data[name_sz])), 8);
+
+		pitem->name_sz = name_sz;
+		pitem->ori_sz = ih.ori_sz;
+		pitem->arch_sz = ih.arch_sz;
+		pitem->nr_segments = nr_segments;
+
+		pitem->file_hash = read_le32(adlr_start);
+		/* item.is_compressed is used to track the compress of
+		 * a file. if at least 1 segment is compressed, it
+		 * is TRUE. */
+		pitem->is_compressed = FALSE;
+
+		ucs2le_to_utf8(pitem->utf8_name, name_sz,
+				p_ih->ucs2le_name, ih.name_len);
+		pitem->utf8_name[name_sz - 1] = '\0';
+
+		TRACE(IO, "xp3 item name = %s\n", pitem->utf8_name);
+
+		/* fill segments */
+		uint64_t offset_in_archive = 0;
+
+		for (int i = 0; i < nr_segments; i++) {
+			struct segment s = 
+				((const struct segment *)(segments_start))[i];
+			s.flags = le32toh(s.flags);
+			s.start = le64toh(s.start);
+			s.ori_sz = le64toh(s.ori_sz);
+			s.arch_sz = le64toh(s.arch_sz);
+			TRACE(IO, "segment %d: flags=0x%x, start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
+					i, s.flags, s.start, s.ori_sz, s.arch_sz);
+
+			struct xp3_index_item_segment * pseg = &(pitem->segments[i]);
+			pseg->flags = s.flags;
+			pseg->start = s.start;
+			pseg->ori_sz = s.ori_sz;
+			pseg->arch_sz = s.arch_sz;
+
+			uint8_t seg_cm = s.flags & TVP_XP3_INDEX_ENCODE_METHOD_MASK;
+			if (seg_cm == TVP_XP3_INDEX_ENCODE_ZLIB) {
+				pseg->is_compressed = TRUE;
+			} else if (seg_cm == TVP_XP3_INDEX_ENCODE_RAW) {
+				pseg->is_compressed = FALSE;
+				if (s.ori_sz != s.arch_sz)
+					THROW(EXP_BAD_RESOURCE,
+							"uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
+							s.arch_sz, s.ori_sz);
+			} else {
+				THROW(EXP_BAD_RESOURCE,
+						"segment compress method unknown: 0x%x",
+						seg_cm);
+			}
+
+			pitem->is_compressed = (pitem->is_compressed ||
+					pseg->is_compressed);
+
+			pseg->offset = offset_in_archive;
+			offset_in_archive += pseg->ori_sz;
+		}
+
+		/* check the size of the item */
+		if ((!pitem->is_compressed) && (pitem->ori_sz != pitem->arch_sz))
+			THROW(EXP_BAD_RESOURCE, "item %s is uncompressed but ori_sz(%Ld) and arch_sz(%Ld) different",
+					pitem->utf8_name, pitem->ori_sz, pitem->arch_sz);
+	} FINALLY {
+	} CATCH(exp) {
+		if (pitem != NULL)
+			xfree(pitem);
+		RETHROW(exp);
+	}
+	return pitem;
+}
+
 static struct xp3_package *
 init_xp3_package(const char * phy_fn)
 {
 	struct io_t * phy_io = NULL;
-	uint8_t * index_data = NULL;
+	void * index_data = NULL;
 	struct xp3_package * p_xp3_package = NULL;
 	struct dict_t * index_dict = NULL;
 	/* we define pitem here to guarantee the exception handler can free it */
@@ -290,68 +538,9 @@ init_xp3_package(const char * phy_fn)
 		check_xp3_head(phy_io);
 
 		do {
-			uint64_t index_offset = io_read_le64(phy_io);
-			DEBUG(IO, "index offset=0x%Lx\n", index_offset);
-			io_seek(phy_io, index_offset, SEEK_SET);
-
-			index_flag = io_read_byte(phy_io);
-			DEBUG(IO, "index_flag = 0x%x\n", index_flag);
-
-			uint8_t cm = index_flag & TVP_XP3_INDEX_ENCODE_METHOD_MASK;
-
-			switch (cm) {
-				case TVP_XP3_INDEX_ENCODE_ZLIB: {
-					uint64_t r_compressed_size = io_read_le64(phy_io);
-					uint64_t r_index_size = io_read_le64(phy_io);
-
-					DEBUG(IO, "r_compressed_size = %Ld\n", r_compressed_size);
-					DEBUG(IO, "r_index_size = %Ld\n", r_index_size);
-					if ((r_compressed_size > 0x7fffffff) || (r_index_size > 0x7fffffff))
-						THROW(EXP_BAD_RESOURCE, "r_compressed_size or r_index_size too large(%Lu, %Lu)",
-								r_compressed_size, r_index_size);
-
-					index_size = r_index_size;
-					int compressed_size = r_compressed_size;
-
-					index_data = xrealloc(index_data, index_size);
-					assert(index_data != NULL);
-					uint8_t * compressed_data = alloca(compressed_size);
-					assert(compressed_data != NULL);
-
-					io_read_force(phy_io, compressed_data, compressed_size);
-
-					unsigned long dest_len = index_size;
-					int result = uncompress(
-							index_data,
-							&dest_len,
-							compressed_data,
-							compressed_size);
-					DEBUG(IO, "unzip, result=%d, dest_len=%lu\n",
-							result, dest_len);
-					if (result != Z_OK)
-						THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d",
-								result);
-					if ((int)dest_len != index_size)
-						THROW(EXP_BAD_RESOURCE, "uncompress failed: dest_len=%lu, index_size=%d",
-								dest_len, index_size);
-				}
-				break;
-				case TVP_XP3_INDEX_ENCODE_RAW: {
-					uint64_t r_index_size = io_read_le64(phy_io);
-					if (r_index_size > 0x7fffffff)
-						THROW(EXP_BAD_RESOURCE, "too large index %Lu",
-								r_index_size);
-
-					index_size = r_index_size;
-					DEBUG(IO, "index_size=%d\n", index_size);
-					index_data = xmalloc(index_size);
-					assert(index_data != NULL);
-					io_read_force(phy_io, index_data, index_size);
-				}
-				break;
-				default:
-				THROW(EXP_BAD_RESOURCE, "compress method unknown");
-			}
+			/* extract_index realloc index_data, need to be freed in caller */
+			index_data = extract_index(phy_io, &index_flag, &index_size,
+					index_data);
 
 #if 0
 			FILE* xxfp = fopen("/tmp/xxx", "wb");
@@ -360,147 +549,40 @@ init_xp3_package(const char * phy_fn)
 #endif
 
 			/* read index information from memory */
-			const uint8_t * pindex = index_data;
-			uint8_t * index_end = index_data + index_size;
+			const void * pindex = index_data;
+			const void * index_end = index_data + index_size;
 			while(pindex < index_end) {
-				/* file trunk */
+				/* load trunks */
 				struct chunk_head file_h;
-				const uint8_t * fc_start = find_chunk(pindex, (uint8_t*)"File",
-						&file_h, index_end, FALSE);
-				TRACE(IO, "File chunk start at %p, size=%Ld\n",
-						fc_start, file_h.chunk_sz);
-				if (fc_start == NULL)
-					break;
-
-				/* info trunk */
 				struct chunk_head info_h;
-				const uint8_t * info_start = find_chunk(fc_start, (uint8_t*)"info",
-						&info_h, fc_start + file_h.chunk_sz, TRUE);
-				TRACE(IO, "info chunk start at %p, size=%Ld\n",
-						info_start, info_h.chunk_sz);
-
-				/* segments trunk */
 				struct chunk_head segments_h;
-				const uint8_t * segments_start = find_chunk(fc_start, (uint8_t*)"segm",
-						&segments_h, fc_start + file_h.chunk_sz, TRUE);
-				TRACE(IO, "segments chunk found at %p, size=%Ld\n",
-						segments_start, segments_h.chunk_sz);
-
-				/* adlr chunk */
 				struct chunk_head adlr_h;
-				const uint8_t * adlr_start = find_chunk(fc_start, (uint8_t*)"adlr",
-						&adlr_h, fc_start + file_h.chunk_sz, TRUE);
-				TRACE(IO, "adlr chunk start at %p, size=%Ld\n",
-						adlr_start, adlr_h.chunk_sz);
 
-				/* read info */
-				struct info_head {
-					uint32_t flags;
-					uint64_t ori_sz;
-					uint64_t arch_sz;
-					uint16_t name_len;
-					uint16_t ucs2le_name[0];
-				} ATTR(packed);
+				const void * fc_start;
+				const void * info_start;
+				const void * segments_start;
+				const void * adlr_start;
 
-				const struct info_head * p_ih = (const struct info_head*)(info_start);
-				struct info_head ih = *p_ih;
-
-				ih.flags	= le32toh(ih.flags);
-				ih.ori_sz	= le32toh(ih.ori_sz);
-				ih.arch_sz	= le32toh(ih.arch_sz);
-				ih.name_len	= le32toh(ih.name_len);
-
-				TRACE(IO, "flags=0x%x, ori_sz=%Ld, arch_sz=%Ld, name_len=%d\n",
-						ih.flags, ih.ori_sz, ih.arch_sz, ih.name_len);
-
-				/* +1 for the last '\0' */
-				int name_sz = ucs2le_to_utf8(
-						NULL,
-						0,
-						p_ih->ucs2le_name,
-						ih.name_len) + 1;
-
-				/* process segments */
-				struct segment {
-					uint32_t flags;
-					uint64_t start;
-					uint64_t ori_sz;
-					uint64_t arch_sz;
-				} ATTR(packed);
-
-				if (segments_h.chunk_sz % sizeof(struct segment) != 0)
-					THROW(EXP_BAD_RESOURCE, "corrupted segments chunk: size=%Ld",
-							segments_h.chunk_sz);
-
-				int nr_segments = segments_h.chunk_sz / sizeof(struct segment);
-
-				/* now we can alloc dict entry */
-				int item_sz = sizeof(struct xp3_index_item) + name_sz +
-					sizeof(struct xp3_index_item_segment) * nr_segments + 7;
-
-				pitem = xcalloc(1, item_sz);
-				assert(pitem != NULL);
-
-				pitem->utf8_name = (char*)pitem->__data;
-				pitem->name_sz = name_sz;
-				/* name_sz contain the last '\0' */
-				pitem->segments = ALIGN_UP((void*)(&(pitem->__data[name_sz])), 8);
-				pitem->ori_sz = ih.ori_sz;
-				pitem->arch_sz = ih.arch_sz;
-				pitem->nr_segments = nr_segments;
-				pitem->file_hash = read_le32(adlr_start);
-				/* item.is_compressed is used to track the compress of
-				 * a file. if at least 1 segment is compressed, it
-				 * is TRUE. */
-				pitem->is_compressed = FALSE;
-
-				ucs2le_to_utf8(pitem->utf8_name, name_sz,
-						p_ih->ucs2le_name, ih.name_len);
-				pitem->utf8_name[name_sz - 1] = '\0';
-
-				TRACE(IO, "xp3 item name = %s\n", pitem->utf8_name);
-
-				/* fill segments */
-				uint64_t offset_in_archive = 0;
-				for (int i = 0; i < nr_segments; i++) {
-					struct segment s = 
-						((const struct segment *)(segments_start))[i];
-					s.flags = le32toh(s.flags);
-					s.start = le64toh(s.start);
-					s.ori_sz = le64toh(s.ori_sz);
-					s.arch_sz = le64toh(s.arch_sz);
-					TRACE(IO, "segment %d: flags=0x%x, start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
-							i, s.flags, s.start, s.ori_sz, s.arch_sz);
-
-					struct xp3_index_item_segment * pos = &(pitem->segments[i]);
-					pos->flags = s.flags;
-					pos->start = s.start;
-					pos->ori_sz = s.ori_sz;
-					pos->arch_sz = s.arch_sz;
-					uint8_t seg_cm = s.flags & TVP_XP3_INDEX_ENCODE_METHOD_MASK;
-					if (seg_cm == TVP_XP3_INDEX_ENCODE_ZLIB) {
-						pos->is_compressed = TRUE;
-					} else if (seg_cm == TVP_XP3_INDEX_ENCODE_RAW) {
-						pos->is_compressed = FALSE;
-						if (s.ori_sz != s.arch_sz)
-							THROW(EXP_BAD_RESOURCE, "uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
-									s.arch_sz, s.ori_sz);
-					} else {
-						THROW(EXP_BAD_RESOURCE, "segment compress method unknown: 0x%x",
-								seg_cm);
-					}
-
-					pitem->is_compressed = (pitem->is_compressed ||
-							pos->is_compressed);
-
-					pos->offset = offset_in_archive;
-					offset_in_archive += pos->ori_sz;
+				if (!load_chunks(pindex,
+							&file_h,
+							&info_h,
+							&segments_h,
+							&adlr_h,
+							&fc_start,
+							&info_start,
+							&segments_start,
+							&adlr_start,
+							index_end)) {
+					WARNING(IO, "doesn't find file chunk in this index, xp3 file is %s\n",
+							phy_fn);
+					break;
 				}
 
-				/* check the size of the item */
-				if ((!pitem->is_compressed) && (pitem->ori_sz != pitem->arch_sz))
-					THROW(EXP_BAD_RESOURCE, "item %s is uncompressed but ori_sz(%Ld) and arch_sz(%Ld) different",
-							pitem->utf8_name, pitem->ori_sz, pitem->arch_sz);
+				int item_sz;
+				pitem = build_struct_item(info_start,
+						segments_start,
+						adlr_start,
+						segments_h.chunk_sz, &item_sz);
 
 				/* finally we can insert index entry, using utf8_name as key */
 				if (index_dict == NULL) {
@@ -508,7 +590,6 @@ init_xp3_package(const char * phy_fn)
 					index_dict = strdict_create(8, STRDICT_FL_MAINTAIN_REAL_SZ);
 					assert(index_dict != NULL);
 				}
-
 				dict_data_t data, tmpdata;
 				data.ptr = pitem;
 				GET_DICT_DATA_REAL_SZ(data) = item_sz;
@@ -527,7 +608,6 @@ init_xp3_package(const char * phy_fn)
 			xfree(index_data);
 			index_data = NULL;
 		} while (index_flag & TVP_XP3_INDEX_CONTINUE);
-
 
 		if (index_dict == NULL)
 			THROW(EXP_BAD_RESOURCE, "xp3 file doesn't contain index");

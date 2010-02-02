@@ -170,7 +170,7 @@ file_release_map(struct io_t * io, void * ptr, int len)
 	
 	TRACE(IO, "munmap file %d len %d\n",
 			fd, len);
-	int inner_offset = (int)(ptr) % 4096;
+	uintptr_t inner_offset = (uintptr_t)(ptr) % 4096;
 	int err = munmap(ptr - inner_offset, len + inner_offset);
 	if (err != 0)
 		THROW(EXP_UNCATCHABLE, "munmap(%p, %d) error: %d",
