@@ -353,7 +353,7 @@ init_xp3_package(const char * phy_fn)
 				THROW(EXP_BAD_RESOURCE, "compress method unknown");
 			}
 
-#if 1
+#if 0
 			FILE* xxfp = fopen("/tmp/xxx", "wb");
 			fwrite(index_data, index_size, 1, xxfp);
 			fclose(xxfp);
