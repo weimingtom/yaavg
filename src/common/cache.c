@@ -142,9 +142,13 @@ cache_insert(struct cache_t * cache,
 	while (cache->limit_sz < cache->total_sz + entry->sz) {
 		int old_total_sz = cache->total_sz;
 		if (list_empty(&cache->lru_head)) {
-			ERROR(CACHE, "cache %s, limit_sz=%d, total_sz=%d, nr=%d but lru list is empty\n",
-					cache->name, cache->limit_sz, cache->total_sz, cache->nr);
-			THROW(EXP_UNCATCHABLE, "cache %s is corrupted", cache->name);
+			/* only 1 possibility: the new entry is larger than cache size */
+			if (cache->total_sz != 0) {
+				ERROR(CACHE, "cache %s, limit_sz=%d, total_sz=%d, nr=%d but lru list is empty\n",
+						cache->name, cache->limit_sz, cache->total_sz, cache->nr);
+				THROW(EXP_UNCATCHABLE, "cache %s is corrupted", cache->name);
+			}
+			/* then the total sz is 0, break from the loop */
 			break;
 		}
 		cache_remove_entry(cache,

@@ -85,6 +85,13 @@ enum process_number {
 #define read_le32(p)	(le32toh((*((uint32_t*)(p)))))
 #define read_le64(p)	(le64toh((*((uint64_t*)(p)))))
 
+#define max(a, b)	(((a) > (b)) ? (a) : (b))
+#define min(a, b)	(((a) < (b)) ? (a) : (b))
+
+#define max0(a, b)	max(a, b)
+#define min0(a, b)	((((a) < (b)) && ((a) != 0)) ? (a) : (b))
+
+
 __END_DECLS
 
 #endif

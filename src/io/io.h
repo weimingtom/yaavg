@@ -59,8 +59,8 @@ struct io_functionor_t {
 	int64_t (*tell)(struct io_t * io);
 	int64_t (*get_sz)(struct io_t * io);
 
-	void * (*map_to_mem)(struct io_t * io);
-	void (*release_map)(struct io_t * io, void * ptr);
+	void * (*map_to_mem)(struct io_t * io, int from, int max_sz);
+	void (*release_map)(struct io_t * io, void * ptr, int len);
 
 	/* below 2 functions provide a fast way to access memory mapped file buffer.
 	 * some implementation locks cache, doesn't allow any cache operation before
@@ -244,28 +244,33 @@ io_write_force(struct io_t * io, void * data, int sz)
 
 
 static inline void *
-io_map_to_mem(struct io_t * io)
+io_map_to_mem(struct io_t * io, int from, int max_sz)
 {
 	assert(io && (io->functionor));
 	if (io->functionor->map_to_mem)
-		return io->functionor->map_to_mem(io);
+		return io->functionor->map_to_mem(io, from, max_sz);
+
 	int64_t sz = io_get_sz(io);
 	assert(sz < 0x7fffffff);
 
-	void * ptr = xmalloc((int)sz);
+	if (from + max_sz > sz)
+		max_sz = sz - from;
+
+	void * ptr = xmalloc((int)(max_sz));
 	assert(ptr != NULL);
 	int64_t save_pos = io_tell(io);
-	io_read_force(io, ptr, sz);
+
+	io_read_force(io, ptr, max_sz);
 	io_seek(io, save_pos, SEEK_SET);
 	return ptr;
 }
 
 static inline void
-io_release_map(struct io_t * io, void * ptr)
+io_release_map(struct io_t * io, void * ptr, int len)
 {
 	assert(io && (io->functionor));
 	if (io->functionor->release_map)
-		return io->functionor->release_map(io, ptr);
+		return io->functionor->release_map(io, ptr, len);
 	xfree(ptr);
 }
 
@@ -275,7 +280,7 @@ io_get_internal_buffer(struct io_t * io)
 	assert(io && (io->functionor));
 	if (io->functionor->get_internal_buffer)
 		return io->functionor->get_internal_buffer(io);
-	return io_map_to_mem(io);
+	return io_map_to_mem(io, 0, io_get_sz(io));
 }
 static inline void
 io_release_internal_buffer(struct io_t * io, void * ptr)
@@ -283,7 +288,7 @@ io_release_internal_buffer(struct io_t * io, void * ptr)
 	assert(io && (io->functionor));
 	if (io->functionor->release_internal_buffer)
 		return io->functionor->release_internal_buffer(io, ptr);
-	return io_release_map(io, ptr);
+	return io_release_map(io, ptr, io_get_sz(io));
 }
 
 

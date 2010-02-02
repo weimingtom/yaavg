@@ -16,29 +16,11 @@
 
 #include <io/io.h>
 #include <assert.h>
+#include <unistd.h>
 
 #ifdef HAVE_ZLIB
 # include <zlib.h>
 # include <stdio.h>
-
-struct xp3_package {
-	struct cache_entry_t ce;
-	/* this is the physic file io */
-	struct io_t * io;
-	struct dict_t * index_dict;
-	int sz;
-	char phy_fn[0];
-};
-
-struct xp3_file {
-	struct cache_entry_t ce;
-	int file_sz;
-	char * utf8_name;
-	char * package_name;
-	char * id;
-	uint8_t * data;
-	uint8_t __data[0];
-};
 
 struct xp3_io_t {
 	struct io_t io;
@@ -62,6 +44,13 @@ struct xp3_index_item_segment {
 };
 
 struct xp3_index_item {
+	/* if at least 1 segment is compressed, the file
+	 * is compressed. see xp3_file. we cannot justice this
+	 * by comparing ori_sz and arch_sz, because sometime
+	 * the compressed data size is larger than or equal to
+	 * the original data size.
+	 * */
+	bool_t is_compressed;
 	char * utf8_name;
 	/* name_sz contain the last '\0' */
 	int name_sz;
@@ -72,6 +61,55 @@ struct xp3_index_item {
 	uint64_t arch_sz;	/* size in archive */
 	uint8_t __data[0];
 };
+
+struct xp3_package {
+	struct cache_entry_t ce;
+	/* this is the physic file io */
+	struct io_t * io;
+	struct dict_t * index_dict;
+	int sz;
+	char phy_fn[0];
+};
+
+struct xp3_file {
+	/* if at least 1 segment is compressed, the file
+	 * is compressed. see xp3_index_item.is_compressed */
+	bool_t is_compressed;
+	struct cache_entry_t ce;
+	int file_sz;
+	char * utf8_name;
+	char * package_name;
+	char * id;
+	int nr_segments;
+	union {
+		uint8_t * data;
+		struct xp3_index_item_segment * segments;
+	} u;
+	uint8_t __data[0];
+};
+
+
+static void NONE_filter(uint8_t * data, int sz,
+		struct xp3_package * package,
+		struct xp3_file * file, int from)
+{
+	return;
+}
+
+static void (*xp3_filter)(uint8_t * data, int sz,
+		struct xp3_package * package,
+		struct xp3_file * file, int from) = NONE_filter;
+
+
+static void
+FATE_style_filter(uint8_t * data, int sz,
+		struct xp3_package * package,
+		struct xp3_file * file, int from)
+{
+	/* not 0x54, no problem */
+	for (int i = 0; i < sz; i++)
+		data[i] = data[i] ^ 54;
+}
 
 static inline char *
 _strtok(char * str, char x)
@@ -241,6 +279,8 @@ init_xp3_package(const char * phy_fn)
 	uint8_t * index_data = NULL;
 	struct xp3_package * p_xp3_package = NULL;
 	struct dict_t * index_dict = NULL;
+	/* we define pitem here to guarantee the exception handler can free it */
+	struct xp3_index_item * pitem = NULL;
 	int index_size;
 	uint8_t index_flag = 0;
 	struct exception_t exp;
@@ -391,7 +431,8 @@ init_xp3_package(const char * phy_fn)
 				/* now we can alloc dict entry */
 				int item_sz = sizeof(struct xp3_index_item) + name_sz +
 					sizeof(struct xp3_index_item_segment) * nr_segments + 7;
-				struct xp3_index_item * pitem = xcalloc(1, item_sz);
+
+				pitem = xcalloc(1, item_sz);
 				assert(pitem != NULL);
 
 				pitem->utf8_name = (char*)pitem->__data;
@@ -402,6 +443,10 @@ init_xp3_package(const char * phy_fn)
 				pitem->arch_sz = ih.arch_sz;
 				pitem->nr_segments = nr_segments;
 				pitem->file_hash = read_le32(adlr_start);
+				/* item.is_compressed is used to track the compress of
+				 * a file. if at least 1 segment is compressed, it
+				 * is TRUE. */
+				pitem->is_compressed = FALSE;
 
 				ucs2le_to_utf8(pitem->utf8_name, name_sz,
 						p_ih->ucs2le_name, ih.name_len);
@@ -438,9 +483,18 @@ init_xp3_package(const char * phy_fn)
 						THROW(EXP_BAD_RESOURCE, "segment compress method unknown: 0x%x",
 								seg_cm);
 					}
+
+					pitem->is_compressed = (pitem->is_compressed ||
+							pos->is_compressed);
+
 					pos->offset = offset_in_archive;
 					offset_in_archive += pos->ori_sz;
 				}
+
+				/* check the size of the item */
+				if ((!pitem->is_compressed) && (pitem->ori_sz != pitem->arch_sz))
+					THROW(EXP_BAD_RESOURCE, "item %s is uncompressed but ori_sz(%Ld) and arch_sz(%Ld) different",
+							pitem->utf8_name, pitem->ori_sz, pitem->arch_sz);
 
 				/* finally we can insert index entry, using utf8_name as key */
 				if (index_dict == NULL) {
@@ -458,6 +512,10 @@ init_xp3_package(const char * phy_fn)
 							phy_io->id, pitem->utf8_name);
 					xfree(tmpdata.ptr);
 				}
+
+				/* after we insert pitem, we must reset it to NULL to prevent
+				 * the exception handler xfree it twice (once in freeing the dict) */
+				pitem = NULL;
 				pindex = fc_start + file_h.chunk_sz; 
 			}
 			xfree(index_data);
@@ -495,6 +553,7 @@ init_xp3_package(const char * phy_fn)
 	} FINALLY {
 		if (index_data != NULL)
 			xfree(index_data);
+		assert(pitem == NULL);
 	} CATCH(exp) {
 		if (phy_io != NULL)
 			io_close(phy_io);
@@ -503,6 +562,8 @@ init_xp3_package(const char * phy_fn)
 					destroy_xp3_index_item, 0);
 		if (p_xp3_package != NULL)
 			xfree(p_xp3_package);
+		if (pitem != NULL)
+			xfree(pitem);
 		print_exception(&exp);
 		switch (exp.type) {
 			case EXP_BAD_RESOURCE:
@@ -575,71 +636,95 @@ init_xp3_file(const char * __id)
 		struct xp3_index_item * item = dd.ptr;
 		assert(item != NULL);
 
-		total_sz = sizeof(*file) + phy_fn_sz + fn_sz  + id_sz + item->ori_sz + 7;
+		/* if the item is uncompressed, we needn't load all data now */
+		if (item->is_compressed) {
+			total_sz = sizeof(*file) + phy_fn_sz + fn_sz  + id_sz + item->ori_sz + 7;
+		} else {
+			/* if uncompressed, we only copy the segments description */
+			total_sz = sizeof(*file) + phy_fn_sz + fn_sz  + id_sz + 
+				item->nr_segments * sizeof(struct xp3_index_item_segment) + 7;
+		}
 		file = xmalloc(total_sz);
 		assert(file != NULL);
 
 		file->package_name = (char*)file->__data;
 		file->utf8_name = file->package_name + phy_fn_sz;
 		file->id = file->utf8_name + fn_sz;
-		file->data = ALIGN_UP((void*)(file->id + id_sz), 8);
+		file->is_compressed = item->is_compressed;
+		file->nr_segments = item->nr_segments;
+		file->file_sz = item->ori_sz;
+
+		if (file->is_compressed)
+			file->u.data = ALIGN_UP((void*)(file->id + id_sz), 8);
+		else
+			file->u.segments  = ALIGN_UP((void*)(file->id + id_sz), 8);
 
 		strcpy(file->package_name, phy_fn);
 		strcpy(file->utf8_name, fn);
 		strcpy(file->id, __id);
 
-		TRACE(IO, "file %s, ori_sz=%Ld, arch_sz=%Ld\n",
-				fn, item->ori_sz, item->arch_sz);
-		file->file_sz = item->ori_sz;
+		TRACE(IO, "file %s, ori_sz=%Ld, arch_sz=%Ld, is_compressed=%d\n",
+				fn, item->ori_sz, item->arch_sz, file->is_compressed);
+
 		/* copy the data */
-		int64_t total_ori_sz = 0;
-		int64_t total_arch_sz = 0;
-		for (int i = 0; i < item->nr_segments; i++) {
-			struct xp3_index_item_segment * seg = &item->segments[i];
-			TRACE(IO, "segment %d: ori_sz=%Ld, arch_sz=%Ld, start=0x%Lx, offset=0x%Lx\n",
-					i, seg->ori_sz, seg->arch_sz, seg->start, seg->offset);
+		if (!file->is_compressed) {
+			/* only copy segments description */
+			memcpy(file->u.segments, item->segments,
+					item->nr_segments * sizeof(struct xp3_index_item_segment));
+		} else {
+			int64_t total_ori_sz = 0;
+			int64_t total_arch_sz = 0;
+			for (int i = 0; i < item->nr_segments; i++) {
+				struct xp3_index_item_segment * seg = &item->segments[i];
+				TRACE(IO, "segment %d: ori_sz=%Ld, arch_sz=%Ld, start=0x%Lx, offset=0x%Lx\n",
+						i, seg->ori_sz, seg->arch_sz, seg->start, seg->offset);
 
-			if (seg->is_compressed) {
-				tmp_storage = xrealloc(tmp_storage, seg->arch_sz);
-				assert(tmp_storage != NULL);
-				/* read tmp_storage */
-				io_seek(xp3->io, seg->start, SEEK_SET);
-				io_read_force(xp3->io, tmp_storage, seg->arch_sz);
+				if (seg->is_compressed) {
+					TRACE(IO, "seg %d is compressed\n", i);
+					tmp_storage = xrealloc(tmp_storage, seg->arch_sz);
+					assert(tmp_storage != NULL);
+					/* read tmp_storage */
+					io_seek(xp3->io, seg->start, SEEK_SET);
+					io_read_force(xp3->io, tmp_storage, seg->arch_sz);
 
-				/* uncompress */
-				void * dest = file->data + seg->offset;
-				unsigned long dest_len = item->ori_sz - seg->offset;
-				int result = uncompress(
-						dest,
-						&dest_len,
-						tmp_storage,
-						seg->arch_sz);
-				DEBUG(IO, "unzip, result=%d, dest_len=%lu\n",
-						result, dest_len);
-				if ((result != Z_OK) || (dest_len != seg->ori_sz))
-					THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d, dest_len=%lu, expect %Ld",
-							result, dest_len, seg->ori_sz);
-			} else {
-				if (seg->arch_sz != seg->ori_sz)
-					THROW(EXP_BAD_RESOURCE, "uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
-							seg->arch_sz, seg->ori_sz);
-				io_seek(xp3->io, seg->start, SEEK_SET);
-				io_read_force(xp3->io, file->data + seg->offset, seg->arch_sz);
-			}
+					/* uncompress */
+					void * dest = file->u.data + seg->offset;
+					unsigned long dest_len = item->ori_sz - seg->offset;
+					int result = uncompress(
+							dest,
+							&dest_len,
+							tmp_storage,
+							seg->arch_sz);
+					DEBUG(IO, "unzip, result=%d, dest_len=%lu\n",
+							result, dest_len);
+					if ((result != Z_OK) || (dest_len != seg->ori_sz))
+						THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d, dest_len=%lu, expect %Ld",
+								result, dest_len, seg->ori_sz);
+				} else {
+					TRACE(IO, "seg %d is uncompressed\n", i);
+					if (seg->arch_sz != seg->ori_sz)
+						THROW(EXP_BAD_RESOURCE, "uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
+								seg->arch_sz, seg->ori_sz);
+					io_seek(xp3->io, seg->start, SEEK_SET);
+					io_read_force(xp3->io, file->u.data + seg->offset, seg->ori_sz);
+				}
 
-			total_ori_sz += seg->ori_sz;
-			total_arch_sz += seg->arch_sz;
-		}
 
-		if ((total_ori_sz != item->ori_sz) ||
-				(total_arch_sz != item->arch_sz))
-			THROW(EXP_BAD_RESOURCE, "arch file %s in xp3 package %s is corrupted: ori_sz: (%Ld, %Ld); "
-					"arch_sz: (%Ld, %Ld)",
-					fn, phy_fn,
-					total_ori_sz, item->ori_sz,
-					total_arch_sz, item->arch_sz);
+				xp3_filter(file->u.data + seg->offset,
+						seg->ori_sz, xp3, file, seg->offset);
 
-		WARNING(IO, "which filter should use?\n");
+				total_ori_sz += seg->ori_sz;
+				total_arch_sz += seg->arch_sz;
+			}	/* nr_segments */
+
+			if ((total_ori_sz != item->ori_sz) ||
+					(total_arch_sz != item->arch_sz))
+				THROW(EXP_BAD_RESOURCE, "arch file %s in xp3 package %s is corrupted: ori_sz: (%Ld, %Ld); "
+						"arch_sz: (%Ld, %Ld)",
+						fn, phy_fn,
+						total_ori_sz, item->ori_sz,
+						total_arch_sz, item->arch_sz);
+		}	/* file->is_compressed */
 
 		/* fill the cache entry */
 		struct cache_entry_t * ce = &(file->ce);
@@ -695,6 +780,17 @@ xp3_init(void)
 			conf_get_int("sys.io.xp3.idxcachesz", 0xa00000));
 	cache_init(&xp3_file_cache, "xp3 files cache",
 			conf_get_int("sys.io.xp3.filecachesz", 0xa00000));
+
+	const char * filter = conf_get_string("sys.io.xp3.filter",
+			NULL);
+
+	xp3_filter = NULL;
+	if (filter != NULL) {
+		if (strcmp("FATE", filter) == 0) {
+			VERBOSE(IO, "xp3 file io use FATE style filter\n");
+			xp3_filter = FATE_style_filter;
+		}
+	}
 }
 
 static void
@@ -767,7 +863,7 @@ static int
 xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 {
 	assert(__io != NULL);
-	
+
 	if (ptr == NULL) {
 		assert(size * nr == 0);
 		return 0;
@@ -787,23 +883,71 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 	assert((0 <= io->pos) && (io->pos <= io->file_sz));
 
 	int i;
-	for (i = 0; i < nr; i++) {
-		if (io->pos + size <= io->file_sz) {
-			memcpy(ptr, file->data + io->pos,
-					size);
-			io->pos += size;
-		} else {
-			memcpy(ptr, file->data + io->pos,
-					io->file_sz - io->pos);
-			io->pos += io->file_sz;
-			return i + 1;
+	if (file->is_compressed) {
+		for (i = 0; i < nr; i++) {
+			int s = min(size, io->file_sz - io->pos);
+			assert(s >= 0);
+			memcpy(ptr, file->u.data + io->pos,
+					s);
+			io->pos += s;
+			if (s != size)
+				return i;
 		}
+		return i;
+	}
+
+	/* for uncompressed file */
+	struct xp3_index_item_segment * segs = file->u.segments;
+	struct xp3_index_item_segment * pseg = segs;
+
+	struct xp3_package * pkg = get_xp3_package(file->package_name);
+	assert(pkg != NULL);
+	struct io_t * phy_io = pkg->io;
+	assert(phy_io != NULL);
+
+	assert(segs != NULL);
+
+	for (i = 0; i < nr; i++) {
+		int s = min(size, io->file_sz - io->pos);
+		assert(s >= 0);
+
+		/* copy: from pos io->pos, sz=s */
+
+		while (pseg->offset + pseg->ori_sz <= io->pos) {
+			pseg ++;
+			assert(pseg - segs < file->nr_segments);
+		}
+
+		int copied = 0;
+		while (copied < s) {
+			int from = pseg->offset;
+			if (from < io->pos)
+				from = io->pos;
+			int sz = io->pos + s - from;
+			if (sz > pseg->ori_sz)
+				sz = pseg->ori_sz;
+
+			/* copy and filter */
+			io_seek(phy_io, pseg->start + (from - pseg->offset), SEEK_SET);
+			io_read_force(phy_io, ptr, sz);
+			xp3_filter(ptr, sz, pkg, file, from);
+
+			copied += sz;
+			if (copied < s) {
+				pseg ++;
+				assert(pseg - segs < file->nr_segments);
+			}
+		}
+
+		io->pos += s;
+		if (s != size)
+			break;
 	}
 	return i;
 }
 
-static void *
-xp3_get_internal_buffer(struct io_t * __io)
+static struct xp3_file *
+get_xp3_file_from_io(struct io_t * __io)
 {
 	assert(__io != NULL);
 	struct xp3_io_t * io = container_of(__io,
@@ -812,16 +956,69 @@ xp3_get_internal_buffer(struct io_t * __io)
 
 	struct xp3_file * file = get_xp3_file(io->id);
 	assert(file != NULL);
+	return file;
+}
 
-	lock_cache(&xp3_file_cache);
-	return file->data;
+static void *
+xp3_map_to_mem(struct io_t * __io, int from, int max_sz)
+{
+	struct xp3_file * file = get_xp3_file_from_io(__io);
+
+	if (from + max_sz > file->file_sz)
+		max_sz = file->file_sz - from;
+	if (file->is_compressed) {
+		void * ptr = xmalloc(max_sz);
+		assert(ptr != NULL);
+		memcpy(ptr, file->u.data + from, max_sz);
+		return ptr;
+	} else if (file->nr_segments > 1) {
+		void * ptr = xmalloc(max_sz);
+		assert(ptr != NULL);
+		int64_t save_pos = io_tell(__io);
+		io_read_force(__io, ptr, max_sz);
+		io_seek(__io, save_pos, SEEK_SET);
+	} else {
+		TRACE(IO, "doing memory map\n");
+		int page_size = getpagesize();
+		THROW(EXP_BAD_RESOURCE, "XXXXXXXXXXXXX\n");
+	}
 }
 
 static void
-xp3_release_internal_buffer(struct io_t * io, void * ptr)
+xp3_release_map(struct io_t * __io, void * ptr, int len)
 {
-	unlock_cache(&xp3_file_cache);
+	struct xp3_file * file = get_xp3_file_from_io(__io);
 
+	if ((file->is_compressed) || (file->nr_segments > 1)) {
+		xfree(ptr);
+	} else {
+		THROW(EXP_BAD_RESOURCE, "XXXXXXXXXXXXX\n");
+	}
+}
+
+static void *
+xp3_get_internal_buffer(struct io_t * __io)
+{
+	struct xp3_file * file = get_xp3_file_from_io(__io);
+
+	if (file->is_compressed) {
+		lock_cache(&xp3_file_cache);
+		return file->u.data;
+	} else {
+		return xp3_map_to_mem(__io, 0, file->file_sz);
+	}
+}
+
+static void
+xp3_release_internal_buffer(struct io_t * __io, void * ptr)
+{
+	struct xp3_file * file = get_xp3_file_from_io(__io);
+
+	if (file->is_compressed) {
+		unlock_cache(&xp3_file_cache);
+	} else {
+		xp3_release_map(__io, ptr, file->file_sz);
+	}
 }
 
 static void
@@ -959,8 +1156,8 @@ struct io_functionor_t xp3_io_functionor = {
 	.tell = xp3_tell,
 	.close = xp3_close,
 	.get_sz = xp3_get_sz,
-	.map_to_mem = NULL,
-	.release_map = NULL,
+	.map_to_mem = xp3_map_to_mem,
+	.release_map = xp3_release_map,
 	.get_internal_buffer = xp3_get_internal_buffer,
 	.release_internal_buffer = xp3_release_internal_buffer,
 	.init = xp3_init,

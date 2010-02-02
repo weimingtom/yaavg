@@ -32,7 +32,21 @@ main()
 		assert(io != NULL);
 		char data[5];
 		io_read(io, data, 1, 5);
+		
 		VERBOSE(SYSTEM, "read str=\"%s\"\n", data);
+
+		/* test map_to_mem */
+		char * ptr = io_map_to_mem(io, 0, 4096);
+		*ptr = 'x';
+		VERBOSE(SYSTEM, "%s\n", ptr);
+		io_release_map(io, ptr, 4096);
+
+		/* test get_internal_buffer  */
+		ptr = io_get_internal_buffer(io);
+		ptr[3] = 'x';
+		VERBOSE(SYSTEM, "%s\n", ptr);
+		io_release_map(io, ptr, 4096);
+
 	} FINALLY {
 		if (io != NULL) {
 			io_close(io);

@@ -30,11 +30,6 @@ extern void
 conf_set_bool(const char * name, bool_t v);
 
 
-#define max(a, b)	(((a) > (b)) ? (a) : (b))
-#define min(a, b)	(((a) < (b)) ? (a) : (b))
-
-#define max0(a, b)	max(a, b)
-#define min0(a, b)	((((a) < (b)) && ((a) != 0)) ? (a) : (b))
 
 __END_DECLS
 #endif

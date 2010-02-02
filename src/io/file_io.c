@@ -9,6 +9,7 @@
 #include <io/io.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 
 struct io_functionor_t file_io_functionor;
 
@@ -126,6 +127,49 @@ file_close(struct io_t * io)
 	xfree(io);
 }
 
+static void *
+file_map_to_mem(struct io_t * io, int from, int max_sz)
+{
+	
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->map_to_mem == file_map_to_mem);
+	FILE * fp = io->pprivate;
+
+	int fd = fileno(fp);
+	TRACE(IO, "memory mapping file %d from %d, max_sz = %d\n",
+			fd, from, max_sz);
+
+	void * ptr = mmap(NULL, max_sz, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE, fd, from);
+	if (ptr == NULL)
+		THROW(EXP_UNCATCHABLE, "mmap file %d from %d sz %d failed",
+				fd, from, max_sz);
+
+	return ptr;
+}
+
+static void
+file_release_map(struct io_t * io, void * ptr, int len)
+{
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->release_map == file_release_map);
+
+	FILE * fp = io->pprivate;
+
+	int fd = fileno(fp);
+	
+	TRACE(IO, "munmap file %d len %d\n",
+			fd, len);
+	int err = munmap(ptr, len);
+	if (err != 0)
+		THROW(EXP_UNCATCHABLE, "munmap(%p, %d) error: %d",
+				ptr, len);
+	return;
+}
+
+
 static bool_t
 file_check_usable(const char * param)
 {
@@ -163,6 +207,8 @@ struct io_functionor_t file_io_functionor = {
 	.seek = file_seek,
 	.tell = file_tell,
 	.close = file_close,
+	.map_to_mem = file_map_to_mem,
+	.release_map = file_release_map,
 	.get_sz = file_get_sz,
 };
 
