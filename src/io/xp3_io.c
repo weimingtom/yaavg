@@ -977,10 +977,21 @@ xp3_map_to_mem(struct io_t * __io, int from, int max_sz)
 		int64_t save_pos = io_tell(__io);
 		io_read_force(__io, ptr, max_sz);
 		io_seek(__io, save_pos, SEEK_SET);
+		return ptr;
 	} else {
 		TRACE(IO, "doing memory map\n");
-		int page_size = getpagesize();
-		THROW(EXP_BAD_RESOURCE, "XXXXXXXXXXXXX\n");
+		assert(file->nr_segments == 1);
+		assert(!file->is_compressed);
+		int start = file->u.segments[0].start;
+
+		struct xp3_package * pkg = get_xp3_package(file->id);
+		assert(pkg != NULL);
+
+		void * ptr = io_map_to_mem(pkg->io, start, max_sz);
+		assert(ptr != NULL);
+
+		xp3_filter(ptr, max_sz, pkg, file, start);
+		return ptr;
 	}
 }
 
@@ -992,7 +1003,9 @@ xp3_release_map(struct io_t * __io, void * ptr, int len)
 	if ((file->is_compressed) || (file->nr_segments > 1)) {
 		xfree(ptr);
 	} else {
-		THROW(EXP_BAD_RESOURCE, "XXXXXXXXXXXXX\n");
+		struct xp3_package * pkg = get_xp3_package(file->id);
+		assert(pkg != NULL);
+		io_release_map(pkg->io, ptr, len);
 	}
 }
 
