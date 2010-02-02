@@ -153,6 +153,7 @@ int main(int argc, char * argv[])
 			if (_strtok(tmp_file_name, '$') != NULL) {
 				VERBOSE(IO, "wrong file name: %s\n", tmp_file_name);
 				ptr ++;
+				continue;
 			}
 
 
