@@ -140,13 +140,21 @@ file_map_to_mem(struct io_t * io, int from, int max_sz)
 	TRACE(IO, "memory mapping file %d from %d, max_sz = %d\n",
 			fd, from, max_sz);
 
-	void * ptr = mmap(NULL, max_sz, PROT_READ | PROT_WRITE,
-			MAP_PRIVATE, fd, from);
-	if (ptr == NULL)
-		THROW(EXP_UNCATCHABLE, "mmap file %d from %d sz %d failed",
-				fd, from, max_sz);
+	int real_offset_page = (from >> 12);
+	int inner_offset = (from - (real_offset_page << 12));
 
-	return ptr;
+	/* we don't have mmap2, why? */
+#if 0
+	void * ptr = mmap2(NULL, max_sz + inner_offset, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE, fd, real_offset_page);
+#endif
+	void * ptr = mmap(NULL, max_sz + inner_offset, PROT_READ | PROT_WRITE,
+			MAP_PRIVATE, fd, real_offset_page << 12);
+	if ((int)(ptr) == -1)
+		THROW(EXP_UNCATCHABLE, "mmap file %d from %d sz %d failed: mmap return %p",
+				fd, from, max_sz, ptr);
+
+	return ptr + inner_offset;
 }
 
 static void
@@ -162,10 +170,11 @@ file_release_map(struct io_t * io, void * ptr, int len)
 	
 	TRACE(IO, "munmap file %d len %d\n",
 			fd, len);
-	int err = munmap(ptr, len);
+	int inner_offset = (int)(ptr) % 4096;
+	int err = munmap(ptr - inner_offset, len + inner_offset);
 	if (err != 0)
 		THROW(EXP_UNCATCHABLE, "munmap(%p, %d) error: %d",
-				ptr, len);
+				ptr, len, err);
 	return;
 }
 

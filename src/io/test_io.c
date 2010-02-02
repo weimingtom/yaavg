@@ -36,7 +36,7 @@ main()
 		VERBOSE(SYSTEM, "read str=\"%s\"\n", data);
 
 		/* test map_to_mem */
-		char * ptr = io_map_to_mem(io, 0, 4096);
+		char * ptr = io_map_to_mem(io, 1, 4096);
 		*ptr = 'x';
 		VERBOSE(SYSTEM, "%s\n", ptr);
 		io_release_map(io, ptr, 4096);

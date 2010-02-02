@@ -353,6 +353,12 @@ init_xp3_package(const char * phy_fn)
 				THROW(EXP_BAD_RESOURCE, "compress method unknown");
 			}
 
+#if 1
+			FILE* xxfp = fopen("/tmp/xxx", "wb");
+			fwrite(index_data, index_size, 1, xxfp);
+			fclose(xxfp);
+#endif
+
 			/* read index information from memory */
 			const uint8_t * pindex = index_data;
 			uint8_t * index_end = index_data + index_size;
@@ -984,7 +990,7 @@ xp3_map_to_mem(struct io_t * __io, int from, int max_sz)
 		assert(!file->is_compressed);
 		int start = file->u.segments[0].start;
 
-		struct xp3_package * pkg = get_xp3_package(file->id);
+		struct xp3_package * pkg = get_xp3_package(file->package_name);
 		assert(pkg != NULL);
 
 		void * ptr = io_map_to_mem(pkg->io, start, max_sz);
@@ -1003,7 +1009,7 @@ xp3_release_map(struct io_t * __io, void * ptr, int len)
 	if ((file->is_compressed) || (file->nr_segments > 1)) {
 		xfree(ptr);
 	} else {
-		struct xp3_package * pkg = get_xp3_package(file->id);
+		struct xp3_package * pkg = get_xp3_package(file->package_name);
 		assert(pkg != NULL);
 		io_release_map(pkg->io, ptr, len);
 	}
