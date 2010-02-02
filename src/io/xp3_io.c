@@ -981,6 +981,7 @@ xp3_map_to_mem(struct io_t * __io, int from, int max_sz)
 		void * ptr = xmalloc(max_sz);
 		assert(ptr != NULL);
 		int64_t save_pos = io_tell(__io);
+		io_seek(__io, 0, SEEK_SET);
 		io_read_force(__io, ptr, max_sz);
 		io_seek(__io, save_pos, SEEK_SET);
 		return ptr;

@@ -162,7 +162,6 @@ int main(int argc, char * argv[])
 
 			/* mkdir and create the file */
 
-
 			FILE * fp = wrap_fopen(root_dir, *ptr);
 			assert(fp != NULL);
 

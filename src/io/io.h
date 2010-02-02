@@ -221,10 +221,10 @@ io_read_force(struct io_t * io, void * data, int sz)
 	if (sz <= 0)
 		return;
 	assert(data != NULL);
-	err = io_read(io, data, 1, sz);
-	if (err != sz)
+	err = io_read(io, data, sz, 1);
+	if (err != 1)
 		THROW(EXP_BAD_RESOURCE, "read file %s failed: expect %d but read %d",
-				io->id, sz, err);
+				io->id, 1, err);
 }
 
 
@@ -260,6 +260,7 @@ io_map_to_mem(struct io_t * io, int from, int max_sz)
 	assert(ptr != NULL);
 	int64_t save_pos = io_tell(io);
 
+	io_seek(io, 0, SEEK_SET);
 	io_read_force(io, ptr, max_sz);
 	io_seek(io, save_pos, SEEK_SET);
 	return ptr;
