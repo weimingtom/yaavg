@@ -64,6 +64,7 @@ struct xp3_index_item {
 
 struct xp3_package {
 	struct cache_entry_t ce;
+	bool_t permanent_map;
 	/* this is the physic file io */
 	struct io_t * io;
 	struct dict_t * index_dict;
@@ -88,7 +89,6 @@ struct xp3_file {
 	uint8_t __data[0];
 };
 
-
 static void NONE_filter(uint8_t * data, int sz,
 		struct xp3_package * package,
 		struct xp3_file * file, int from)
@@ -99,7 +99,9 @@ static void NONE_filter(uint8_t * data, int sz,
 static void (*xp3_filter)(uint8_t * data, int sz,
 		struct xp3_package * package,
 		struct xp3_file * file, int from) = NONE_filter;
-
+static void (*xp3_revert_filter)(uint8_t * data, int sz,
+		struct xp3_package * package,
+		struct xp3_file * file, int from) = NONE_filter;
 
 static void
 FATE_style_filter(uint8_t * data, int sz,
@@ -164,8 +166,6 @@ ucs2le_to_utf8(char * dest, int dest_len,
 	}
 	return len;
 }
-
-
 
 #define TVP_XP3_INDEX_ENCODE_METHOD_MASK 0x07
 #define TVP_XP3_INDEX_ENCODE_RAW      0
@@ -271,7 +271,7 @@ destroy_xp3_file(struct xp3_file * file)
 
 static struct cache_t xp3_package_cache;
 static struct cache_t xp3_file_cache;
-
+static struct dict_t * permanent_map_dict = NULL;
 
 /* 
  * the purpose of extract_index is to move some code out from
@@ -636,6 +636,18 @@ init_xp3_package(const char * phy_fn)
 		ce->destroy = (cache_destroy_t)(destroy_xp3_package);
 		ce->cache = NULL;
 		ce->pprivate = NULL;
+
+		/* check permanent_map_dict th find whether to permanent_map */
+
+		if (permanent_map_dict != NULL) {
+			dict_data_t data = strdict_get(permanent_map_dict,
+						p_xp3_package->io->id);
+			if ((!(GET_DICT_DATA_FLAGS(data) & DICT_DATA_FL_VANISHED)) &&
+				(data.bol))
+				io_command(p_xp3_package->io,
+						"permanentmap", NULL);
+		}
+
 	} FINALLY {
 		if (index_data != NULL)
 			xfree(index_data);
@@ -822,7 +834,6 @@ init_xp3_file(const char * __id)
 		ce->destroy = (cache_destroy_t)(destroy_xp3_file);
 		ce->cache = NULL;
 		ce->pprivate = NULL;
-
 	} FINALLY {
 		if (tmp_storage != NULL)
 			xfree(tmp_storage);
@@ -870,11 +881,13 @@ xp3_init(void)
 	const char * filter = conf_get_string("sys.io.xp3.filter",
 			NULL);
 
-	xp3_filter = NULL;
+	xp3_filter = NONE_filter;
+	xp3_revert_filter = NONE_filter;
 	if (filter != NULL) {
 		if (strcmp("FATE", filter) == 0) {
 			VERBOSE(IO, "xp3 file io use FATE style filter\n");
 			xp3_filter = FATE_style_filter;
+			xp3_revert_filter = FATE_style_filter;
 		}
 	}
 }
@@ -884,6 +897,8 @@ xp3_cleanup(void)
 {
 	cache_destroy(&xp3_package_cache);
 	cache_destroy(&xp3_file_cache);
+	if (permanent_map_dict != NULL)
+		strdict_destroy(permanent_map_dict);
 }
 
 static bool_t
@@ -1069,30 +1084,50 @@ xp3_map_to_mem(struct io_t * __io, int from, int max_sz)
 		TRACE(IO, "doing memory map\n");
 		assert(file->nr_segments == 1);
 		assert(!file->is_compressed);
+
+		/* map should start at the beginning of the segment,
+		 * no matter the 'from' */
 		int start = file->u.segments[0].start;
 
 		struct xp3_package * pkg = get_xp3_package(file->package_name);
 		assert(pkg != NULL);
 
-		void * ptr = io_map_to_mem(pkg->io, start, max_sz);
+		/* the range of a map is the whole segment, no matter the size
+		 * argument */
+		void * ptr = io_map_to_mem(pkg->io, start,
+				file->u.segments[0].ori_sz);
 		assert(ptr != NULL);
 
-		xp3_filter(ptr, max_sz, pkg, file, start);
-		return ptr;
+		/* IMPORTANT: if map_to_mem twice, the data in mapped memory
+		 * will be filtered twice and corrupted. to prevent this problem, we:
+		 * 1. notice user not to map one file twice;
+		 * 2. when unmap, call revert filter
+		 * */
+		xp3_filter(ptr, file->u.segments[0].ori_sz, pkg, file, start);
+		return ptr + from;
 	}
 }
 
 static void
-xp3_release_map(struct io_t * __io, void * ptr, int len)
+xp3_release_map(struct io_t * __io, void * ptr, int from, int max_sz)
 {
 	struct xp3_file * file = get_xp3_file_from_io(__io);
 
 	if ((file->is_compressed) || (file->nr_segments > 1)) {
 		xfree(ptr);
 	} else {
+		if (from + max_sz > file->file_sz)
+			max_sz = file->file_sz - from;
 		struct xp3_package * pkg = get_xp3_package(file->package_name);
 		assert(pkg != NULL);
-		io_release_map(pkg->io, ptr, len);
+		/* see comments in xp3_map_to_mem */
+
+		int start = file->u.segments[0].start;
+
+		xp3_revert_filter(ptr, file->u.segments[0].ori_sz,
+				pkg, file, start);
+		io_release_map(pkg->io, ptr - from, start,
+				file->u.segments[0].ori_sz);
 	}
 }
 
@@ -1117,7 +1152,7 @@ xp3_release_internal_buffer(struct io_t * __io, void * ptr)
 	if (file->is_compressed) {
 		unlock_cache(&xp3_file_cache);
 	} else {
-		xp3_release_map(__io, ptr, file->file_sz);
+		xp3_release_map(__io, ptr, 0, file->file_sz);
 	}
 }
 
@@ -1186,18 +1221,40 @@ xp3_readdir(const char * fn)
 	return table;
 }
 
+
+static void *
+xp3_permanentmap(const char * fn)
+{
+	WARNING(IO, "issuing permanentmap command, this is not recommanded!!!\n");
+	/* insert the fn into permanent_map_dict */
+	dict_data_t data;
+	data.bol = TRUE;
+	if (permanent_map_dict == NULL) {
+		permanent_map_dict = strdict_create(
+				0, STRDICT_FL_DUPKEY);
+	}
+	strdict_insert(permanent_map_dict,
+			fn, data);
+	return NULL;
+}
+
 /* special method for XP3 */
 /* syntax of cmd:
  *	readdir:<xp3file> (return a table of string containing all file names in that xp3 package)
  *					(the return value of readdir **MUST** be freed manually)
+ *	permanentmap:<xp3file> permanentmap should be called before the xp3 init. if not,
+ *					it takes effect after package cache cleanup and package reinit
  */
 static void *
-xp3_command(const char * cmd, void * arg)
+xp3_command(struct io_t * io, const char * cmd, void * arg)
 {
 	DEBUG(IO, "run command %s for xp3 io\n", cmd);
 	if (strncmp("readdir:", cmd,
 				sizeof("readdir:") - 1) == 0)
 		return xp3_readdir(cmd + sizeof("readdir:") - 1);
+	if (strncmp("permanentmap:", cmd,
+				sizeof("permanentmap:") - 1) == 0)
+		return xp3_permanentmap(cmd + sizeof("permanentmap:") - 1);
 	return NULL;
 }
 

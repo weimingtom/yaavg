@@ -59,17 +59,19 @@ struct io_functionor_t {
 	int64_t (*tell)(struct io_t * io);
 	int64_t (*get_sz)(struct io_t * io);
 
-	void * (*map_to_mem)(struct io_t * io, int from, int max_sz);
-	void (*release_map)(struct io_t * io, void * ptr, int len);
+	void (*close)(struct io_t * io);
+	void * (*command)(struct io_t * io, const char * cmd, void * arg);
 
-	/* below 2 functions provide a fast way to access memory mapped file buffer.
+	/* below functions are designed for special propose, never call them even
+	 * if you believe you know what you are doing. */
+	void * (*map_to_mem)(struct io_t * io, int from, int max_sz);
+	void (*release_map)(struct io_t * io, void * ptr, int from, int len);
+	/* internal buffer functions provide a fast way to access memory mapped file buffer.
 	 * some implementation locks cache, doesn't allow any cache operation before
 	 * release_internal_buffer */
 	void * (*get_internal_buffer)(struct io_t * io);
 	void (*release_internal_buffer)(struct io_t * io, void * ptr);
 
-	void (*close)(struct io_t * io);
-	void * (*command)(const char * cmd, void * arg);
 };
 
 extern struct io_functionor_t *
@@ -267,11 +269,11 @@ io_map_to_mem(struct io_t * io, int from, int max_sz)
 }
 
 static inline void
-io_release_map(struct io_t * io, void * ptr, int len)
+io_release_map(struct io_t * io, void * ptr, int from, int len)
 {
 	assert(io && (io->functionor));
 	if (io->functionor->release_map)
-		return io->functionor->release_map(io, ptr, len);
+		return io->functionor->release_map(io, ptr, from, len);
 	xfree(ptr);
 }
 
@@ -289,7 +291,7 @@ io_release_internal_buffer(struct io_t * io, void * ptr)
 	assert(io && (io->functionor));
 	if (io->functionor->release_internal_buffer)
 		return io->functionor->release_internal_buffer(io, ptr);
-	return io_release_map(io, ptr, io_get_sz(io));
+	return io_release_map(io, ptr, 0, io_get_sz(io));
 }
 
 
@@ -299,7 +301,7 @@ iof_command(struct io_functionor_t * iof, const char * cmd, void * arg)
 	assert(iof);
 	if (iof->command == NULL)
 		return NULL;
-	return iof->command(cmd, arg);
+	return iof->command(NULL, cmd, arg);
 }
 
 
@@ -308,7 +310,9 @@ io_command(struct io_t * io, const char * cmd, void * arg)
 {
 	assert(io != NULL);
 	assert(io->functionor);
-	return iof_command(io->functionor, cmd, arg);
+	if (io->functionor->command == NULL)
+		return NULL;
+	return io->functionor->command(io, cmd, arg);
 }
 
 static inline uint8_t

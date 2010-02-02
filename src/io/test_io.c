@@ -39,13 +39,13 @@ main()
 		char * ptr = io_map_to_mem(io, 1, 4096);
 		*ptr = 'x';
 		VERBOSE(SYSTEM, "%s\n", ptr);
-		io_release_map(io, ptr, 4096);
+		io_release_map(io, ptr, 1, 4096);
 
 		/* test get_internal_buffer  */
 		ptr = io_get_internal_buffer(io);
 		ptr[3] = 'x';
 		VERBOSE(SYSTEM, "%s\n", ptr);
-		io_release_map(io, ptr, 4096);
+		io_release_internal_buffer(io, ptr);
 
 	} FINALLY {
 		if (io != NULL) {

@@ -130,10 +130,14 @@ int main(int argc, char * argv[])
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
 		char * readdir_cmd = alloca(strlen(phy_file_name)+sizeof("readdir:"));
+		char * pmap_cmd = alloca(strlen(phy_file_name)+sizeof("permanentmap:"));
 		sprintf(readdir_cmd, "readdir:%s", phy_file_name);
+		sprintf(pmap_cmd, "permanentmap:%s", phy_file_name);
 
 		io_f = get_io_handler("XP3");
 		assert(io_f != NULL);
+
+		table = iof_command(io_f, pmap_cmd, NULL);
 		table = iof_command(io_f, readdir_cmd, NULL);
 		assert(table != NULL);
 		char ** ptr = table;

@@ -10,8 +10,18 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 struct io_functionor_t file_io_functionor;
+
+struct file_io_t {
+	struct io_t io;
+	bool_t permanent_mapped;
+	int64_t file_sz;
+	FILE * fp;
+	void * map_base;
+	char path[0];
+};
 
 static struct io_t *
 file_open(const char * path, const char * mode)
@@ -21,13 +31,20 @@ file_open(const char * path, const char * mode)
 	if (fp == NULL)
 		THROW(EXP_RESOURCE_NOT_FOUND, "open file \"%s\" using \"%s\" failed",
 				path, mode);
-	struct io_t * r = xcalloc(1, sizeof(*r) + strlen(path) + 1);
+	struct file_io_t * r = xcalloc(1, sizeof(*r) + strlen(path) + 1);
 	assert(r != NULL);
-	r->functionor = &file_io_functionor;
-	r->pprivate = fp;
-	strcpy(r->__data, path);
-	r->id = r->__data;
-	return r;
+	r->io.functionor = &file_io_functionor;
+	/* set pprivate to fp can make our life eaiser */
+	r->io.pprivate = fp;
+	strcpy(r->path, path);
+	r->io.id = r->path;
+
+	r->fp = fp;
+	r->permanent_mapped = FALSE;
+	r->map_base = (void*)(0xffffffff);
+	r->file_sz = -1;
+
+	return &(r->io);
 }
 
 static struct io_t *
@@ -115,16 +132,32 @@ file_tell(struct io_t * io)
 	return ret;
 }
 
+static int64_t
+file_get_sz(struct io_t * io);
+
 static void
 file_close(struct io_t * io)
 {
 	assert(io != NULL);
 	assert(io->functionor);
 	assert(io->functionor->close == file_close);
+
+	/* in fact, we can close fp first, because
+	 * if permanent_mapped is true, the file_get_sz must
+	 * be called at least once. more over, stat64 doesn't rely
+	 * on an opened file. */
+	struct file_io_t * real_io = container_of(io,
+			struct file_io_t, io);
+	if (real_io->permanent_mapped) {
+		assert((uintptr_t)real_io->map_base < 0xc0000000);
+		assert((uintptr_t)real_io->map_base % getpagesize() == 0);
+		munmap(real_io->map_base, file_get_sz(io));
+	}
+
 	FILE * fp = io->pprivate;
 	assert(fp != NULL);
 	fclose(fp);
-	xfree(io);
+	xfree(real_io);
 }
 
 static void *
@@ -134,8 +167,15 @@ file_map_to_mem(struct io_t * io, int from, int max_sz)
 	assert(io != NULL);
 	assert(io->functionor);
 	assert(io->functionor->map_to_mem == file_map_to_mem);
-	FILE * fp = io->pprivate;
 
+	struct file_io_t * real_io = container_of(io,
+			struct file_io_t, io);
+	if (real_io->permanent_mapped) {
+		assert(real_io->map_base <= (void*)0xc0000000);
+		return real_io->map_base + from;
+	}
+
+	FILE * fp = io->pprivate;
 	int fd = fileno(fp);
 	TRACE(IO, "memory mapping file %d from %d, max_sz = %d\n",
 			fd, from, max_sz);
@@ -158,11 +198,16 @@ file_map_to_mem(struct io_t * io, int from, int max_sz)
 }
 
 static void
-file_release_map(struct io_t * io, void * ptr, int len)
+file_release_map(struct io_t * io, void * ptr, int from, int len)
 {
 	assert(io != NULL);
 	assert(io->functionor);
 	assert(io->functionor->release_map == file_release_map);
+
+	struct file_io_t * real_io = container_of(io,
+			struct file_io_t, io);
+	if (real_io->permanent_mapped)
+		return;
 
 	FILE * fp = io->pprivate;
 
@@ -195,13 +240,60 @@ file_get_sz(struct io_t * io)
 	assert(io->functionor);
 	assert(io->functionor->get_sz == file_get_sz);
 
+	struct file_io_t * real_io = container_of(io,
+			struct file_io_t, io);
+	if (real_io->file_sz != -1)
+		return real_io->file_sz;
+
 	int err;
 	struct stat64 buf;
 	err = stat64(io->id, &buf);
 	if (err < 0)
 		THROW(EXP_BAD_RESOURCE, "resource %s stat64 failed with retval %d",
 				io->id, err);
-	return buf.st_size;
+	real_io->file_sz = buf.st_size;
+	return real_io->file_sz;
+}
+
+static void *
+file_command(struct io_t * io, const char * cmd, void * arg);
+
+static void *
+file_permanentmap(struct io_t * io)
+{
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->command == file_command);
+
+	WARNING(IO, "issuing permanentmap command, this is not recommanded!!!\n");
+	struct file_io_t * real_io = container_of(io,
+			struct file_io_t, io);
+	if (real_io->permanent_mapped) {
+		assert(real_io->map_base != (void*)0xffffffff);
+		return real_io->map_base;
+	}
+
+	int sz = file_get_sz(io);
+	/* make sure the permanent_mapped flag is FALSE */
+	real_io->permanent_mapped = FALSE;
+	void * ptr = file_map_to_mem(io, 0, sz);
+	assert(ptr < (void*)0xc0000000);
+	assert((uintptr_t)ptr % getpagesize() == 0);
+
+	real_io->permanent_mapped = TRUE;
+	real_io->map_base = ptr;
+	return ptr;
+}
+
+static void *
+file_command(struct io_t * io, const char * cmd, void * arg)
+{
+	DEBUG(IO, "run command %s for file io\n", cmd);
+	if (strncmp("permanentmap", cmd,
+				sizeof("permanentmap") - 1) == 0)
+		return file_permanentmap(io);
+	return NULL;
+	
 }
 
 struct io_functionor_t file_io_functionor = {
@@ -218,6 +310,7 @@ struct io_functionor_t file_io_functionor = {
 	.close = file_close,
 	.map_to_mem = file_map_to_mem,
 	.release_map = file_release_map,
+	.command = file_command,
 	.get_sz = file_get_sz,
 };
 
