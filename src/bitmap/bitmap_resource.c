@@ -23,11 +23,11 @@ extern struct functionor_t png_bitmap_resource_functionor;
 #endif
 
 static struct functionor_t * functionors[] = {
-#ifdef HAVE_SDLIMAGE
-	&sdl_bitmap_resource_functionor,
-#endif
 #ifdef HAVE_LIBPNG
 	&png_bitmap_resource_functionor,
+#endif
+#ifdef HAVE_SDLIMAGE
+	&sdl_bitmap_resource_functionor,
 #endif
 	&dummy_bitmap_resource_functionor,
 	NULL,

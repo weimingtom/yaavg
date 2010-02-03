@@ -185,7 +185,6 @@ png_load(struct io_t * io, const char * id)
 
 		/* now let's create the png_bitmap_resource_t */
 		int id_sz = strlen(id) + 1;
-		int rows_sz = sizeof(void*) * height;
 		int one_row_sz = bpp * width;
 		int total_sz = sizeof(*png_res) +
 			id_sz +
@@ -203,7 +202,8 @@ png_load(struct io_t * io, const char * id)
 
 		png_res->id = (char*)png_res->__data;
 		png_res->rows = (uint8_t**)ALIGN_UP(png_res->id + id_sz, 8);
-		png_res->pixels = ALIGN_UP(png_res->rows + rows_sz, 8);
+		/* ** png_res->rows is a ** type, don't mul 4 ** */
+		png_res->pixels = ALIGN_UP(png_res->rows + height, 8);
 
 		strcpy(png_res->id, id);
 		for (int i = 0; i < height; i++) {
@@ -248,6 +248,8 @@ png_load(struct io_t * io, const char * id)
 		}
 	}
 	assert(png_res != NULL);
+	TRACE(BITMAP, "png_res %p loaded for %s\n",
+			png_res, png_res->id);
 	return &(png_res->bitmap_resource);
 }
 
