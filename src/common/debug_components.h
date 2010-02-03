@@ -53,7 +53,7 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[TIMER]		= DBG_LV_DEBUG,
 	[CACHE]		= DBG_LV_VERBOSE,
 	[BITMAP]	= DBG_LV_DEBUG,
-	[IO]		= DBG_LV_TRACE,
+	[IO]		= DBG_LV_VERBOSE,
 	[RESOURCE]	= DBG_LV_DEBUG,
 };
 #endif

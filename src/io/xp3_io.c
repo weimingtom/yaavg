@@ -104,13 +104,20 @@ static void (*xp3_revert_filter)(uint8_t * data, int sz,
 		struct xp3_file * file, int from) = NONE_filter;
 
 static void
-FATE_style_filter(uint8_t * data, int sz,
+FATE_SN_style_filter(uint8_t * data, int sz,
 		struct xp3_package * package,
 		struct xp3_file * file, int from)
 {
 	/* not 0x54, no problem */
 	for (int i = 0; i < sz; i++)
 		data[i] = data[i] ^ 54;
+
+	/* It seems that Fata/Stay Night xor byte of
+	 * 0x13 with 0x01, and byte of 0x2ea29 with 0x3 */
+	if ((from <= 0x13) && (0x13 < from + sz))
+		data[(0x13 - from)] ^= 0x01;
+	if ((from <= 0x2ea29) && (0x2ea29 < from + sz))
+		data[(0x2ea29 - from)] ^= 0x03;
 }
 
 static inline char *
@@ -889,10 +896,10 @@ xp3_init(void)
 	xp3_filter = NONE_filter;
 	xp3_revert_filter = NONE_filter;
 	if (filter != NULL) {
-		if (strcmp("FATE", filter) == 0) {
-			VERBOSE(IO, "xp3 file io use FATE style filter\n");
-			xp3_filter = FATE_style_filter;
-			xp3_revert_filter = FATE_style_filter;
+		if (strcmp("FATE/Stay Night", filter) == 0) {
+			VERBOSE(IO, "xp3 file io use \"FATE/Stay Night\" style filter\n");
+			xp3_filter = FATE_SN_style_filter;
+			xp3_revert_filter = FATE_SN_style_filter;
 		}
 	}
 }

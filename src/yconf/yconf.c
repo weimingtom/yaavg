@@ -64,7 +64,7 @@ ENTRY_BOL("video.opengl.glx.confinemouse", FALSE),
 ENTRY_BOL("video.opengl.glx.grabkeyboard", FALSE),
 ENTRY_INT("sys.io.xp3.idxcachesz", 0xa00000),
 ENTRY_INT("sys.io.xp3.filecachesz", 0xa000000),
-ENTRY_STR("sys.io.xp3.filter", "FATE"),
+ENTRY_STR("sys.io.xp3.filter", "FATE/Stay Night"),
 {NULL, TypeNone, {NULL}},
 };
 
