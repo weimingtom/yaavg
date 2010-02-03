@@ -130,18 +130,21 @@ int main(int argc, char * argv[])
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
 		char * readdir_cmd = alloca(strlen(phy_file_name)+sizeof("readdir:"));
-		char * pmap_cmd = alloca(strlen(phy_file_name)+sizeof("permanentmap:"));
 		sprintf(readdir_cmd, "readdir:%s", phy_file_name);
-		sprintf(pmap_cmd, "permanentmap:%s", phy_file_name);
 
 		io_f = get_io_handler("XP3");
 		assert(io_f != NULL);
 
+#if 0
+		char * pmap_cmd = alloca(strlen(phy_file_name)+sizeof("permanentmap:"));
+		sprintf(pmap_cmd, "permanentmap:%s", phy_file_name);
 		table = iof_command(io_f, pmap_cmd, NULL);
+#endif
 		table = iof_command(io_f, readdir_cmd, NULL);
 		assert(table != NULL);
 		char ** ptr = table;
 
+		void * data = NULL;
 		while (*ptr != NULL) {
 			if (target_fn != NULL) {
 				if (strcmp(target_fn, *ptr) != 0) {
@@ -169,16 +172,22 @@ int main(int argc, char * argv[])
 			FILE * fp = wrap_fopen(root_dir, *ptr);
 			assert(fp != NULL);
 
+			data = xrealloc(data, io_get_sz(io));
+			io_read_force(io, data, io_get_sz(io));
+
+#if 0
 			void * data = io_get_internal_buffer(io);
 			fwrite(data, io_get_sz(io), 1, fp);
 			io_release_internal_buffer(io, data);
-
+#endif
+			fwrite(data, io_get_sz(io), 1, fp);
 			fclose(fp);
 
 			io_close(io);
 			io = NULL;
 			ptr ++;
 		}
+		xfree(data);
 
 #if 0
 		struct io_t * io = io_open("XP3", "/home/wn/Windows/Fate/Realta Nua BGM.xp3:se497.ogg");

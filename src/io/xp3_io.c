@@ -455,6 +455,7 @@ build_struct_item(const void * info_start,
 		pitem->nr_segments = nr_segments;
 
 		pitem->file_hash = read_le32(adlr_start);
+		TRACE(IO, "file_hash=0x%x\n", pitem->file_hash);
 		/* item.is_compressed is used to track the compress of
 		 * a file. if at least 1 segment is compressed, it
 		 * is TRUE. */
@@ -542,7 +543,7 @@ init_xp3_package(const char * phy_fn)
 			index_data = extract_index(phy_io, &index_flag, &index_size,
 					index_data);
 
-#if 0
+#if 1
 			FILE* xxfp = fopen("/tmp/xxx", "wb");
 			fwrite(index_data, index_size, 1, xxfp);
 			fclose(xxfp);
@@ -1037,6 +1038,7 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 			io_seek(phy_io, pseg->start + (from - pseg->offset), SEEK_SET);
 			io_read_force(phy_io, ptr, sz);
 			xp3_filter(ptr, sz, pkg, file, from);
+			ptr += sz;
 
 			copied += sz;
 			if (copied < s) {
@@ -1046,7 +1048,6 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 		}
 
 		io->pos += s;
-		ptr += s;
 		if (s != size)
 			break;
 	}
