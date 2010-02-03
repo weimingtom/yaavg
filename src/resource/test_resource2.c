@@ -5,6 +5,7 @@
 #include <common/debug.h>
 #include <common/exception.h>
 #include <bitmap/bitmap.h>
+#include <bitmap/bitmap_to_png.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -86,6 +87,27 @@ int main()
 		b = get_resource("0:XP3:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3:allcl1.jpg",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
+		/* write the bitmap */
+
+		struct io_t * writer = io_open_write("FILE", "/tmp/xxx.png");
+		assert(writer != NULL);
+		struct exception_t exp;
+		TRY(exp) {
+			bitmap_to_png(b, writer);
+		} FINALLY {
+			io_close(writer);
+		} CATCH(exp) {
+			switch (exp.type) {
+				case EXP_UNSUPPORT_OPERATION:
+				case EXP_LIBPNG_ERROR:
+					print_exception(&exp);
+					WARNING(SYSTEM, "write png failed\n");
+					break;
+				default:
+					RETHROW(exp);
+			}
+		}
+
 		free_bitmap(b);
 
 	} FINALLY {

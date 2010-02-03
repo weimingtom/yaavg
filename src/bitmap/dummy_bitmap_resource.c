@@ -58,6 +58,7 @@ dummy_load(struct io_t * io, const char * id)
 
 	strcpy((void*)(b->__data), id);
 
+	h->revert = FALSE;
 	h->id = (void*)(b->__data);
 	h->id_sz = strlen(h->id) + 1;
 	h->format = BITMAP_RGBA;

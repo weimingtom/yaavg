@@ -100,6 +100,21 @@ file_write(struct io_t * io, void * ptr,
 }
 
 static int
+file_flush(struct io_t * io)
+{
+	assert(io != NULL);
+	assert(io->functionor);
+	assert(io->functionor->flush == file_flush);
+	FILE * fp = io->pprivate;
+	assert(fp != NULL);
+	int err = fflush(fp);
+	if (err != 0)
+		THROW(EXP_UNCATCHABLE, "flush file io %s failed: %d",
+				io->id, err);
+	return 0;
+}
+
+static int
 file_seek(struct io_t * io, int64_t offset,
 		int whence)
 {
@@ -305,6 +320,7 @@ struct io_functionor_t file_io_functionor = {
 	.open_write = file_write_open,
 	.read = file_read,
 	.write = file_write,
+	.flush = file_flush,
 	.seek = file_seek,
 	.tell = file_tell,
 	.close = file_close,

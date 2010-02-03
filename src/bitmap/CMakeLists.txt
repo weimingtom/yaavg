@@ -4,6 +4,7 @@ SET(SRC
 	bitmap_resource.h
 	bitmap_resource.c
 	dummy_bitmap_resource.c
+	bitmap_to_png.c
 	)
 
 SET(SDLSRC "")
@@ -30,6 +31,13 @@ IF (HAVE_SDLIMAGE)
 	ADD_EXECUTABLE(test_sdl_image test_sdl_image.c)
 	TARGET_LINK_LIBRARIES(test_sdl_image ${SDLIMAGE_LIBRARY} common)
 ENDIF(HAVE_SDLIMAGE)
+
+IF (HAVE_LIBPNG)
+	INCLUDE_DIRECTORIES(${PNG_INCLUDE_DIR})
+	TARGET_LINK_LIBRARIES(bitmap ${PNG_LIBRARIES})
+	ADD_DEFINITIONS(${PNG_DEFINITIONS})
+ENDIF (HAVE_LIBPNG)
+
 SET(tests
 	test_bitmap
 	)

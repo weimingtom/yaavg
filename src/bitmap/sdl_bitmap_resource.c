@@ -253,6 +253,8 @@ sdl_load(struct io_t * io, const char * id)
 		struct resource_t * r = &b->resource;
 		struct bitmap_t * h = &b->head;
 
+		h->revert = FALSE;
+
 		strcpy((void*)b->__data, id);
 		h->id = (void*)b->__data;
 		h->id_sz = id_sz;

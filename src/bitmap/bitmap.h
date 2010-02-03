@@ -29,19 +29,24 @@ enum bitmap_format {
 /* and pixels is actually the length of pixels.
  * in fact, pixels is useless. but we employ it for check
  * */
-#define BITMAP_HEAD				\
-	char * id;			\
-	int id_sz;			\
-	enum bitmap_format format;	\
-	int bpp;		\
-	int w, h;					\
-	uint8_t * pixels;	\
 
 /* 
  * this is the host side bitmap
  */
 struct bitmap_t {
-	BITMAP_HEAD
+	/* public */
+	bool_t revert;
+	/* 
+	 * some bitmap, such as AIR's PDT, is reverted. see bitmap_to_png.c
+	 * */
+	char * id;
+	int id_sz;
+	enum bitmap_format format;
+	/* bpp is Bytes per pixer */
+	int bpp;
+	int w, h;
+	uint8_t * pixels;
+	/* private */
 	void (*destroy_bitmap)(struct bitmap_t * b);
 	uint8_t __data[0];
 };

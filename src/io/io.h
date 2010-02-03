@@ -45,6 +45,7 @@ struct io_functionor_t {
 			int size, int nr);
 	int (*write)(struct io_t * io, void * ptr,
 			int size, int nr);
+	int (*flush)(struct io_t * io);
 	ssize_t (*readv)(struct io_t * io, struct iovec * iovec,
 			int nr);
 	ssize_t (*writev)(struct io_t * io, struct iovec * iovec,
@@ -120,6 +121,16 @@ io_write(struct io_t * io, void * ptr,
 			(io->functionor->write));
 	return io->functionor->write(io, ptr,
 			size, nr);
+}
+
+static inline int
+io_flush(struct io_t * io)
+{
+	assert(io && (io->functionor));
+	assert(io->rdwr & IO_WRITE);
+	if (io->functionor->flush)
+		return io->functionor->flush(io);
+	return 0;
 }
 
 static inline int
