@@ -6,6 +6,10 @@
 
 #include <config.h>
 
+#ifndef HAVE_SDLIMAGE
+# error Doesn't have sdlimage support, shouldn't compile this file. This is an error of CMake system.
+#endif
+
 #include <common/debug.h>
 #include <common/exception.h>
 #include <common/defs.h>
@@ -150,7 +154,7 @@ sdl_load(struct io_t * io, const char * id)
 	assert(io != NULL);
 
 	DEBUG(BITMAP, "loading image %s use sdl loader, io is %s\n",
-			id, io->functionor->name);
+			id, io->id);
 	/* build SDL_rwops */
 	struct wrap_rwops rwops;
 
@@ -170,7 +174,7 @@ sdl_load(struct io_t * io, const char * id)
 	SDL_Surface * img = IMG_Load_RW(&rwops.rwops, 0);
 	if (img == NULL)
 		THROW(EXP_BAD_RESOURCE, "load image %s use io %s failed: %s",
-				id, io->functionor->name, SDL_GetError());
+				id, io->id, SDL_GetError());
 
 	/* trace the information of img */
 	DEBUG(BITMAP, "format of %s:\n", id);
@@ -265,7 +269,8 @@ sdl_load(struct io_t * io, const char * id)
 		h->pixels = (uint8_t*)(img->pixels);
 
 		r->id = h->id;
-		/* only an estimation */
+		/* only an estimation, I don't know how to
+		 * compute SDL's internal memory storage usage. */
 		r->res_sz = sizeof(*img) + bitmap_data_size(h) + id_sz;
 		r->serialize = generic_bitmap_serialize;
 		r->destroy = sdl_destroy;

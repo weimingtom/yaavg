@@ -11,6 +11,11 @@
 #include <assert.h>
 #include <memory.h>
 
+void
+generic_free(void * ptr)
+{
+	xfree(ptr);
+}
 
 // vim:ts=4:sw=4
 

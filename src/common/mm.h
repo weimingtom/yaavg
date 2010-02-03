@@ -42,6 +42,9 @@
 		free((___X_ptr));			\
 } while(0)
 
+/* for some polymorphism class, see png_bitmap_resource.c */
+extern void
+generic_free(void * ptr);
 
 #endif
 // vim:ts=4:sw=4

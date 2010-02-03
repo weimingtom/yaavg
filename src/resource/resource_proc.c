@@ -575,15 +575,12 @@ read_resource_worker(const char * id)
 	struct cache_entry_t * ce = cache_get_entry(
 			&res_cache, id);
 
+	struct resource_t * r = NULL;
 	if (ce != NULL) {
-		struct resource_t * r = container_of(ce,
+		r = container_of(ce,
 				struct resource_t,
 				cache_entry);
-		r->serialize(r, &data_side_io);
 	} else {
-		
-		struct resource_t * r = NULL;
-
 		r = load_resource(id);
 
 		assert(r != NULL);
@@ -592,14 +589,14 @@ read_resource_worker(const char * id)
 		ce->id = r->id;
 		ce->data = r;
 		ce->sz = r->res_sz;
-		ce->destroy_arg = r;
 		ce->destroy = (cache_destroy_t)(r->destroy);
+		ce->destroy_arg = r;
 		ce->cache = NULL;
 		ce->pprivate = NULL;
 
 		cache_insert(&res_cache, &r->cache_entry);
-		r->serialize(r, &data_side_io);
 	}
+	r->serialize(r, &data_side_io);
 }
 
 
