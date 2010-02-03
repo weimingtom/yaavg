@@ -707,7 +707,7 @@ launch_resource_process(void)
 
 	/* cache, default: 10M */
 	cache_init(&res_cache, "resource cache",
-			conf_get_int("sys.mem.threshold", 0xa00000));
+			conf_get_int("sys.resource.cachesz", 0xa00000));
 
 	/* close the other end */
 	xclose(C_OUT);

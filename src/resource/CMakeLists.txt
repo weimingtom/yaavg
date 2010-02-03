@@ -13,6 +13,7 @@ SET(
 	tests
 	test_resource
 	test_resource2
+	test_resource3
 	test_load_resource
 	)
 build_tests("${tests}" "resource;utils;bitmap;io;yconf;common")
