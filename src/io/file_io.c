@@ -115,7 +115,7 @@ file_flush(struct io_t * io)
 	return 0;
 }
 
-static int
+static void
 file_seek(struct io_t * io, int64_t offset,
 		int whence)
 {
@@ -128,7 +128,7 @@ file_seek(struct io_t * io, int64_t offset,
 	if (ret < 0)
 		THROW(EXP_BAD_RESOURCE, "seek(%Ld, %d) file %p return %d\n",
 				offset, whence, fp, ret);
-	return ret;
+	return;
 }
 
 static int64_t

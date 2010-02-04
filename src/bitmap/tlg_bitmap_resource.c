@@ -34,6 +34,13 @@ tlg_check_usable(const char * param)
 	return FALSE;
 }
 
+struct tlg_head {
+	uint8_t colors;
+	uint32_t width;
+	uint32_t height;
+	uint32_t blockheight;
+} ATTR(packed);
+
 static struct bitmap_resource_t *
 tlg_load(struct io_t * io, const char * id)
 {
@@ -48,8 +55,32 @@ tlg_load(struct io_t * io, const char * id)
 		unsigned char mark[12];
 		io_read_force(io, mark, 11);
 		if (memcmp(mark, "TLG5.0\x00raw\x1a\x00", 11) == 0) {
+			
 			/* this is TLG5.0 */
 			TRACE(BITMAP, "this is tlg 5.0 row\n");
+
+
+			struct tlg_head tlg_head;
+			io_read_force(io, &tlg_head, sizeof(tlg_head));
+			tole32(tlg_head.width);
+			tole32(tlg_head.height);
+			tole32(tlg_head.blockheight);
+
+			int colors, width, height, blockheight;
+			colors = tlg_head.colors;
+			width = tlg_head.width;
+			height = tlg_head.height;
+			blockheight = tlg_head.blockheight;
+
+			int blockcount = (int)((height - 1) / blockheight) + 1;
+
+			TRACE(BITMAP, "colors is %d, width=%d, height=%d, blockcount=%d\n", colors,
+					width, height, blockcount);
+			if ((colors != 3) && (colors != 4))
+				THROW(EXP_UNSUPPORT_FORMAT, "unsupport color type");
+
+			io_seek(io, blockcount * sizeof(uint32_t), SEEK_CUR);
+
 			THROW(EXP_UNSUPPORT_FORMAT, "doesn't support tlg format");
 		} else {
 			THROW(EXP_UNSUPPORT_FORMAT, "doesn't support tlg format");

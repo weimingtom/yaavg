@@ -402,10 +402,10 @@ build_struct_item(const void * info_start,
 	const struct info_head * p_ih = (const struct info_head*)(info_start);
 	struct info_head ih = *p_ih;
 
-	ih.flags	= le32toh(ih.flags);
-	ih.ori_sz	= le32toh(ih.ori_sz);
-	ih.arch_sz	= le32toh(ih.arch_sz);
-	ih.name_len	= le32toh(ih.name_len);
+	tole32(ih.flags);
+	tole64(ih.ori_sz);
+	tole64(ih.arch_sz);
+	tole16(ih.name_len);
 
 	TRACE(IO, "flags=0x%x, ori_sz=%Ld, arch_sz=%Ld, name_len=%d\n",
 			ih.flags, ih.ori_sz, ih.arch_sz, ih.name_len);
@@ -468,10 +468,10 @@ build_struct_item(const void * info_start,
 		for (int i = 0; i < nr_segments; i++) {
 			struct segment s = 
 				((const struct segment *)(segments_start))[i];
-			s.flags = le32toh(s.flags);
-			s.start = le64toh(s.start);
-			s.ori_sz = le64toh(s.ori_sz);
-			s.arch_sz = le64toh(s.arch_sz);
+			tole32(s.flags);
+			tole64(s.start);
+			tole64(s.ori_sz);
+			tole64(s.arch_sz);
 			TRACE(IO, "segment %d: flags=0x%x, start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
 					i, s.flags, s.start, s.ori_sz, s.arch_sz);
 
@@ -1256,7 +1256,7 @@ xp3_tell(struct io_t * __io)
 	return io->pos;
 }
 
-static int
+static void
 xp3_seek(struct io_t * __io, int64_t offset,
 		int whence)
 {
@@ -1280,7 +1280,7 @@ xp3_seek(struct io_t * __io, int64_t offset,
 		THROW(EXP_BAD_RESOURCE, "seek xp3 file %s (%Ld, %d) failed: out of range. max pos is %Ld",
 				io->id, offset, whence, io->file_sz);
 	io->pos = pos;
-	return 0;
+	return;
 }
 
 static int64_t

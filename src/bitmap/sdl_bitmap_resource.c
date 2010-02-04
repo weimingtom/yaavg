@@ -102,10 +102,8 @@ wrap_seek(struct SDL_RWops * ops, int offset, int whence)
 	struct io_t * io = get_io(ops);
 	TRACE(IO, "io=%p\n", io);
 	assert(io != NULL);
-	int ret = io_seek(io, offset, whence);
-	if (ret == 0)
-		return io_tell(io);
-	return ret;
+	io_seek(io, offset, whence);
+	return io_tell(io);
 }
 
 static int

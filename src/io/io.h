@@ -55,7 +55,7 @@ struct io_functionor_t {
 	ssize_t (*vmsplice_read)(struct io_t * io, struct iovec * iovec,
 			int nr);
 	/* seek and tell should return 0 only, if error, it should issue an exception */
-	int (*seek)(struct io_t * io, int64_t offset,
+	void (*seek)(struct io_t * io, int64_t offset,
 			int whence);
 	int64_t (*tell)(struct io_t * io);
 	int64_t (*get_sz)(struct io_t * io);
@@ -139,14 +139,14 @@ io_flush(struct io_t * io)
 	return 0;
 }
 
-static inline int
+static inline void
 io_seek(struct io_t * io, int64_t offset,
 		int whence)
 {
 	assert(io &&
 			(io->functionor) &&
 			(io->functionor->seek));
-	return io->functionor->seek(io, offset,
+	io->functionor->seek(io, offset,
 			whence);
 }
 
@@ -182,12 +182,9 @@ io_get_sz(struct io_t * io)
 	int64_t pos_save, pos;
 	int err;
 	pos_save = io_tell(io);
-	err = io_seek(io, 0, SEEK_END);
-	if (err < 0)
-		THROW(EXP_BAD_RESOURCE, "io %s seek(%Ld, %d) failed",
-				io->id, 0LL, SEEK_END);
+	io_seek(io, 0, SEEK_END);
 	pos = io_tell(io);
-	err = io_seek(io, pos_save, SEEK_SET);
+	io_seek(io, pos_save, SEEK_SET);
 	if (err < 0)
 		THROW(EXP_BAD_RESOURCE, "io %s seek(%Ld, %d) failed",
 				io->id, pos_save, SEEK_SET);
