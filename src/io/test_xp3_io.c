@@ -119,8 +119,8 @@ int main(int argc, char * argv[])
 	struct exception_t exp;
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
-		char * readdir_cmd = alloca(strlen(phy_file_name)+sizeof("readdir:"));
-		sprintf(readdir_cmd, "readdir:%s", phy_file_name);
+		char * readdir_cmd = alloca(strlen(phy_file_name)+sizeof("readdir:FILE:"));
+		sprintf(readdir_cmd, "readdir:FILE:%s", phy_file_name);
 
 		io_f = get_io_handler("XP3");
 		assert(io_f != NULL);
@@ -144,9 +144,9 @@ int main(int argc, char * argv[])
 			}
 			VERBOSE(SYSTEM, "%s\n", *ptr);
 
-			int comp_fn_sz = phy_file_name_sz + strlen(*ptr) + 1;
+			int comp_fn_sz = phy_file_name_sz + strlen(*ptr) + 6;
 			tmp_file_name = xrealloc(tmp_file_name, comp_fn_sz);
-			sprintf(tmp_file_name, "%s:%s", phy_file_name, *ptr);
+			sprintf(tmp_file_name, "%s|FILE:%s", *ptr, phy_file_name);
 			if (*_strtok(tmp_file_name, '$') != '\0') {
 				VERBOSE(IO, "wrong file name: %s\n", tmp_file_name);
 				ptr ++;
@@ -158,7 +158,6 @@ int main(int argc, char * argv[])
 			assert(io != NULL);
 
 			/* mkdir and create the file */
-
 			FILE * fp = wrap_fopen(root_dir, *ptr);
 			assert(fp != NULL);
 
@@ -172,7 +171,6 @@ int main(int argc, char * argv[])
 #endif
 			fwrite(data, io_get_sz(io), 1, fp);
 			fclose(fp);
-
 			io_close(io);
 			io = NULL;
 			ptr ++;

@@ -61,7 +61,8 @@ cache_init(struct cache_t * c, const char * name,
 	assert(c != NULL);
 	assert(limit_sz > 0);
 	c->name = name;
-	DEBUG(CACHE, "init cache %s\n", c->name);
+	DEBUG(CACHE, "init cache %s, size limit is %d\n",
+			c->name, limit_sz);
 
 	/* don't dup key: doesn't need, because the
 	 * key is always entry->id and it has been already dupped. */
@@ -138,6 +139,8 @@ cache_insert(struct cache_t * cache,
 	}
 
 	TRACE(CACHE, "insert entry %s into %s\n", entry->id, cache->name);
+	TRACE(CACHE, "currently cache %s size is %d, entry_sz is %d\n", cache->name,
+			cache->total_sz, entry->sz);
 	/* clear cache */
 	while (cache->limit_sz < cache->total_sz + entry->sz) {
 		int old_total_sz = cache->total_sz;

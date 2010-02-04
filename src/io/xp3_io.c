@@ -701,10 +701,13 @@ init_xp3_file(const char * __id)
 {
 	char * id = strdupa(__id);
 	char * fn = id;
+	assert(*fn != '\0');
+
 	char * pkg_fn = split_name(fn);
+	assert(pkg_fn != NULL);
+	assert(*pkg_fn != '\0');
 
 	void * tmp_storage = NULL;
-	assert(*fn != '\0');
 
 	int fn_sz = strlen(fn) + 1;
 	int pkg_fn_sz = strlen(pkg_fn) + 1;
@@ -734,9 +737,11 @@ init_xp3_file(const char * __id)
 		/* if the item is uncompressed, we needn't load all data now */
 		int total_sz;
 		if (item->is_compressed) {
+			TRACE(IO, "xp3 item %s is compressed\n", fn);
 			total_sz = sizeof(*file) + pkg_fn_sz + fn_sz  + id_sz + item->ori_sz + 7;
 		} else {
 			/* if uncompressed, we only copy the segments description */
+			TRACE(IO, "xp3 item %s is uncompressed\n", fn);
 			total_sz = sizeof(*file) + pkg_fn_sz + fn_sz  + id_sz + 
 				item->nr_segments * sizeof(struct xp3_index_item_segment) + 7;
 		}
