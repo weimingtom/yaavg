@@ -204,7 +204,7 @@ tlg_load(struct io_t * io, const char * id)
 
 			uint8_t * prevline = alloca(width * nr_colors);
 			assert(prevline != NULL);
-			memset(prevline, '\0', width * nr_colors);
+			memset(prevline, 0, width * nr_colors);
 
 			for (int y_blk = 0; y_blk < height; y_blk += blockheight) {
 				for (int c = 0; c < nr_colors; c++) {

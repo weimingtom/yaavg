@@ -701,6 +701,7 @@ launch_resource_process(void)
 	/* child */
 	/* reinit debug */
 	dbg_init("/tmp/yaavg_resource_log");
+	//dbg_init(NULL);
 
 	/* cache, default: 10M */
 	cache_init(&res_cache, "resource cache",
