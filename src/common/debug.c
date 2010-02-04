@@ -82,6 +82,7 @@ set_color(enum color_name c)
 
 #ifdef YAAVG_DEBUG
 static int malloc_counter = 0;
+static int memalign_counter = 0;
 static int calloc_counter = 0;
 static int free_counter = 0;
 static int strdup_counter = 0;
@@ -101,6 +102,21 @@ __wrap_malloc(size_t size,
 	malloc_counter ++;
 	return res;
 }
+
+void *
+__wrap_memalign(size_t boundary, size_t size,
+		__dbg_info_param)
+{
+	void * res;
+	res = malloc(size);
+	assert(res != NULL);
+	TRACE(MEMORY, "@q memalign(%d, %d)@[%s:%d]=%p\n", boundary, size,
+			func, line,
+			res);
+	memalign_counter ++;
+	return res;
+}
+
 
 void
 __wrap_free(void * ptr,
@@ -206,12 +222,13 @@ sighandler_mem_stats(int signum)
 			"support memory status report\n");
 #else
 	MEM_MSG("------ malloc counters ------\n");
-	MEM_MSG("malloc counter:\t%d\n", malloc_counter);
-	MEM_MSG("calloc counter:\t%d\n", calloc_counter);
-	MEM_MSG("strdup counter:\t%d\n", strdup_counter);
-	MEM_MSG("free counter:\t%d\n", free_counter);
-	MEM_MSG("fopen counter:\t%d\n", fopen_counter);
-	MEM_MSG("fclose counter:\t%d\n", fclose_counter);
+	MEM_MSG("malloc counter:\t\t%d\n", malloc_counter);
+	MEM_MSG("memalign counter:\t%d\n", memalign_counter);
+	MEM_MSG("calloc counter:\t\t%d\n", calloc_counter);
+	MEM_MSG("strdup counter:\t\t%d\n", strdup_counter);
+	MEM_MSG("free counter:\t\t%d\n", free_counter);
+	MEM_MSG("fopen counter:\t\t%d\n", fopen_counter);
+	MEM_MSG("fclose counter:\t\t%d\n", fclose_counter);
 	if (!__FATAL_ENDDED) {
 #ifdef HAVE_MALLINFO
 		/* if fatal endded, don't print mallinfo */
@@ -297,6 +314,7 @@ dbg_exit(void)
 	/* reset the counters */
 	/* see comment at dbg_init */
 	malloc_counter = 0;
+	memalign_counter = 0,
 	calloc_counter = 0;
 	free_counter = 0;
 	strdup_counter = 0;

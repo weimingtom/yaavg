@@ -30,7 +30,10 @@ cleanup_func_t cleanup_funcs[] = {
 	NULL,
 };
 
-static const char * name[12] = {
+
+static const char * name[] = {
+	"0*XP3:ex_back.tlg|FILE:/home/wn/Windows/Fate/image.xp3",
+#if 0
 	"0*FILE:/tmp/xxx.png",
 	"0*XP3:ed1.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", 
 	"0*XP3:ed2.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", 
@@ -43,16 +46,18 @@ static const char * name[12] = {
 	"0*XP3:ps043.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", 
 	"0*XP3:C12f0.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", 
 	"0*XP3:C12c0.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", 
+#endif
 };
 
+#define NR_RESOURCES (sizeof(name) / sizeof(const char *))
 int main()
 {
 	do_init();
-	struct resource_t * res[12];
-	for (int i = 0; i < 12; i++) {
+	struct resource_t * res[NR_RESOURCES];
+	for (int i = 0; i < NR_RESOURCES; i++) {
 		res[i] = load_resource(name[i]);
 	}
-	for (int i = 0; i < 12; i++) {
+	for (int i = 0; i < NR_RESOURCES; i++) {
 		res[i]->destroy(res[i]);
 	}
 	do_cleanup();

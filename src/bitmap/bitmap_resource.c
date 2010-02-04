@@ -22,6 +22,8 @@ extern struct functionor_t sdl_bitmap_resource_functionor;
 extern struct functionor_t png_bitmap_resource_functionor;
 #endif
 
+extern struct functionor_t tlg_bitmap_resource_functionor;
+
 static struct functionor_t * functionors[] = {
 #ifdef HAVE_LIBPNG
 	&png_bitmap_resource_functionor,
@@ -29,6 +31,7 @@ static struct functionor_t * functionors[] = {
 #ifdef HAVE_SDLIMAGE
 	&sdl_bitmap_resource_functionor,
 #endif
+	&tlg_bitmap_resource_functionor,
 	&dummy_bitmap_resource_functionor,
 	NULL,
 };

@@ -1,5 +1,5 @@
 /* 
- * png_bitmap.c
+ * png_bitmap_resource.c
  * by WN @ Dec. 13, 2009
  */
 
