@@ -912,45 +912,8 @@ xp3_check_usable(const char * param)
 static struct io_t *
 xp3_open(const char * __id)
 {
-#if 0
-	char * id = strdupa(__id);
-
-	char * fn = id;
-	char * pkg_fn = split_name(fn);
-	assert(pkg_fn != NULL);
-
-	int fn_sz = strlen(fn) + 1;
-	int pkg_fn_sz = strlen(pkg_fn) + 1;
-	int id_sz = fn_sz + pkg_fn_sz;
-	assert(id_sz == strlen(__id) + 1);
-
-	/* alloc xp_io_t */
-	struct xp3_io_t * r = xcalloc(1, sizeof(*r) +
-			pkg_fn_sz +
-			fn_sz +
-			id_sz);
-	assert(r != NULL);
-
-	r->pos = 0;
-	r->pkg_fn = r->__id;
-	r->fn = r->pkg_fn + pkg_fn_sz;
-	r->id = r->fn + fn_sz;
-
-	strncpy(r->pkg_fn, pkg_fn, pkg_fn_sz);
-	strncpy(r->fn, fn, fn_sz);
-	strncpy(r->id, __id, id_sz);
-
-	r->io.functionor = &xp3_io_functionor;
-	r->io.pprivate = r;
-	r->io.rdwr = IO_READ;
-	r->io.id = r->id;
-
-	DEBUG(IO, "open xp3 file: pkg_fn=%s; fn=%s, id=%s\n",
-			r->pkg_fn, r->fn, r->id);
-#endif
-
 	assert(__id != NULL);
-	/* check whether the file correct, and insert into cache */
+	/* check whether the file is correct, and insert into cache */
 	struct xp3_file * fp = get_xp3_file(__id);
 	assert(fp != NULL);
 

@@ -193,7 +193,7 @@ file_map_to_mem(struct io_t * io, int from, int max_sz)
 
 	FILE * fp = io->pprivate;
 	int fd = fileno(fp);
-	TRACE(IO, "memory mapping file %d from %d, max_sz = %d\n",
+	WARNING(IO, "memory mapping file %d from %d, max_sz = %d, this is highly not recommanded!!!\n",
 			fd, from, max_sz);
 
 	int real_offset_page = (from >> 12);

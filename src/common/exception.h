@@ -57,11 +57,11 @@ struct exception_t {
 
 #if defined(HAVE_SIGSETJMP)
 #define EXCEPTIONS_SIGJMP_BUF		sigjmp_buf
-#define EXCEPTIONS_SIGSETJMP(buf)	sigsetjmp((buf), 1)
+#define EXCEPTIONS_SIGSETJMP(buf)	sigsetjmp(((buf)), 1)
 #define EXCEPTIONS_SIGLONGJMP(buf,val)	siglongjmp((buf), (val))
 #else
 #define EXCEPTIONS_SIGJMP_BUF		jmp_buf
-#define EXCEPTIONS_SIGSETJMP(buf)	setjmp(buf)
+#define EXCEPTIONS_SIGSETJMP(buf)	setjmp((buf))
 #define EXCEPTIONS_SIGLONGJMP(buf,val)	longjmp((buf), (val))
 #endif
 
@@ -94,9 +94,9 @@ exceptions_state_mc_init(struct catcher_t * catcher,
 	<% \
 	struct catcher_t ____catcher; \
 	____catcher.curr_exp = &(exp); \
-	EXCEPTIONS_SIGJMP_BUF * buf = \
+	EXCEPTIONS_SIGJMP_BUF * ___buf___ = \
 		exceptions_state_mc_init(&____catcher, &(exp));	\
-	EXCEPTIONS_SIGSETJMP(*buf);	\
+	EXCEPTIONS_SIGSETJMP(*___buf___);	\
 	while (exceptions_state_mc(CATCH_ITER_0)) 
 
 #define FINALLY { exceptions_state_mc(CATCH_FINALLY); }

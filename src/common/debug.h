@@ -66,24 +66,26 @@ dbg_fatal(void);
 #ifdef YAAVG_DEBUG
 
 #define SILENT(...)     __NOP
-#define TRACE(c, ...)	dbg_output(DBG_LV_TRACE, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define DEBUG(c, ...)	dbg_output(DBG_LV_DEBUG, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define VERBOSE(c, ...)	dbg_output(DBG_LV_VERBOSE, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define WARNING(c, ...)	dbg_output(DBG_LV_WARNING, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define ERROR(c, ...)	dbg_output(DBG_LV_ERROR, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define TRACE(c, ...)	dbg_output(DBG_LV_TRACE, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define DEBUG(c, ...)	dbg_output(DBG_LV_DEBUG, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define VERBOSE(c, ...)	dbg_output(DBG_LV_VERBOSE, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define WARNING(c, ...)	dbg_output(DBG_LV_WARNING, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define ERROR(c, ...)	dbg_output(DBG_LV_ERROR, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define FATAL(c, ...)	do {	\
-	dbg_output(DBG_LV_FATAL, c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); \
+	dbg_output(DBG_LV_FATAL, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); \
 	dbg_fatal();	\
 }while(0)
-#define FATAL_MSG(c, ...)	dbg_output(DBG_LV_FATAL, c, __FILE__, __FUNCTION__, \
+#define FATAL_MSG(c, ...)	dbg_output(DBG_LV_FATAL, (c), __FILE__, __FUNCTION__, \
 		__LINE__, __VA_ARGS__)
 #define FORCE(c, ...)	dbg_output(DBG_LV_FORCE,	\
-		c, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+		(c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /* memory leak detection */
 #define __dbg_info_param	const char * file, const char * func, int line
 extern void *
 __wrap_malloc(size_t size, __dbg_info_param);
+extern void *
+__wrap_memalign(size_t boundary, size_t size, __dbg_info_param);
 extern void
 __wrap_free(void * ptr, __dbg_info_param);
 extern void *
@@ -98,13 +100,14 @@ extern int
 __wrap_fclose(FILE * stream, __dbg_info_param);
 
 #ifndef __DEBUG_C
-# define malloc(s)	__wrap_malloc(s, __FILE__, __FUNCTION__, __LINE__)
-# define calloc(c, s)	__wrap_calloc(c, s, __FILE__, __FUNCTION__, __LINE__)
-# define free(ptr)		__wrap_free(ptr, __FILE__, __FUNCTION__, __LINE__)
-# define strdup(s)	__wrap_strdup(s, __FILE__, __FUNCTION__, __LINE__)
-# define realloc(p, n)	__wrap_realloc(p, n, __FILE__, __FUNCTION__, __LINE__)
-# define fopen(fn, t)	__wrap_fopen(fn, t, __FILE__, __FUNCTION__, __LINE__)
-# define fclose(fp)	__wrap_fclose(fp, __FILE__, __FUNCTION__, __LINE__)
+# define malloc(s)	__wrap_malloc((s), __FILE__, __FUNCTION__, __LINE__)
+# define memalign(b, s)	__wrap_memalign((b), (s), __FILE__, __FUNCTION__, __LINE__)
+# define calloc(c, s)	__wrap_calloc((c), (s), __FILE__, __FUNCTION__, __LINE__)
+# define free(ptr)		__wrap_free((ptr), __FILE__, __FUNCTION__, __LINE__)
+# define strdup(s)	__wrap_strdup((s), __FILE__, __FUNCTION__, __LINE__)
+# define realloc(p, n)	__wrap_realloc((p), (n), __FILE__, __FUNCTION__, __LINE__)
+# define fopen(fn, t)	__wrap_fopen((fn), (t), __FILE__, __FUNCTION__, __LINE__)
+# define fclose(fp)	__wrap_fclose((fp), __FILE__, __FUNCTION__, __LINE__)
 #endif
 
 #else
