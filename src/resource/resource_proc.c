@@ -607,6 +607,7 @@ delete_resource_worker(const char * __id)
 	cache_remove_entry(&res_cache, __id);
 }
 
+static char cmd[MAX_IDLEN];
 static void
 worker(void)
 {
@@ -618,11 +619,10 @@ worker(void)
 
 	for(;;) {
 		int cmd_len;
-		char cmd[MAX_IDLEN];
 
 		/* 
 		 * cmd syntax:
-		 * read resource: r:[format]:[type]:[proto]:[id]
+		 * read resource: r:REANAME, see common/defs.h
 		 * exit: x
 		 */
 		xxread(C_IN, &cmd_len, sizeof(cmd_len));

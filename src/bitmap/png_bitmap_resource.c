@@ -92,7 +92,7 @@ png_bitmap_destroy(struct resource_t * r)
 				bitmap_resource);
 	assert(r->ptr == pr);
 	assert(r->pprivate == pr);
-	DEBUG(BITMAP, "destrying png bitmap %s\n", r->id);
+	DEBUG(BITMAP, "destroying png bitmap %s\n", r->id);
 	xfree(pr);
 }
 
@@ -201,9 +201,9 @@ png_load(struct io_t * io, const char * id)
 		struct bitmap_t * h = &(btm_res->head);
 
 		png_res->id = (char*)png_res->__data;
-		png_res->rows = (uint8_t**)ALIGN_UP(png_res->id + id_sz, 8);
+		png_res->rows = (uint8_t**)ALIGN_UP_PTR(png_res->id + id_sz, 8);
 		/* ** png_res->rows is a ** type, don't mul 4 ** */
-		png_res->pixels = ALIGN_UP(png_res->rows + height, 8);
+		png_res->pixels = ALIGN_UP_PTR(png_res->rows + height, 8);
 
 		strcpy(png_res->id, id);
 		for (int i = 0; i < height; i++) {

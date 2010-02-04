@@ -6,6 +6,8 @@
 #include <sys/cdefs.h>
 #include <stdint.h>
 #include <endian.h>
+#include <assert.h>
+#include <stddef.h>
 
 #ifdef HAVE_STDBOOL_H
 #include <stdbool.h>
@@ -73,7 +75,13 @@ typedef int bool_t;
 #endif
 
 #define ALIGN_DOWN(v, a)	(typeof(v))((uint32_t)(v) & (~((a) - 1)))
-#define ALIGN_UP(v, a)		(typeof(v))(ALIGN_DOWN((v) + (a) - 1, (a)))
+#define ALIGN_UP(v, a)		(typeof(v))(ALIGN_DOWN((uint32_t)(v) + (uint32_t)(a) - 1, (a)))
+
+#define ALIGN_DOWN_64(v, a)	(typeof(v))((uint64_t)(v) & (~((a) - 1)))
+#define ALIGN_UP_64(v, a)		(typeof(v))(ALIGN_DOWN_64((uint64_t)(v) + (uint64_t)(a) - 1, (a)))
+
+#define ALIGN_DOWN_PTR(v, a)	(typeof(v))((uintptr_t)(v) & (~((a) - 1)))
+#define ALIGN_UP_PTR(v, a)		(typeof(v))(ALIGN_DOWN_PTR((uintptr_t)(v) + (uintptr_t)(a) - 1, (a)))
 
 enum process_number {
 	MAIN_PROCESS,
@@ -91,6 +99,58 @@ enum process_number {
 #define max0(a, b)	max(a, b)
 #define min0(a, b)	((((a) < (b)) && ((a) != 0)) ? (a) : (b))
 
+static inline char *
+_strtok(const char * str, char tok)
+{
+	assert(tok != '\0');
+	while ((*str != '\0') && (*str != tok))
+		str ++;
+	return (char*)str;
+}
+
+/* 
+ * resource name processing utils:
+ * syntax of a resource name:
+ * RESNAME = TYPE '*' PACKAGE
+ * PACKAGE = 	PROTOCAL':'INNERNAME'|'PACKAGE
+ * 			or: 'FILE:'FILENAME
+ * 	for example:
+ * 	 0*FILE:/tmp/xxx.png
+ * 	 0*XP3:abc.png|FILE:xxx.xp3
+ * 	 0*PACL:aaa.pdt|XP3:bbb.pacl|FILE:ccc.xp3
+ */
+
+#define __split_token(str, c)  ({			\
+		char * ___ptr___ = _strtok((str), (c));	\
+		if (*___ptr___ == '\0')					\
+			___ptr___ = NULL;					\
+		else									\
+			*(___ptr___++) = '\0';				\
+		___ptr___;								\
+})
+
+static inline char *
+split_resource_type(char * str)
+{
+	char * c = __split_token(str, '*');
+	assert(c != NULL);
+	return c;
+}
+
+static inline char *
+split_protocol(char * str)
+{
+	char * c = __split_token(str, ':');
+	assert(c != NULL);
+	return c;
+}
+
+static inline char *
+split_name(char * str)
+{
+	char * c = __split_token(str, '|');
+	return c;
+}
 
 __END_DECLS
 

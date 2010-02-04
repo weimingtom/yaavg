@@ -14,7 +14,7 @@
 __BEGIN_DECLS
 
 #define PIXELS_ALIGN	(16)
-#define PIXELS_PTR(ptr)	((uint8_t*)(ALIGN_UP((ptr), PIXELS_ALIGN)))
+#define PIXELS_PTR(ptr)	((uint8_t*)(ALIGN_UP_PTR((ptr), PIXELS_ALIGN)))
 
 
 enum bitmap_format {

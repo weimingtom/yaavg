@@ -69,6 +69,32 @@ io_open(const char * proto, const char * name)
 	return f->open(name);
 }
 
+static struct io_t *
+__io_open_proto(const char * __name, bool_t write)
+{
+	assert(__name != NULL);
+	char * name = strdupa(__name);
+	char * proto = name;
+	char * real_name = split_protocol(proto);
+	assert(real_name != NULL);
+	if (write)
+		return io_open_write(proto, real_name);
+	return io_open(proto, real_name);
+}
+
+struct io_t *
+io_open_proto(const char * proto_name)
+{
+	return __io_open_proto(proto_name, FALSE);
+}
+
+struct io_t *
+io_open_write_proto(const char * proto_name)
+{
+	return __io_open_proto(proto_name, TRUE);
+}
+
+
 struct io_t *
 io_open_write(const char * proto, const char * name)
 {

@@ -25,16 +25,6 @@ cleanup_func_t cleanup_funcs[] = {
 	NULL,
 };
 
-static char *
-_strtok(char * str, char c)
-{
-	while ((*str != '\0') && (*str != c))
-		str ++;
-	if (*str == '\0')
-		return NULL;
-	return str;
-}
-
 static FILE *
 wrap_fopen(const char * root_dir, const char * file_name)
 {
@@ -66,7 +56,7 @@ wrap_fopen(const char * root_dir, const char * file_name)
 
 	char * pos;
 	pos = _strtok(pdir_names, '/');
-	while (pos != NULL) {
+	while (*pos != '\0') {
 		*pos = '\0';
 		VERBOSE(SYSTEM, "checking dir %s\n", dir_names);
 
@@ -157,7 +147,7 @@ int main(int argc, char * argv[])
 			int comp_fn_sz = phy_file_name_sz + strlen(*ptr) + 1;
 			tmp_file_name = xrealloc(tmp_file_name, comp_fn_sz);
 			sprintf(tmp_file_name, "%s:%s", phy_file_name, *ptr);
-			if (_strtok(tmp_file_name, '$') != NULL) {
+			if (*_strtok(tmp_file_name, '$') != '\0') {
 				VERBOSE(IO, "wrong file name: %s\n", tmp_file_name);
 				ptr ++;
 				continue;

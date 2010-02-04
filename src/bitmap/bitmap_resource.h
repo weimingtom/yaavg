@@ -24,7 +24,8 @@ struct bitmap_resource_t {
 
 struct bitmap_resource_functionor_t {
 	BASE_FUNCTIONOR
-	struct bitmap_resource_t * (*load)(struct io_t * io, const char * id);
+	struct bitmap_resource_t * (*load)(struct io_t * io,
+			const char * id);
 };
 
 static void inline

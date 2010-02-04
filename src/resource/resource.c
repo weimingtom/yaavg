@@ -24,36 +24,18 @@ static struct loader_table_entry {
 	},
 };
 
-static char *
-_strtok(char * id, char tok)
-{
-	assert(tok != '\0');
-	while ((*id != '\0') && (*id != tok))
-		id ++;
-	if (id == '\0')
-		return NULL;
-	return id;
-}
-
-#define NEXT_PART(x, s) do {\
-	(x) = _strtok((s), ':');\
-	assert(*(x) == ':');	\
-	*(x) = '\0';			\
-	x ++;					\
-} while (0)
-
 struct resource_t *
 load_resource(const char * __id)
 {
 	DEBUG(RESOURCE, "loading resource %s\n", __id);
 	char * id = strdupa(__id);
-	char * type, * iot, * name;
+	char * type, * io_proto, * io_name;
 	type = id;
-	NEXT_PART(iot, type);
-	NEXT_PART(name, iot);
+	io_proto = split_resource_type(type);
+	io_name = split_protocol(io_proto);
 
-	TRACE(RESOURCE, "type=%s, iot=%s, name=%s\n",
-			type, iot, name);
+	TRACE(RESOURCE, "type=%s, io_proto=%s, io_name=%s\n",
+			type, io_proto, io_name);
 
 	enum resource_type t = atoi(type);
 	assert((t >= 0) && (t < NR_RESOURCE_TYPES));
@@ -63,7 +45,7 @@ load_resource(const char * __id)
 	struct loader_table_entry * loaders = &loader_table[t];
 	struct exception_t exp;
 	TRY(exp) {
-		io = io_open(iot, name);
+		io = io_open(io_proto, io_name);
 		r = loaders->normal_loader(io, __id);
 	} FINALLY {
 		if (io != NULL)

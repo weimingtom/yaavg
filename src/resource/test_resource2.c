@@ -35,6 +35,20 @@ print_bitmap(struct bitmap_t * b)
 			b->pixels[1],
 			b->pixels[2],
 			b->pixels[3]);
+	printf("\n");
+	if ((b->w == 8) && (b->h == 8)) {
+		for (int i = 0; i < 8; i++) {
+			for (int j = 0; j < 8; j++) {
+				printf("%x%x%x%x ",
+						b->pixels[i * 8 * 4 + j],
+						b->pixels[i * 8 * 4 + j + 1],
+						b->pixels[i * 8 * 4 + j + 2],
+						b->pixels[i * 8 * 4 + j + 3]
+						);
+			}
+			printf("\n");
+		}
+	}
 }
 
 int main()
@@ -46,13 +60,13 @@ int main()
 		do_init();
 		launch_resource_process();
 
-		struct bitmap_t * b = get_resource("0:file:/tmp/xxx.png",
+		struct bitmap_t * b = get_resource("0*FILE:/tmp/xxx.png",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);
 
 
-		b = get_resource("0:file:./no_alpha.png",
+		b = get_resource("0*FILE:./no_alpha.png",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);
@@ -64,32 +78,34 @@ int main()
 		}
 #endif
 
-		b = get_resource("0:file:./have_alpha.png",
+
+		b = get_resource("0*FILE:./largepng.png",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);
 
-		b = get_resource("0:file:./largepng.png",
+		b = get_resource("0*FILE:./jpegtest.jpeg",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);
 
-		b = get_resource("0:file:./jpegtest.jpeg",
+		b = get_resource("0*FILE:./out/RNImage/allcl1.jpg",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);
 
-		b = get_resource("0:file:./out/RNImage/allcl1.jpg",
+		b = get_resource("0*XP3:allcl1.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3",
 				(deserializer_t)bitmap_deserialize);
 		print_bitmap(b);
 		free_bitmap(b);
 
-		b = get_resource("0:XP3:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3:allcl1.jpg",
-				(deserializer_t)bitmap_deserialize);
-		print_bitmap(b);
 		/* write the bitmap */
 
-		struct io_t * writer = io_open_write("FILE", "/tmp/xxx.png");
+		b = get_resource("0*FILE:./have_alpha.png",
+				(deserializer_t)bitmap_deserialize);
+		print_bitmap(b);
+
+		struct io_t * writer = io_open_write_proto("FILE:/tmp/xxx.png");
 		assert(writer != NULL);
 		struct exception_t exp;
 		TRY(exp) {

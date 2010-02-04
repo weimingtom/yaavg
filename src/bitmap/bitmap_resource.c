@@ -51,27 +51,32 @@ get_bitmap_resource_handler(const char * id)
 	assert(len >= 3);
 	DEBUG(BITMAP, "find bitmap handler for %s\n", id);
 
-	char __format_str[16], *format_str = NULL;
+	char __format_str[16], * format_str = NULL;
+
+	/* 
+	 * see common/defs.h, the format of id is
+	 * 0*FILE:xxx.png
+	 * or 
+	 * 0*XP3:xxx.png|FILE:xxx.xp3,
+	 * */
+	format_str = _strtok(id, '|');
+	assert(format_str != NULL);
+	format_str --;
 
 	/* find the last '.' */
-	if (*id != '.') {
-		const char * cp;
-		int i;
-		for (i = 15, cp = id + strlen(id);
-				((i >= 0) && (cp >= id)); i--, cp --) {
-			char c = *cp;
-			__format_str[i] = islower(c) ? toupper(c) : c;
-			if (c == '.') {
-				format_str = &__format_str[i+1];
-				break;
-			}
-		}
-		if (format_str == NULL)
-			THROW(EXP_UNSUPPORT_RESOURCE, "cannot find handler for id %s\n",
-					id);
-	} else {
-		format_str = "...";
+	__format_str[15] = '\0';
+	int i;
+	for (i = 14; i >= 0; i--, format_str --) {
+		int c = *format_str;
+		__format_str[i] = islower(c) ? toupper(c) : c;
+		if (c == '.')
+			break;
 	}
+	if (*format_str != '.')
+		THROW(EXP_UNSUPPORT_RESOURCE, "cannot find handler for id %s\n",
+				id);
+	format_str = &__format_str[i + 1];
+	assert(*format_str != '\0');
 
 	/* dirty work */
 	if (strcmp(format_str, "JPEG") == 0)
@@ -109,16 +114,18 @@ get_bitmap_resource_handler(const char * id)
 }
 
 static struct resource_t *
-__load_bitmap_resource(struct io_t * io, const char * id,
-		const char * type)
+__load_bitmap_resource(struct io_t * io,
+		const char * id)
 {
 	struct bitmap_resource_t * b = NULL;
-	struct bitmap_resource_functionor_t * f =
-		get_bitmap_resource_handler(type);
-	assert(f != NULL);
+	struct bitmap_resource_functionor_t * f = NULL;
+	
+	if (io != NULL)
+		f =	get_bitmap_resource_handler(id);
+	else
+		f = (void*)(&dummy_bitmap_resource_functionor);
 
-	if (io == NULL)
-		assert(f == (void*)(&dummy_bitmap_resource_functionor));
+	assert(f != NULL);
 
 	b = f->load(io, id);
 
@@ -129,13 +136,13 @@ __load_bitmap_resource(struct io_t * io, const char * id,
 struct resource_t *
 load_bitmap_resource(struct io_t * io, const char * id)
 {
-	return __load_bitmap_resource(io, id, id);
+	return __load_bitmap_resource(io, id);
 }
 
 struct resource_t *
 load_dummy_bitmap_resource(struct io_t * io, const char * id)
 {
-	return __load_bitmap_resource(NULL, id, "...");
+	return __load_bitmap_resource(NULL, id);
 }
 
 void

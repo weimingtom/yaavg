@@ -137,7 +137,7 @@ cache_insert(struct cache_t * cache,
 		return;
 	}
 
-	TRACE(CACHE, "insert entry %s\n", entry->id);
+	TRACE(CACHE, "insert entry %s into %s\n", entry->id, cache->name);
 	/* clear cache */
 	while (cache->limit_sz < cache->total_sz + entry->sz) {
 		int old_total_sz = cache->total_sz;
@@ -198,7 +198,7 @@ cache_get_entry(struct cache_t * cache, const char * id)
 	assert(cache->dict != NULL);
 	assert(id != NULL);
 
-	DEBUG(CACHE, "trying to get \"%s\" from cache \"%s\"\n",
+	TRACE(CACHE, "trying to get \"%s\" from cache \"%s\"\n",
 			id, cache->name);
 
 	struct cache_entry_t * res = NULL;
@@ -245,7 +245,7 @@ cache_cleanup(struct cache_t * cache)
 	if (cache->total_sz == 0)
 		return;
 
-	DEBUG(CACHE, "trying to shink cache %s\n", cache->name);
+	DEBUG(CACHE, "trying to shrink cache \"%s\"\n", cache->name);
 
 	struct dict_t * dict = cache->dict;
 	for (struct dict_entry_t * de = dict_get_next(dict, NULL);

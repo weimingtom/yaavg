@@ -27,6 +27,7 @@ static struct io_t *
 file_open(const char * path, const char * mode)
 {
 	assert(path != NULL);
+	assert(*_strtok(path, '|') == '\0');
 	FILE * fp = fopen(path, mode);
 	if (fp == NULL)
 		THROW(EXP_RESOURCE_NOT_FOUND, "open file \"%s\" using \"%s\" failed",

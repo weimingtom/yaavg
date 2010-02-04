@@ -6,12 +6,14 @@
 #ifndef __RESOURCE_PROC_H
 #define __RESOURCE_PROC_H
 
+#include <common/defs.h>
 #include <common/functionor.h>
 #include <common/cache.h>
 #include <io/io.h>
 #include <stdint.h>
+#include <string.h>
 
-#define MAX_IDLEN	(256)
+#define MAX_IDLEN	(4096)
 
 typedef void * (*deserializer_t)(struct io_t * io);
 
@@ -31,7 +33,6 @@ get_resource(const char * name,
 
 void
 delete_resource(const char * name);
-
 
 #endif
 

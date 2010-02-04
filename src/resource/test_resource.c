@@ -40,6 +40,18 @@ int main()
 
 		sleep(1);
 		shutdown_resource_process();
+
+		char * test_str = strdupa("0*PACL:aaa.dat|FILE:/tmp/aaa.dat");
+		char * type, * proto, * name, * left;
+		type = test_str;
+		proto = split_resource_type(type);
+		name = split_protocol(proto);
+		left = split_name(name);
+
+		VERBOSE(SYSTEM, "type=%s\n", type);
+		VERBOSE(SYSTEM, "proto=%s\n", proto);
+		VERBOSE(SYSTEM, "name=%s\n", name);
+		VERBOSE(SYSTEM, "left=%s\n", left);
 	} FINALLY {
 	} CATCH (exp) {
 		switch (exp.type) {

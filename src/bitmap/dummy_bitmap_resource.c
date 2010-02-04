@@ -61,7 +61,18 @@ dummy_load(struct io_t * io, const char * id)
 	h->revert = FALSE;
 	h->id = (void*)(b->__data);
 	h->id_sz = strlen(h->id) + 1;
-	h->format = BITMAP_RGBA;
+
+	switch (DUMMY_BPP) {
+		case 4:
+			h->format = BITMAP_RGBA;
+			break;
+		case 3:
+			h->format = BITMAP_RGB;
+			break;
+		default:
+			assert(0);
+	}
+
 	h->bpp = DUMMY_BPP;
 	h->w = DUMMY_W;
 	h->h = DUMMY_H;

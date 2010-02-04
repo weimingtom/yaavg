@@ -99,6 +99,12 @@ struct io_t *
 io_open(const char * proto, const char * name);
 
 struct io_t *
+io_open_proto(const char * proto_name);
+
+struct io_t *
+io_open_write_proto(const char * proto_name);
+
+struct io_t *
 io_open_write(const char * proto, const char * name);
 
 static inline int

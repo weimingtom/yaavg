@@ -26,6 +26,7 @@
 #include <common/debug.h>
 
 static pid_t proc_pid = 0;
+static bool_t __FATAL_ENDDED = FALSE;
 
 #ifdef YAAVG_DEBUG
 static const char * __debug_level_names[NR_DEBUG_LEVELS] = {
@@ -211,15 +212,18 @@ sighandler_mem_stats(int signum)
 	MEM_MSG("free counter:\t%d\n", free_counter);
 	MEM_MSG("fopen counter:\t%d\n", fopen_counter);
 	MEM_MSG("fclose counter:\t%d\n", fclose_counter);
+	if (!__FATAL_ENDDED) {
 #ifdef HAVE_MALLINFO
-	MEM_MSG("------ mallinfo ------\n");
-	struct mallinfo mi = mallinfo();
-	MEM_MSG("System bytes\t=\t\t%d\n", mi.arena+mi.hblkhd);
-	MEM_MSG("In use bytes\t=\t\t%d\n", mi.uordblks);
-	MEM_MSG("Freed bytes\t=\t\t%d\n", mi.fordblks);
+		/* if fatal endded, don't print mallinfo */
+		MEM_MSG("------ mallinfo ------\n");
+		struct mallinfo mi = mallinfo();
+		MEM_MSG("System bytes\t=\t\t%d\n", mi.arena+mi.hblkhd);
+		MEM_MSG("In use bytes\t=\t\t%d\n", mi.uordblks);
+		MEM_MSG("Freed bytes\t=\t\t%d\n", mi.fordblks);
 #endif
-	MEM_MSG("----------------------\n");
+		MEM_MSG("----------------------\n");
 #endif
+	}
 }
 #undef MEM_MSG
 
@@ -245,11 +249,16 @@ static void print_backtrace(FILE * fp)
 static void
 sighandler_backtrace(int signum)
 {
+	/* force quit */
+	if (__FATAL_ENDDED)
+		exit(-1);
 	switch (signum) {
 		case SIGSEGV:
+			__FATAL_ENDDED = TRUE;
 			SYS_FATAL("Received SIGSEGV:\n");
 			break;
 		case SIGABRT:
+			__FATAL_ENDDED = TRUE;
 			SYS_FATAL("Received SIGABRT:\n");
 			break;
 		case SIGPIPE:
