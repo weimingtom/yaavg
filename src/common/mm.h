@@ -14,11 +14,20 @@
 
 #define xmalloc(___sz)	({	\
 		void * ___ptr;		\
-		___ptr = malloc(___sz);\
+		___ptr = malloc((___sz));\
 		if (___ptr == NULL)	\
 			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
 			___ptr; \
 		})
+
+#define xmemalign(___boundary, ___sz)	({	\
+		void * ___ptr;		\
+		___ptr = memalign((___boundary), (___sz));\
+		if (___ptr == NULL)	\
+			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			___ptr; \
+		})
+
 
 #define xrealloc(___old_ptr, ___new_sz)	({	\
 		void * ___ptr;		\

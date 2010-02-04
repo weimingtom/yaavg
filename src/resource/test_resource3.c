@@ -64,6 +64,10 @@ int main()
 		do_init();
 		launch_resource_process();
 
+		write_resource("0*XP3:25時間軸説明・セイバーc_thumb.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/1.png");
+		write_resource("0*XP3:ss_保有背景真アサシン.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/2.png");
+
+#if 0
 		write_resource("0*FILE:no_alpha.png", "/tmp/out/1.png");
 		write_resource("0*XP3:ed1.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/2.png");
 		write_resource("0*XP3:ed2.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/3.png");
@@ -78,7 +82,7 @@ int main()
 		write_resource("0*XP3:ps043.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/12.png");
 		write_resource("0*XP3:C12f0.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/13.png");
 		write_resource("0*XP3:C12c0.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/14.png");
-
+#endif
 	} FINALLY {
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)
 				&& (exp.type != EXP_RESOURCE_PROCESS_FAILURE)) {
