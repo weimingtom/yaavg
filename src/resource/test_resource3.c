@@ -69,6 +69,8 @@ int main()
 		write_resource("0*XP3:csセイバー炉心祈り.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/2.png");
 		write_resource("0*XP3:25時間軸説明・セイバーc_thumb.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/3.png");
 		write_resource("0*XP3:25時間軸説明・セイバーc.tlg|FILE:/home/wn/Windows/Fate/bgimage.xp3", "/tmp/out/4.png");
+		write_resource("0*XP3:ss_風王結界画像.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/5.png");
+		write_resource("0*XP3:ts_start.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/6.png");
 
 #if 0
 		write_resource("0*FILE:no_alpha.png", "/tmp/out/1.png");
