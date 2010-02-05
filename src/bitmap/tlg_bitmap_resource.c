@@ -69,7 +69,7 @@ decompress_slide(uint8_t * out, int outsize, const uint8_t * in, int insize, int
 				mlen += 0[in++];
 
 			if (out + mlen >= outlim)
-				THROW(EXP_BAD_RESOURCE, "memory access volation, image corrupted");
+				THROW(EXP_BAD_RESOURCE, "memory access volation, image is corrupted");
 			while(mlen--) {
 				0[out++] = tlg_text[r++] = tlg_text[mpos++];
 				mpos &= (4096 - 1);
