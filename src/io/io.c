@@ -104,6 +104,77 @@ io_open_write(const char * proto, const char * name)
 	return f->open_write(name);
 }
 
+/* *item becoms not valid after serialization */
+void
+serialize_and_destroy_package_items(
+		struct package_items_t ** pitems, struct io_t * io)
+{
+	struct package_items_t * items;
+	assert(pitems != NULL);
+	assert(io != NULL);
+
+	items = *pitems;
+	assert(items != NULL);
+
+	TRACE(IO, "serialize and destroy a %d items description, its total sz is %d\n",
+			items->nr_items, items->total_sz);
+	void * base = items;
+	/* for each items in items->table, minus its value by base */
+	/* caution: *table is char *, minus 1 is actually minus its valus by
+	 * 4(or 8 on 64 bit machine)  */
+	for (int i = 0; i < items->nr_items; i++) {
+		items->table[i] =(char*)
+			((void*)(items->table[i]) - base);
+	}
+	items->table = (char**)((void*)(items->table) - base);
+	io_write_force(io, items, items->total_sz);
+	xfree_null(*pitems);
+	return;
+}
+
+struct package_items_t *
+deserialize_package_items(struct io_t * io)
+{
+	assert(io != NULL);
+
+	struct package_items_t head, *retval = NULL;
+	struct exception_t exp;
+	TRY(exp) {
+		io_read_force(io, &head, sizeof(head));
+		TRACE(IO, "deserializing a %d items description, its total sz is %d\n",
+				head.nr_items, head.total_sz);
+		if (head.total_sz <= 0)
+			THROW(EXP_BAD_RESOURCE, "total size of a struct package_items_t is %d",
+					head.total_sz);
+		retval = xmalloc(head.total_sz);
+		assert(retval = NULL);
+		*retval = head;
+		io_read_force(io, retval->__data,
+				retval->total_sz - sizeof(head));
+
+		retval->table = (char**)(retval->__data);
+		int nr_items = retval->nr_items;
+		if (retval->table[nr_items] != NULL)
+			THROW(EXP_BAD_RESOURCE, "last item is not null");
+
+		void * base = retval;
+		for (int i = 0; i < nr_items; i++) {
+			void * p = retval->table[i];
+			p += (uintptr_t)base;
+			retval->table[i] = (char*)p;
+		}
+	} NO_FINALLY
+	CATCH(exp) {
+		xfree_null(retval);
+		/* suppress all exception */
+		if (exp.type == EXP_UNCATCHABLE)
+			RETHROW(exp);
+		print_exception(&exp);
+		return NULL;
+	}
+	return retval;
+}
+
 void
 __io_cleanup(void)
 {

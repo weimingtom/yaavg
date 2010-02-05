@@ -235,8 +235,7 @@ png_load(struct io_t * io, const char * id)
 			png_destroy_read_struct(&read_ptr, &read_info_ptr, 0);
 		assert(read_info_ptr == NULL);
 	} CATCH(exp) {
-		if (png_res != NULL)
-			xfree(png_res);
+		xfree_null(png_res);
 		switch (exp.type) {
 			case EXP_LIBPNG_ERROR:
 				print_exception(&exp);

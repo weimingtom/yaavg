@@ -119,8 +119,8 @@ dict_destroy(struct dict_t * dict,
 	}
 
 	if (dict->ptable != dict->smalltable)
-		xfree(dict->ptable);
-	xfree(dict);
+		xfree_null(dict->ptable);
+	xfree_null(dict);
 }
 
 /* this util iterate over the conflict link. return value: 
@@ -277,7 +277,7 @@ __expand_dict(struct dict_t * dict, int minused)
 	}
 
 	if (old_table != dict->smalltable)
-		xfree(old_table);
+		xfree_null(old_table);
 
 	TRACE(DICT, "dict %p expansion over: fill=%d, used=%d, size=%d\n",
 			dict, dict->nr_fill, dict->nr_used, dict->mask + 1);
@@ -564,9 +564,9 @@ static void
 strdict_destroy_entry(struct dict_entry_t * ep, uintptr_t arg)
 {
 	if ((arg & STRDICT_FL_DUPKEY) && (ep->key != NULL))
-		xfree(ep->key);
+		xfree_null(ep->key);
 	if ((arg & STRDICT_FL_DUPDATA) && (ep->data.str != NULL))
-		xfree((void*)(ep->data.str));
+		xfree_null((ep->data.str));
 }
 
 void
@@ -614,12 +614,10 @@ strdict_insert(struct dict_t * dict,
 
 	oe = dict_insert(dict, &e);
 	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
-			xfree(oe.data.ptr);
-			oe.data.ptr = NULL;
+			xfree_null(oe.data.ptr);
 	}
 	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY)) {
-			xfree(oe.key);
-			oe.key = NULL;
+			xfree_null(oe.key);
 	}
 	return oe.data;
 }
@@ -647,13 +645,13 @@ strdict_remove(struct dict_t * dict,
 	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
 		if (!(GET_DICT_DATA_FLAGS(oe.data) & DICT_DATA_FL_VANISHED)) {
 			if (oe.data.ptr != NULL)
-				xfree(oe.data.ptr);
+				xfree_null(oe.data.ptr);
 		}
 		oe.data.ptr = NULL;
 		GET_DICT_DATA_FLAGS(oe.data) |= DICT_DATA_FL_VANISHED;
 	}
 	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY))
-		xfree(oe.key);
+		xfree_null(oe.key);
 	return oe.data;
 }
 
@@ -664,10 +662,10 @@ strdict_invalid_entry(struct dict_t * d, struct dict_entry_t * e)
 	assert(e != NULL);
 	uintptr_t flags = d->private;
 	if ((e->key != NULL) && (flags & STRDICT_FL_DUPKEY))
-		xfree(e->key);
+		xfree_null(e->key);
 	if ((e->data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
 		if (!(GET_DICT_DATA_FLAGS(e->data) & DICT_DATA_FL_VANISHED))
-			xfree(e->data.ptr);
+			xfree_null(e->data.ptr);
 	}
 	dict_invalid_entry(d, e);
 }

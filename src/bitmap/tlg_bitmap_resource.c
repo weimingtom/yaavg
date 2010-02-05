@@ -286,15 +286,12 @@ tlg_load(struct io_t * io, const char * id)
 		r->ptr = retval;
 		r->pprivate = NULL;
 	} FINALLY {
-		if (inbuf != NULL)
-			xfree(inbuf);
+		xfree_null(inbuf);
 		for (int i = 0; i < 4; i++) {
-			if (outbuf[i] != NULL)
-				xfree(outbuf[i]);
+			xfree_null(outbuf[i]);
 		}
 	} CATCH(exp) {
-		if (retval != NULL)
-			xfree(retval);
+		xfree_null(retval);
 		RETHROW(exp);
 	}
 	return &(retval->bitmap_resource);

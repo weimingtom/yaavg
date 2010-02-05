@@ -158,8 +158,7 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 		png_write_end(write_ptr, write_info_ptr);
 
 	} FINALLY {
-		if (rows != NULL)
-			xfree(rows);
+		xfree_null(rows);
 		if (write_ptr != NULL)
 			png_destroy_write_struct(&write_ptr, &write_info_ptr);
 		assert(write_info_ptr == NULL);

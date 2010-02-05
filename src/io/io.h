@@ -31,6 +31,27 @@ struct io_t {
 extern struct function_class_t
 io_function_class;
 
+/* 
+ * this structure MUST be allocated by xfreeable
+ * method. table must pointed into __data, and
+ * all entries of table should also pointed into it.
+ * the last entry in table always 0.
+ */
+struct package_items_t {
+	char ** table;
+	int nr_items;
+	/* for serialization used */
+	int total_sz;
+	uint8_t __data[0];
+};
+
+struct package_items_t *
+deserialize_package_items(struct io_t * io);
+
+void
+serialize_and_destroy_package_items(
+		struct package_items_t ** pitems, struct io_t * io);
+
 /* Those function should never return error (negitive number),
  * if error arise, throw an exception instead. */
 
@@ -73,6 +94,11 @@ struct io_functionor_t {
 	void * (*get_internal_buffer)(struct io_t * io);
 	void (*release_internal_buffer)(struct io_t * io, void * ptr);
 
+	/* the get_package_items is used for package file. the return ptr is malloced
+	 * by the io functionor, and should be xfree()d by the caller.
+	 * the format of returned 
+	 * */
+	struct package_items_t * (*get_package_items)(const char * name);
 };
 
 extern struct io_functionor_t *
@@ -316,6 +342,15 @@ iof_command(struct io_functionor_t * iof, const char * cmd, void * arg)
 	if (iof->command == NULL)
 		return NULL;
 	return iof->command(NULL, cmd, arg);
+}
+
+static inline struct package_items_t *
+iof_get_package_items(struct io_functionor_t * iof, const char * cmd)
+{
+	assert(iof);
+	if (iof->get_package_items == NULL)
+		return NULL;
+	return iof->get_package_items(cmd);
 }
 
 

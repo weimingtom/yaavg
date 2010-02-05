@@ -114,27 +114,23 @@ int main(int argc, char * argv[])
 	int phy_file_name_sz = strlen(phy_file_name) + 1;
 
 	char * tmp_file_name = NULL;
-	char ** table = NULL;
+	struct package_items_t * items = NULL;
 	struct io_t * io = NULL;
+	void * data = NULL;
 	struct exception_t exp;
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
-		char * readdir_cmd = alloca(strlen(phy_file_name)+sizeof("readdir:FILE:"));
-		sprintf(readdir_cmd, "readdir:FILE:%s", phy_file_name);
 
 		io_f = get_io_handler("XP3");
 		assert(io_f != NULL);
 
-#if 0
-		char * pmap_cmd = alloca(strlen(phy_file_name)+sizeof("permanentmap:"));
-		sprintf(pmap_cmd, "permanentmap:%s", phy_file_name);
-		table = iof_command(io_f, pmap_cmd, NULL);
-#endif
-		table = iof_command(io_f, readdir_cmd, NULL);
-		assert(table != NULL);
-		char ** ptr = table;
+		char * cmd_name = alloca(4 + strlen(phy_file_name));
+		sprintf(cmd_name, "FILE:%s", phy_file_name);
+		items = iof_get_package_items(io_f, cmd_name);
+		assert(items != NULL);
+		char ** ptr = items->table;
 
-		void * data = NULL;
+		data = NULL;
 		while (*ptr != NULL) {
 			if (target_fn != NULL) {
 				if (strcmp(target_fn, *ptr) != 0) {
@@ -175,29 +171,10 @@ int main(int argc, char * argv[])
 			io = NULL;
 			ptr ++;
 		}
-		xfree(data);
-
-#if 0
-		struct io_t * io = io_open("XP3", "/home/wn/Windows/Fate/Realta Nua BGM.xp3:se497.ogg");
-		assert(io != NULL);
-		VERBOSE(SYSTEM, "size=%Ld\n", io_get_sz(io));
-
-		struct io_t * file = io_open_write("FILE", "/tmp/se497.ogg");
-		assert(file != NULL);
-		
-		void * buffer = io_get_internal_buffer(io);
-		assert(buffer != NULL);
-		io_write_force(file, buffer, io_get_sz(io));
-		io_release_internal_buffer(io, buffer);
-
-		io_close(file);
-#endif
-
 	} FINALLY {
-		if (tmp_file_name != NULL)
-			xfree(tmp_file_name);
-		if (table != NULL)
-			xfree(table);
+		xfree_null(data);
+		xfree_null(tmp_file_name);
+		xfree_null(items);
 	}
 	CATCH(exp) {
 		if (io != NULL)

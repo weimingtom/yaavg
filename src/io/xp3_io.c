@@ -68,7 +68,7 @@ struct xp3_package {
 	/* this is the package file io */
 	struct io_t * io;
 	struct dict_t * index_dict;
-	int sz;
+	int nr_items;
 	char pkg_fn[0];
 };
 
@@ -238,7 +238,7 @@ destroy_xp3_index_item(struct dict_entry_t * e, uintptr_t unused)
 	TRACE(IO, "freeing a %d bytes item %s\n",
 			GET_DICT_DATA_REAL_SZ(e->data),
 			item->utf8_name);
-	xfree(item);
+	xfree_null(item);
 	return;
 }
 
@@ -509,8 +509,7 @@ build_struct_item(const void * info_start,
 					pitem->utf8_name, pitem->ori_sz, pitem->arch_sz);
 	} FINALLY {
 	} CATCH(exp) {
-		if (pitem != NULL)
-			xfree(pitem);
+		xfree_null(pitem);
 		RETHROW(exp);
 	}
 	return pitem;
@@ -533,6 +532,7 @@ init_xp3_package(const char * pkg_fn)
 		assert(pkg_io != NULL);
 		check_xp3_head(pkg_io);
 
+		int nr_items = 0;
 		do {
 			/* extract_index realloc index_data, need to be freed in caller */
 			index_data = extract_index(pkg_io, &index_flag, &index_size,
@@ -593,16 +593,16 @@ init_xp3_package(const char * pkg_fn)
 				if (!(GET_DICT_DATA_FLAGS(tmpdata) & DICT_DATA_FL_VANISHED)) {
 					WARNING(IO, "xp3 file %s has duplicate index entry %s\n",
 							pkg_io->id, pitem->utf8_name);
-					xfree(tmpdata.ptr);
+					xfree_null(tmpdata.ptr);
 				}
 
 				/* after we insert pitem, we must reset it to NULL to prevent
 				 * the exception handler xfree it twice (once in freeing the dict) */
 				pitem = NULL;
 				pindex = fc_start + file_h.chunk_sz; 
+				nr_items ++;
 			}
-			xfree(index_data);
-			index_data = NULL;
+			xfree_null(index_data);
 		} while (index_flag & TVP_XP3_INDEX_CONTINUE);
 
 		if (index_dict == NULL)
@@ -616,18 +616,27 @@ init_xp3_package(const char * pkg_fn)
 		assert(p_xp3_package != NULL);
 
 		strcpy(p_xp3_package->pkg_fn, pkg_fn);
+		p_xp3_package->nr_items = nr_items;
+		if (nr_items <= 0) {
+			assert(index_dict == NULL);
+			WARNING(IO, "XP3 package %s doesn't contain any item\n", pkg_fn);
+		} else {
+			assert(index_dict != NULL);
+		}
+
 		p_xp3_package->io = pkg_io;
 		p_xp3_package->index_dict = index_dict;
-		p_xp3_package->sz = sizeof(*p_xp3_package);
+
+		int total_sz = sizeof(*p_xp3_package);
 		if (index_dict != NULL)
-			p_xp3_package->sz += index_dict->real_data_sz;
-		DEBUG(IO, "size of total index=%d\n", p_xp3_package->sz);
+			total_sz += index_dict->real_data_sz;
+		DEBUG(IO, "size of total index=%d\n", total_sz);
 
 		/* build cache entry */
 		struct cache_entry_t * ce = &p_xp3_package->ce;
 		ce->id = p_xp3_package->pkg_fn;
 		ce->data = p_xp3_package;
-		ce->sz = p_xp3_package->sz;
+		ce->sz = total_sz;
 		ce->destroy_arg = p_xp3_package;
 		ce->destroy = (cache_destroy_t)(destroy_xp3_package);
 		ce->cache = NULL;
@@ -649,19 +658,18 @@ init_xp3_package(const char * pkg_fn)
 		}
 
 	} FINALLY {
-		if (index_data != NULL)
-			xfree(index_data);
+		xfree_null(index_data);
 		assert(pitem == NULL);
 	} CATCH(exp) {
 		if (pkg_io != NULL)
 			io_close(pkg_io);
+		pkg_io = NULL;
 		if (index_dict != NULL)
 			dict_destroy(index_dict,
 					destroy_xp3_index_item, 0);
-		if (p_xp3_package != NULL)
-			xfree(p_xp3_package);
-		if (pitem != NULL)
-			xfree(pitem);
+		index_dict = NULL;
+		xfree_null(p_xp3_package);
+		xfree_null(pitem);
 		print_exception(&exp);
 		switch (exp.type) {
 			case EXP_BAD_RESOURCE:
@@ -838,11 +846,10 @@ init_xp3_file(const char * __id)
 		ce->cache = NULL;
 		ce->pprivate = NULL;
 	} FINALLY {
-		if (tmp_storage != NULL)
-			xfree(tmp_storage);
+		xfree_null(tmp_storage);
 	} CATCH(exp) {
-		if (file != NULL)
-			xfree(file);
+		xfree_null(file);
+		file = NULL;
 		print_exception(&exp);
 		THROW(EXP_BAD_RESOURCE, "error when init file %s from xp3 package %s",
 				fn, pkg_fn);
@@ -1108,7 +1115,7 @@ xp3_release_map(struct io_t * __io, void * ptr, int from, int max_sz)
 	struct xp3_file * file = get_xp3_file_from_io(__io);
 
 	if ((file->is_compressed) || (file->nr_segments > 1)) {
-		xfree(ptr);
+		xfree_null(ptr);
 	} else {
 		if (from + max_sz > file->file_sz)
 			max_sz = file->file_sz - from;
@@ -1159,15 +1166,14 @@ xp3_close(struct io_t * __io)
 		(struct xp3_io_t*)(__io->pprivate);
 	TRACE(IO, "close xp3 file %s\n",
 			r->id);
-	xfree(r);
+	xfree_null(r);
 }
 
-
-static char **
-xp3_readdir(const char * fn)
+static struct package_items_t *
+xp3_get_package_items(const char * fn)
 {
 	/* init the pkg file */
-	DEBUG(IO, "readdir for xp3 package %s\n", fn);
+	DEBUG(IO, "get_package_items for xp3 package %s\n", fn);
 	struct xp3_package * xp3 = get_xp3_package(fn);
 	assert(xp3 != NULL);
 
@@ -1176,14 +1182,15 @@ xp3_readdir(const char * fn)
 	int nr_fn = 0;
 	struct dict_entry_t * de = NULL;
 	/* iterate over each index entry, compute the size of all filename */
-	do {
+	de = dict_get_next(d, NULL);
+	while (de != NULL) {
+		struct xp3_index_item * item = de->data.ptr;
+		total_fn_sz += item->name_sz;
+		nr_fn ++;
 		de = dict_get_next(d, de);
-		if (de != NULL) {
-			struct xp3_index_item * item = de->data.ptr;
-			total_fn_sz += item->name_sz;
-			nr_fn ++;
-		}
-	} while (de != NULL);
+	}
+	assert(nr_fn == xp3->nr_items);
+
 	DEBUG(IO, "file %s contains %d files, total filename length is %d\n",
 			xp3->pkg_fn, nr_fn, total_fn_sz);
 
@@ -1193,26 +1200,37 @@ xp3_readdir(const char * fn)
 		return NULL;
 	}
 
-	char ** table = xmalloc((nr_fn + 1) * sizeof(char*) + total_fn_sz);
+	struct package_items_t * retval = NULL;
+	int total_sz = sizeof(*retval) +
+		(nr_fn + 1) * sizeof(char*) +
+		total_fn_sz;
+	retval = xmalloc(total_sz);
+	assert(retval != NULL);
+
+	retval->table = (void*)retval->__data;
+	retval->nr_items = nr_fn;
+	retval->total_sz = total_sz;
+
 	/* notice: table's type is char **, + nr_fn is actually +4*nr_fn */
-	char * ptr = (char*)(&table[nr_fn + 1]);
+	char * ptr = (char*)(&retval->table[nr_fn + 1]);
 	nr_fn = 0;
 	/* iterate again */
-	do {
+	de = dict_get_next(d, NULL);
+	while (de != NULL) {
+		struct xp3_index_item * item = de->data.ptr;
+		memcpy(ptr, item->utf8_name, item->name_sz);
+
+		/* copy file name */
+		/* register table entry */
+		retval->table[nr_fn] = ptr;
+		ptr += item->name_sz;
+
+		nr_fn ++;
 		de = dict_get_next(d, de);
-		if (de != NULL) {
-			struct xp3_index_item * item = de->data.ptr;
-			/* copy file name */
-			memcpy(ptr, item->utf8_name, item->name_sz);
-			/* register table entry */
-			table[nr_fn] = ptr;
-			ptr += item->name_sz;
-			nr_fn ++;
-		}
-	} while (de != NULL);
+	}
 	/* the last NULL */
-	table[nr_fn] = NULL;
-	return table;
+	retval->table[nr_fn] = NULL;
+	return retval;
 }
 
 
@@ -1234,8 +1252,8 @@ xp3_permanentmap(const char * fn)
 
 /* special method for XP3 */
 /* syntax of cmd:
- *	readdir:<xp3file> (return a table of string containing all file names in that xp3 package)
- *					(the return value of readdir **MUST** be freed manually)
+ *	get_package_items:<xp3file> (return a table of string containing all file names in that xp3 package)
+ *					(the return value of get_package_items **MUST** be freed manually)
  *	permanentmap:<xp3file> permanentmap should be called before the xp3 init. if not,
  *					it takes effect after package cache cleanup and package reinit
  */
@@ -1243,9 +1261,6 @@ static void *
 xp3_command(struct io_t * io, const char * cmd, void * arg)
 {
 	DEBUG(IO, "run command %s for xp3 io\n", cmd);
-	if (strncmp("readdir:", cmd,
-				sizeof("readdir:") - 1) == 0)
-		return xp3_readdir(cmd + sizeof("readdir:") - 1);
 	if (strncmp("permanentmap:", cmd,
 				sizeof("permanentmap:") - 1) == 0)
 		return xp3_permanentmap(cmd + sizeof("permanentmap:") - 1);
@@ -1314,6 +1329,7 @@ struct io_functionor_t xp3_io_functionor = {
 	.init = xp3_init,
 	.cleanup = xp3_cleanup,
 	.command = xp3_command,
+	.get_package_items = xp3_get_package_items,
 };
 
 

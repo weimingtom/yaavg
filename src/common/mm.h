@@ -51,6 +51,13 @@
 		free((___X_ptr));			\
 } while(0)
 
+#define xfree_null(___ptr) do {	\
+	xfree(___ptr);					\
+	(___ptr) = NULL;					\
+} while(0)
+
+
+
 /* for some polymorphism class, see png_bitmap_resource.c */
 extern void
 generic_free(void * ptr);

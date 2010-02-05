@@ -24,6 +24,8 @@
 #include <utils/timer.h>
 #include <yconf/yconf.h>
 
+#include <io/io.h>
+
 #include <resource/resource_proc.h>
 #include <resource/resource.h>
 
@@ -607,7 +609,30 @@ delete_resource_worker(const char * __id)
 	cache_remove_entry(&res_cache, __id);
 }
 
-static char cmd[MAX_IDLEN];
+static void
+get_package_items_worker(const char * cmd)
+{
+	struct exception_t exp;
+	TRY(exp) {
+	} FINALLY {
+	} CATCH(exp) {
+		/* **NOTICE** this switch is very different from others!!! */
+		switch (exp.type) {
+			case EXP_UNCATCHABLE:
+			case EXP_RESOURCE_PROCESS_FAILURE:
+			case EXP_RESOURCE_PEER_SHUTDOWN:
+				RETHROW(exp);
+			default:
+				print_exception(&exp);
+		}
+	}
+	return;
+}
+
+
+
+static char * cmd = NULL;
+static int cmd_buffer_sz = 0;
 static void
 worker(void)
 {
@@ -632,6 +657,9 @@ worker(void)
 					"cmd_len=%d is incorrect",
 					cmd_len);
 
+		if (cmd_len > cmd_buffer_sz)
+			cmd = xrealloc(cmd, cmd_buffer_sz);
+
 		/* read the command */
 		xxread(C_IN, cmd, cmd_len);
 		DEBUG(RESOURCE, "command: %s\n", cmd);
@@ -648,6 +676,10 @@ worker(void)
 			case 'd':
 				assert(cmd[1] == ':');
 				delete_resource_worker(&cmd[2]);
+				break;
+			case 'l':
+				assert(cmd[1] == ':');
+				get_package_items_worker(&cmd[2]);
 				break;
 			default:
 				THROW(EXP_RESOURCE_PROCESS_FAILURE,
@@ -719,6 +751,7 @@ launch_resource_process(void)
 	} FINALLY {
 		xclose(C_IN);
 		xclose(D_OUT);
+		xfree_null(cmd);
 	} CATCH(exp) {
 		VERBOSE(RESOURCE, "resource worker end\n");
 		switch (exp.type) {
@@ -778,7 +811,6 @@ delete_resource(const char * name)
 	xxwritev(C_OUT, vecs, 3);
 }
 
-
 void *
 get_resource(const char * name,
 		deserializer_t deserializer)
@@ -800,6 +832,31 @@ get_resource(const char * name,
 	xxwritev(C_OUT, vecs, 3);
 
 	return deserializer(&cmd_side_io);
+}
+
+struct package_items_t *
+get_package_items(const char * proto, const char * name)
+{
+	assert(proto != NULL);
+	assert(name != NULL);
+	struct iovec vecs[4];
+	static char l_cmd[2] = "l:";
+	int len = strlen(proto) + strlen(name) + 4;
+
+	vecs[0].iov_base = &len;
+	vecs[0].iov_len = sizeof(len);
+	vecs[1].iov_base = l_cmd;
+	vecs[1].iov_len = 2;
+	vecs[2].iov_base = (char*)proto;
+	vecs[2].iov_len = strlen(proto) + 1;
+	vecs[3].iov_base = (char*)name;
+	vecs[3].iov_len = strlen(name) + 1;
+
+	xxwritev(C_OUT, vecs, 4);
+	
+	/* deserialize received package_items */
+	/* it suppresses all exceptions */
+	return deserialize_package_items(&cmd_side_io);
 }
 
 // vim:ts=4:sw=4

@@ -34,6 +34,9 @@ get_resource(const char * name,
 void
 delete_resource(const char * name);
 
+struct package_items_t *
+get_package_items(const char * proto, const char * name);
+
 #endif
 
 // vim:ts=4:sw=4
