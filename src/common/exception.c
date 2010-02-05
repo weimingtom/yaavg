@@ -19,6 +19,13 @@ static const char * exception_names[] = {
 	[EXP_UNCATCHABLE] = "uncatchable exception",
 };
 
+static const char * exception_level_names[] = {
+	[EXP_LV_LOWEST] = "system is safe",
+	[EXP_LV_TAINED] = "system is tained",
+	[EXP_LV_FATAL] = "system is dangerous",
+	[EXP_LV_UNCATCHABLE] = "system is dead",
+};
+
 /* 5 states of the catcher:
  *
  *                         +----------------(finally, cont)------------------------+
@@ -131,7 +138,11 @@ void
 print_exception(struct exception_t * exp)
 {
 #ifdef YAAVG_DEBUG
-	WARNING(SYSTEM, "%s raised at file %s [%s:%d]:\n", exception_names[exp->type],
+	assert((exp->level >= 0) && (exp->level < NR_EXP_LEVELS));
+	assert((exp->type >= 0) && (exp->type < NR_EXP_TYPES));
+	WARNING(SYSTEM, "(%s): %s raised at file %s [%s:%d]:\n",
+			exception_level_names[exp->level],
+			exception_names[exp->type],
 			exp->file, exp->func, exp->line);
 #else
 	WARNING(SYSTEM, "%s raised:\n", exception_names[exp->type]);
@@ -144,13 +155,14 @@ print_exception(struct exception_t * exp)
 
 NORETURN ATTR_NORETURN 
 #ifdef YAAVG_DEBUG
-ATTR(format(printf, 6, 7))
+ATTR(format(printf, 7, 8))
 #else
-ATTR(format(printf, 3, 4))
+ATTR(format(printf, 4, 5))
 #endif
 void
 throw_exception(enum exception_type type,
 		uintptr_t val,
+		enum exception_level level,
 #ifdef YAAVG_DEBUG
 		const char * file,
 		const char * func,
@@ -168,6 +180,12 @@ throw_exception(enum exception_type type,
 	va_end(ap);
 
 	exp.u.ptr = (void*)val;
+	exp.type = type;
+	exp.level = level;
+	if (type >= EXP_LV_UNCATCHABLE) {
+		exp.type = EXP_UNCATCHABLE;
+		exp.level = EXP_LV_UNCATCHABLE;
+	}
 #ifdef YAAVG_DEBUG
 	exp.file = file;
 	exp.func = func;

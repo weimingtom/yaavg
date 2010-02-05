@@ -25,6 +25,7 @@ enum exception_type {
 #include <common/exception_types.h>
 #undef def_exp_type
 	EXP_UNCATCHABLE,
+	NR_EXP_TYPES,
 };
 
 enum video_exception {
@@ -33,6 +34,38 @@ enum video_exception {
 	VIDEXP_SKIPFRAME,
 	VIDEXP_REINIT,
 	VIDEXP_FATAL,
+};
+
+/* **NOTE**
+ *
+ * although we use specific exception here to show the means of
+ * each exception, the relationship between an exception and
+ * its level is not fixed. for example, reading from a package and
+ * fail generate EXP_BAD_RESOURCE, indecates the corruption of
+ * package. read from a physical file and fail also generate
+ * EXP_BAD_RESOURCE, but this time the exception may indecates
+ * a file system failure.
+ * */
+enum exception_level {
+	/*
+	 * the environment is incorrect, but can workaround,
+	 * internal state is safe.
+	 * for example:
+	 * 		EXP_CORRUPTED_CONF
+	 * 		EXP_BAD_RESOURCE
+	 * 		EXP_RESOURCE_NOT_FOUND
+	 * */
+	EXP_LV_LOWEST = 0,
+	/* internal state is not safe, but can continue. for example:
+	 * 		EXP_DICT_FULL */
+	EXP_LV_TAINED,
+	/* cannot continue, do possible cleanup and quit. for example:
+	 *		EXP_RESOURCE_PROCESS_FAILURE; 
+	 * */
+	EXP_LV_FATAL,
+	/* reserved for EXP_UNCATCHABLE. */
+	EXP_LV_UNCATCHABLE,
+	NR_EXP_LEVELS,
 };
 
 #define EXCEPTION_MSG_LEN_MAX	(512)
@@ -46,6 +79,7 @@ struct exception_t {
 		uintptr_t xval;
 		enum exception_type video_exception;
 	} u;
+	enum exception_level level;
 #ifdef YAAVG_DEBUG
 	const char * file;
 	const char * func;
@@ -110,6 +144,7 @@ print_exception(struct exception_t * exp);
 extern NORETURN ATTR_NORETURN void
 throw_exception(enum exception_type type,
 		uintptr_t val,
+		enum exception_level level,
 #ifdef YAAVG_DEBUG
 		const char * file,
 		const char * func,
@@ -117,9 +152,9 @@ throw_exception(enum exception_type type,
 #endif
 		const char * fmt, ...)
 #ifdef YAAVG_DEBUG
-ATTR(format(printf, 6, 7))
+ATTR(format(printf, 7, 8))
 #else
-ATTR(format(printf, 3, 4))
+ATTR(format(printf, 4, 5))
 #endif
 	;
 
@@ -129,14 +164,20 @@ ATTR(format(printf, 3, 4))
 # define __dbg_info
 #endif
 
-#define THROW(t, fmt...) throw_exception(t, 0, __dbg_info fmt)
-#define THROW_VAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), __dbg_info fmt)
+#define THROW(t, fmt...) throw_exception(t, 0, EXP_LV_LOWEST, __dbg_info fmt)
+#define THROW_VAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_LOWEST, __dbg_info fmt)
+
+#define THROW_TAINED(t, fmt...) throw_exception(t, 0, EXP_LV_TAINED, __dbg_info fmt)
+#define THROW_VAL_TAINED(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_TAINED, __dbg_info fmt)
+
+#define THROW_FATAL(t, fmt...) throw_exception(t, 0, EXP_LV_FATAL, __dbg_info fmt)
+#define THROW_VAL_FATAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_FATAL, __dbg_info fmt)
 
 #ifdef YAAVG_DEBUG
-# define RETHROW(e) throw_exception((e).type, (e).u.xval, \
+# define RETHROW(e) throw_exception((e).type, (e).u.xval, (e).level, \
 		(e).file, (e).func, (e).line, "%s", (char*)&((e).msg))
 #else
-# define RETHROW(e) throw_exception((e).type, (e).u.xval, \
+# define RETHROW(e) throw_exception((e).type, (e).u.xval, (e).level, \
 		"%s", (char*)&((e).msg))
 #endif
 
