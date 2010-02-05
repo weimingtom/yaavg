@@ -49,12 +49,13 @@ tlg_destroy(struct resource_t * r)
 }
 
 static int
-decompress_slide(uint8_t * out, const uint8_t * in, int insize, int initialr)
+decompress_slide(uint8_t * out, int outsize, const uint8_t * in, int insize, int initialr)
 {
 	int r = initialr;
 	unsigned int flags = 0;
 	const uint8_t * inlim = in + insize;
-	while(in < inlim) {
+	const uint8_t * outlim = out + outsize;
+	while((in < inlim) && (out < outlim)) {
 		if (((flags >>= 1) & 256) == 0) {
 			flags = 0[in++] | 0xff00;
 		}
@@ -67,6 +68,8 @@ decompress_slide(uint8_t * out, const uint8_t * in, int insize, int initialr)
 			if(mlen == 18)
 				mlen += 0[in++];
 
+			if (out + mlen >= outlim)
+				THROW(EXP_BAD_RESOURCE, "memory access volation, image corrupted");
 			while(mlen--) {
 				0[out++] = tlg_text[r++] = tlg_text[mpos++];
 				mpos &= (4096 - 1);
@@ -192,6 +195,8 @@ tlg_load(struct io_t * io, const char * id)
 				assert(outbuf[i] != NULL);
 			}
 
+			int out_sz = blockheight * width + 10;
+
 			int rxx = 0;
 
 			/* alloc pixels */
@@ -217,9 +222,11 @@ tlg_load(struct io_t * io, const char * id)
 					int sz = io_read_le32(io);
 					if (flag == 0) {
 						io_read_force(io, inbuf, sz);
-						rxx = decompress_slide(outbuf[c], inbuf, sz, rxx);
+						rxx = decompress_slide(outbuf[c], out_sz, inbuf, sz, rxx);
 					} else {
 						TRACE(BITMAP, "rawdata, sz=%d\n", sz);
+						if (sz > out_sz)
+							THROW(EXP_BAD_RESOURCE, "size too large(%d), image is corrupted", sz);
 						io_read_force(io, outbuf[c], sz);
 					}
 				}
