@@ -150,141 +150,141 @@ tlg_load(struct io_t * io, const char * id)
 	TRY(exp) {
 		unsigned char mark[12];
 		io_read_force(io, mark, 11);
-		if (memcmp(mark, "TLG5.0\x00raw\x1a\x00", 11) == 0) {
-
-			/* this is TLG5.0 */
-			TRACE(BITMAP, "this is tlg 5.0 row\n");
-
-			struct tlg_head {
-				uint8_t nr_colors;
-				uint32_t width;
-				uint32_t height;
-				uint32_t blockheight;
-			} ATTR(packed);
-
-
-			struct tlg_head tlg_head;
-			io_read_force(io, &tlg_head, sizeof(tlg_head));
-			tole32(tlg_head.width);
-			tole32(tlg_head.height);
-			tole32(tlg_head.blockheight);
-
-			int nr_colors, width, height, blockheight;
-			nr_colors = tlg_head.nr_colors;
-			width = tlg_head.width;
-			height = tlg_head.height;
-			blockheight = tlg_head.blockheight;
-
-			int blockcount = (int)((height - 1) / blockheight) + 1;
-
-			TRACE(BITMAP, "nr_colors is %d, width=%d, height=%d, blockcount=%d\n", nr_colors,
-					width, height, blockcount);
-			if ((nr_colors != 3) && (nr_colors != 4))
-				THROW(EXP_UNSUPPORT_FORMAT, "unsupport color type");
-
-			io_seek(io, blockcount * sizeof(uint32_t), SEEK_CUR);
-
-			/* begin decompress */
-			memset(tlg_text, '\0', sizeof(tlg_text));
-
-			inbuf = xmemalign(4, blockheight * width + 10);
-			assert(inbuf != NULL);
-			for (int i = 0; i < nr_colors; i++) {
-				outbuf[i] = xmemalign(4, blockheight * width + 10);
-				memset(outbuf[i], '\0', blockheight * width + 10);
-				assert(outbuf[i] != NULL);
-			}
-
-			int out_sz = blockheight * width + 10;
-
-			int rxx = 0;
-
-			/* alloc pixels */
-			int id_sz = strlen(id) + 1;
-			int total_sz = sizeof(*retval) +
-				id_sz +
-				width * height * nr_colors + 7;
-			retval = xmalloc(total_sz);
-			assert(retval != NULL);
-			TRACE(BITMAP, "alloced %d data for tlg bitmap %s\n",
-					total_sz, id);
-			retval->id = (char*)retval->__data;
-			retval->pixels = ALIGN_UP_PTR(retval->id + id_sz, 8);
-			int row_sz = width * nr_colors;
-
-			uint8_t * prevline = alloca(width * nr_colors);
-			assert(prevline != NULL);
-			memset(prevline, 0, width * nr_colors);
-
-			for (int y_blk = 0; y_blk < height; y_blk += blockheight) {
-				for (int c = 0; c < nr_colors; c++) {
-					uint8_t flag = io_read_byte(io);
-					int sz = io_read_le32(io);
-					if (flag == 0) {
-						io_read_force(io, inbuf, sz);
-						rxx = decompress_slide(outbuf[c], out_sz, inbuf, sz, rxx);
-					} else {
-						TRACE(BITMAP, "rawdata, sz=%d\n", sz);
-						if (sz > out_sz)
-							THROW(EXP_BAD_RESOURCE, "size too large(%d), image is corrupted", sz);
-						io_read_force(io, outbuf[c], sz);
-					}
-				}
-
-
-				int y_lim = y_blk + blockheight;
-				if(y_lim > height)
-					y_lim = height;
-				uint8_t * outbufp[4];
-				for (int i = 0; i < nr_colors; i++)
-					outbufp[i] = outbuf[i];
-
-				uint8_t * current_line = prevline;
-				for (int y = y_blk; y < y_lim; y++) {
-					current_line = retval->pixels + y * row_sz;
-					switch (nr_colors) {
-						case 3:
-							write_rgb_color(current_line, prevline, outbufp, width);
-							outbufp[0] += width;
-							outbufp[1] += width;
-							outbufp[2] += width;
-							break;
-						case 4:
-							write_rgba_color(current_line, prevline, outbufp, width);
-							outbufp[0] += width;
-							outbufp[1] += width;
-							outbufp[2] += width;
-							outbufp[3] += width;
-							break;
-					}
-				prevline = current_line;
-				}
-			}
-
-			/* fill resource */
-			struct bitmap_resource_t * b = &retval->bitmap_resource;
-			struct bitmap_t * h = &b->head;
-			struct resource_t * r = &b->resource;
-
-			h->revert = FALSE;
-			strcpy(retval->id, id);
-			h->id = retval->id;
-			h->id_sz = id_sz;
-			h->format = (nr_colors == 3) ? BITMAP_RGB : BITMAP_RGBA;
-			h->bpp = nr_colors;
-			h->w = width;
-			h->h = height;
-			h->pixels = retval->pixels;
-
-			r->id = h->id;
-			r->res_sz = total_sz;
-			r->serialize = generic_bitmap_serialize;
-			r->destroy = tlg_destroy;
-			r->ptr = retval;
-			r->pprivate = NULL;
-		} else {
+		if (memcmp(mark, "TLG5.0\x00raw\x1a\x00", 11) != 0) {
 			THROW(EXP_UNSUPPORT_FORMAT, "doesn't support tlg format");
+			return NULL;
 		}
+
+		/* this is TLG5.0 */
+		TRACE(BITMAP, "this is tlg 5.0 row\n");
+
+		struct tlg_head {
+			uint8_t nr_colors;
+			uint32_t width;
+			uint32_t height;
+			uint32_t blockheight;
+		} ATTR(packed);
+
+
+		struct tlg_head tlg_head;
+		io_read_force(io, &tlg_head, sizeof(tlg_head));
+		tole32(tlg_head.width);
+		tole32(tlg_head.height);
+		tole32(tlg_head.blockheight);
+
+		int nr_colors, width, height, blockheight;
+		nr_colors = tlg_head.nr_colors;
+		width = tlg_head.width;
+		height = tlg_head.height;
+		blockheight = tlg_head.blockheight;
+
+		int blockcount = (int)((height - 1) / blockheight) + 1;
+
+		TRACE(BITMAP, "nr_colors is %d, width=%d, height=%d, blockcount=%d\n", nr_colors,
+				width, height, blockcount);
+		if ((nr_colors != 3) && (nr_colors != 4))
+			THROW(EXP_UNSUPPORT_FORMAT, "unsupport color type");
+
+		io_seek(io, blockcount * sizeof(uint32_t), SEEK_CUR);
+
+		/* begin decompress */
+		memset(tlg_text, '\0', sizeof(tlg_text));
+
+		inbuf = xmemalign(4, blockheight * width + 10);
+		assert(inbuf != NULL);
+		for (int i = 0; i < nr_colors; i++) {
+			outbuf[i] = xmemalign(4, blockheight * width + 10);
+			memset(outbuf[i], '\0', blockheight * width + 10);
+			assert(outbuf[i] != NULL);
+		}
+
+		int out_sz = blockheight * width + 10;
+
+		int rxx = 0;
+
+		/* alloc pixels */
+		int id_sz = strlen(id) + 1;
+		int total_sz = sizeof(*retval) +
+			id_sz +
+			width * height * nr_colors + 7;
+		retval = xmalloc(total_sz);
+		assert(retval != NULL);
+		TRACE(BITMAP, "alloced %d data for tlg bitmap %s\n",
+				total_sz, id);
+		retval->id = (char*)retval->__data;
+		retval->pixels = ALIGN_UP_PTR(retval->id + id_sz, 8);
+		int row_sz = width * nr_colors;
+
+		uint8_t * prevline = alloca(width * nr_colors);
+		assert(prevline != NULL);
+		memset(prevline, 0, width * nr_colors);
+
+		for (int y_blk = 0; y_blk < height; y_blk += blockheight) {
+			for (int c = 0; c < nr_colors; c++) {
+				uint8_t flag = io_read_byte(io);
+				int sz = io_read_le32(io);
+				if (flag == 0) {
+					io_read_force(io, inbuf, sz);
+					rxx = decompress_slide(outbuf[c], out_sz, inbuf, sz, rxx);
+				} else {
+					TRACE(BITMAP, "rawdata, sz=%d\n", sz);
+					if (sz > out_sz)
+						THROW(EXP_BAD_RESOURCE, "size too large(%d), image is corrupted", sz);
+					io_read_force(io, outbuf[c], sz);
+				}
+			}
+
+
+			int y_lim = y_blk + blockheight;
+			if(y_lim > height)
+				y_lim = height;
+			uint8_t * outbufp[4];
+			for (int i = 0; i < nr_colors; i++)
+				outbufp[i] = outbuf[i];
+
+			uint8_t * current_line = prevline;
+			for (int y = y_blk; y < y_lim; y++) {
+				current_line = retval->pixels + y * row_sz;
+				switch (nr_colors) {
+					case 3:
+						write_rgb_color(current_line, prevline, outbufp, width);
+						outbufp[0] += width;
+						outbufp[1] += width;
+						outbufp[2] += width;
+						break;
+					case 4:
+						write_rgba_color(current_line, prevline, outbufp, width);
+						outbufp[0] += width;
+						outbufp[1] += width;
+						outbufp[2] += width;
+						outbufp[3] += width;
+						break;
+				}
+				prevline = current_line;
+			}
+		}
+
+		/* fill resource */
+		struct bitmap_resource_t * b = &retval->bitmap_resource;
+		struct bitmap_t * h = &b->head;
+		struct resource_t * r = &b->resource;
+
+		h->revert = FALSE;
+		strcpy(retval->id, id);
+		h->id = retval->id;
+		h->id_sz = id_sz;
+		h->format = (nr_colors == 3) ? BITMAP_RGB : BITMAP_RGBA;
+		h->bpp = nr_colors;
+		h->w = width;
+		h->h = height;
+		h->pixels = retval->pixels;
+
+		r->id = h->id;
+		r->res_sz = total_sz;
+		r->serialize = generic_bitmap_serialize;
+		r->destroy = tlg_destroy;
+		r->ptr = retval;
+		r->pprivate = NULL;
 	} FINALLY {
 		if (inbuf != NULL)
 			xfree(inbuf);
