@@ -45,6 +45,8 @@ struct bitmap_t {
 	/* bpp is Bytes per pixer */
 	int bpp;
 	int w, h;
+	/* CURRENTLY NOT USED */
+	int row_align;		/* 4, 8 or 16 */
 	uint8_t * pixels;
 	/* private */
 	void (*destroy_bitmap)(struct bitmap_t * b);
