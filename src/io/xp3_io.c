@@ -670,7 +670,6 @@ init_xp3_package(const char * pkg_fn)
 		index_dict = NULL;
 		xfree_null(p_xp3_package);
 		xfree_null(pitem);
-		print_exception(&exp);
 		switch (exp.type) {
 			case EXP_BAD_RESOURCE:
 				THROW(EXP_BAD_RESOURCE, "corrupted xp3 file %s", pkg_fn);

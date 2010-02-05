@@ -81,7 +81,7 @@ file_read(struct io_t * io, void * ptr,
 	assert(fp != NULL);
 	int ret = fread(ptr, size, nr, fp);
 	if (ret < 0)
-		THROW(EXP_BAD_RESOURCE, "read(%d, %d) file %p return %d\n",
+		THROW_FATAL(EXP_BAD_RESOURCE, "read(%d, %d) file %p return %d\n",
 				size, nr, fp, ret);
 	return ret;
 }
@@ -126,7 +126,7 @@ file_seek(struct io_t * io, int64_t offset,
 	assert(fp != NULL);
 	int ret = fseeko64(fp, offset, whence);
 	if (ret < 0)
-		THROW(EXP_BAD_RESOURCE, "seek(%Ld, %d) file %p return %d\n",
+		THROW_FATAL(EXP_BAD_RESOURCE, "seek(%Ld, %d) file %p return %d\n",
 				offset, whence, fp, ret);
 	return;
 }
@@ -143,7 +143,7 @@ file_tell(struct io_t * io)
 
 	int64_t ret = ftello64(fp);
 	if (ret < 0)
-		THROW(EXP_BAD_RESOURCE, "tell file %p return %Ld\n",
+		THROW_FATAL(EXP_BAD_RESOURCE, "tell file %p return %Ld\n",
 				fp, ret);
 	return ret;
 }
@@ -265,7 +265,7 @@ file_get_sz(struct io_t * io)
 	struct stat64 buf;
 	err = stat64(io->id, &buf);
 	if (err < 0)
-		THROW(EXP_BAD_RESOURCE, "resource %s stat64 failed with retval %d",
+		THROW_FATAL(EXP_BAD_RESOURCE, "resource %s stat64 failed with retval %d",
 				io->id, err);
 	real_io->file_sz = buf.st_size;
 	return real_io->file_sz;

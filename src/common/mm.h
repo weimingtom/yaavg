@@ -16,7 +16,7 @@
 		void * ___ptr;		\
 		___ptr = malloc((___sz));\
 		if (___ptr == NULL)	\
-			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
 			___ptr; \
 		})
 
@@ -24,7 +24,7 @@
 		void * ___ptr;		\
 		___ptr = memalign((___boundary), (___sz));\
 		if (___ptr == NULL)	\
-			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
 			___ptr; \
 		})
 
@@ -33,7 +33,7 @@
 		void * ___ptr;		\
 		___ptr = realloc(___old_ptr, ___new_sz);\
 		if (___ptr == NULL)	\
-			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
 			___ptr; \
 		})
 
@@ -41,7 +41,7 @@
 		void * ___ptr;		\
 		___ptr = calloc((___count), (___eltsize));\
 		if (___ptr == NULL)	\
-			THROW(EXP_OUT_OF_MEMORY, "out of memory");\
+			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
 			___ptr; \
 		})
 

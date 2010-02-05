@@ -319,7 +319,7 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 		/* this is a fixed dict and cannot insert new entry */
 		if (IS_FIXED(dict)) {
 			TRACE(DICT, "dict %p is fixed and full\n", dict);
-			THROW_VAL(EXP_DICT_FULL, dict,
+			THROW_VAL_FATAL(EXP_DICT_FULL, dict,
 					"fixed dict %p is full(%d/%d/%d), unable to insert", dict,
 					dict->nr_used, dict->nr_fill, dict->mask + 1);
 		}
@@ -330,7 +330,7 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 			ep = lookup_entry(dict, entry->key, entry->hash);
 			assert(ep != NULL);
 		} else {
-			THROW_VAL(EXP_DICT_FULL, dict,
+			THROW_VAL_TAINTED(EXP_DICT_FULL, dict,
 					"dict %p is full(%d/%d/%d) and doesn't allow expansion", dict,
 					dict->nr_used, dict->nr_fill, dict->mask + 1);
 		}

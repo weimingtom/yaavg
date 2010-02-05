@@ -349,7 +349,7 @@ iof_get_package_items(struct io_functionor_t * iof, const char * cmd)
 {
 	assert(iof);
 	if (iof->get_package_items == NULL)
-		return NULL;
+		THROW(EXP_UNSUPPORT_OPERATION, "%s doesn't support get_package_items", iof->name);
 	return iof->get_package_items(cmd);
 }
 

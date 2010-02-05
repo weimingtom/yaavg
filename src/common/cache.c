@@ -32,7 +32,7 @@ void
 test_cache_locked(struct cache_t * cache)
 {
 	if (is_cache_locked(cache))
-		THROW(EXP_CACHE_LOCKED, "cache is locked");
+		THROW_FATAL(EXP_CACHE_LOCKED, "cache is locked");
 }
 
 

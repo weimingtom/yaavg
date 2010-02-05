@@ -15,6 +15,11 @@
 
 #define MAX_IDLEN	(4096)
 
+enum resource_sub_exception {
+	NO_SUB_EXCEPTION = 0,
+	RESOURCEEXP_TIMEOUT,
+};
+
 typedef void * (*deserializer_t)(struct io_t * io);
 
 /* the resource process should be launched after do_init */

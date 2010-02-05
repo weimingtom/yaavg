@@ -34,7 +34,9 @@ get_io_handler(const char * proto)
 	struct io_functionor_t * r = NULL;
 	assert(proto != NULL);
 
-	char * p = strdupa(proto);
+	/* if contain ':' part, split proto first */
+	int __tmp = _strtok(proto, ':') - proto;
+	char * p = strndupa(proto, __tmp);
 	str_toupper(p);
 	TRACE(IO, "find io handler for proto \"%s\"\n",
 			p);
@@ -55,7 +57,8 @@ get_io_handler(const char * proto)
 			r->name, p);
 	bool_t rep = strdict_replace(&io_functionors_dict,
 			p, (dict_data_t)(void*)r, NULL);
-	assert(rep);
+	if (!rep)
+		THROW_FATAL(EXP_UNSUPPORT_IO, "io type %s is not known by us", proto);
 	io_init(r, proto);
 	return r;
 }
@@ -143,11 +146,11 @@ deserialize_package_items(struct io_t * io)
 		io_read_force(io, &head, sizeof(head));
 		TRACE(IO, "deserializing a %d items description, its total sz is %d\n",
 				head.nr_items, head.total_sz);
-		if (head.total_sz <= 0)
+		if (head.total_sz <= sizeof(head))
 			THROW(EXP_BAD_RESOURCE, "total size of a struct package_items_t is %d",
 					head.total_sz);
 		retval = xmalloc(head.total_sz);
-		assert(retval = NULL);
+		assert(retval != NULL);
 		*retval = head;
 		io_read_force(io, retval->__data,
 				retval->total_sz - sizeof(head));
@@ -166,8 +169,7 @@ deserialize_package_items(struct io_t * io)
 	} NO_FINALLY
 	CATCH(exp) {
 		xfree_null(retval);
-		/* suppress all exception */
-		if (exp.type == EXP_UNCATCHABLE)
+		if (exp.level > EXP_LV_TAINTED)
 			RETHROW(exp);
 		print_exception(&exp);
 		return NULL;

@@ -20,9 +20,10 @@ static const char * exception_names[] = {
 };
 
 static const char * exception_level_names[] = {
+	[EXP_LV_NONE] = "system is okay",
 	[EXP_LV_LOWEST] = "system is safe",
-	[EXP_LV_TAINED] = "system is tained",
-	[EXP_LV_FATAL] = "system is dangerous",
+	[EXP_LV_TAINTED] = "system is tainted",
+	[EXP_LV_FATAL] = "system is in dangerous",
 	[EXP_LV_UNCATCHABLE] = "system is dead",
 };
 
@@ -61,6 +62,7 @@ init_set_exception(struct catcher_t * c, struct exception_t * e)
 	memset((void*)e, '\0', sizeof(*e));
 	memset(c, '\0', sizeof(*c));
 	e->type = EXP_NO_EXCEPTION;
+	e->level = EXP_LV_NONE;
 	c->state = CATCHER_INIT;
 	c->curr_exp = e;
 }
@@ -182,7 +184,7 @@ throw_exception(enum exception_type type,
 	exp.u.ptr = (void*)val;
 	exp.type = type;
 	exp.level = level;
-	if (type >= EXP_LV_UNCATCHABLE) {
+	if (level >= EXP_LV_UNCATCHABLE) {
 		exp.type = EXP_UNCATCHABLE;
 		exp.level = EXP_LV_UNCATCHABLE;
 	}

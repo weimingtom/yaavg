@@ -47,6 +47,7 @@ enum video_exception {
  * a file system failure.
  * */
 enum exception_level {
+	EXP_LV_NONE,
 	/*
 	 * the environment is incorrect, but can workaround,
 	 * internal state is safe.
@@ -55,10 +56,10 @@ enum exception_level {
 	 * 		EXP_BAD_RESOURCE
 	 * 		EXP_RESOURCE_NOT_FOUND
 	 * */
-	EXP_LV_LOWEST = 0,
+	EXP_LV_LOWEST,
 	/* internal state is not safe, but can continue. for example:
 	 * 		EXP_DICT_FULL */
-	EXP_LV_TAINED,
+	EXP_LV_TAINTED,
 	/* cannot continue, do possible cleanup and quit. for example:
 	 *		EXP_RESOURCE_PROCESS_FAILURE; 
 	 * */
@@ -167,8 +168,8 @@ ATTR(format(printf, 4, 5))
 #define THROW(t, fmt...) throw_exception(t, 0, EXP_LV_LOWEST, __dbg_info fmt)
 #define THROW_VAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_LOWEST, __dbg_info fmt)
 
-#define THROW_TAINED(t, fmt...) throw_exception(t, 0, EXP_LV_TAINED, __dbg_info fmt)
-#define THROW_VAL_TAINED(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_TAINED, __dbg_info fmt)
+#define THROW_TAINTED(t, fmt...) throw_exception(t, 0, EXP_LV_TAINTED, __dbg_info fmt)
+#define THROW_VAL_TAINTED(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_TAINTED, __dbg_info fmt)
 
 #define THROW_FATAL(t, fmt...) throw_exception(t, 0, EXP_LV_FATAL, __dbg_info fmt)
 #define THROW_VAL_FATAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_FATAL, __dbg_info fmt)

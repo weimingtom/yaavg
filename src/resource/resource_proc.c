@@ -60,14 +60,14 @@ xread(int fd, void * buf, int len)
 
 	err = read(fd, buf, len);
 	if (err < 0) {
-		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+		THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 				"read from pipe error: %d:%s\n",
 				err, strerror(errno));
 	}
 
 	if (err == 0)
-		THROW(EXP_RESOURCE_PEER_SHUTDOWN,
-				"seems host peer has shutdown\n");
+		THROW_FATAL(EXP_RESOURCE_PEER_SHUTDOWN,
+				"seems host peer has shutdown first\n");
 	TRACE(RESOURCE, "finish to xread %d bytes from %d\n",
 			err, fd);
 	return err;
@@ -81,7 +81,7 @@ xread(int fd, void * buf, int len)
 static int
 xwrite(int fd, void * buf, int len)
 {
-	int err;
+	int err = 0;
 	fd_set set;
 
 	assert(fd < FD_SETSIZE);
@@ -93,21 +93,20 @@ xwrite(int fd, void * buf, int len)
 	TRACE(RESOURCE, "try to xwrite %d bytes to %d\n",
 			len, fd);
 	struct timeval tv;
-	do {
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		FD_ZERO(&set);
-		FD_SET(fd, &set);
-		err = TEMP_FAILURE_RETRY(
-				select(FD_SETSIZE, NULL,
-					&set, NULL,
-					&tv));
-		if (err == 0)
-			WARNING(RESOURCE, "select timeout when write, wait for another 1s\n");
-	} while (err == 0);
-
+	for (int i = 0; ((i < 3) && (err == 0)); i++) {
+			tv.tv_sec = 1;
+			tv.tv_usec = 0;
+			FD_ZERO(&set);
+			FD_SET(fd, &set);
+			err = TEMP_FAILURE_RETRY(
+					select(FD_SETSIZE, NULL,
+						&set, NULL,
+						&tv));
+			if (err == 0)
+				WARNING(RESOURCE, "select timeout when write, wait for another 1s\n");
+	}
 	if (err < 0)
-		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+		THROW_VAL_FATAL(EXP_RESOURCE_PROCESS_FAILURE, RESOURCEEXP_TIMEOUT,
 				"select error: %d:%s",
 				err, strerror(errno));
 
@@ -115,13 +114,13 @@ xwrite(int fd, void * buf, int len)
 
 	err = write(fd, buf, len);
 	if (err < 0) {
-		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+		THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 				"write to pipe error: %d/%d:%s",
 				err, len, strerror(errno));
 	}
 
 	if (err == 0)
-		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+		THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 				"very strange: write returns 0");
 	TRACE(RESOURCE, "finish to xwrite %d bytes to %d\n",
 			len, fd);
@@ -181,7 +180,7 @@ __xxread(int fd, void * buf, int len, int peri_wait_usec)
 						&tv));
 
 			if (err < 0)
-				THROW(EXP_RESOURCE_PROCESS_FAILURE,
+				THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 						"select error: %d:%s",
 						err, strerror(errno));
 			if (err == 0) {
@@ -192,7 +191,7 @@ __xxread(int fd, void * buf, int len, int peri_wait_usec)
 							peri_wait_usec);
 					nr_warn ++;
 					if (nr_warn >= 3)
-						THROW(EXP_RESOURCE_PROCESS_FAILURE,
+						THROW_VAL_FATAL(EXP_RESOURCE_PROCESS_FAILURE, RESOURCEEXP_TIMEOUT,
 								"no response for too long time, something error");
 				}
 			}
@@ -227,7 +226,7 @@ xxreadv(int fd, struct iovec * iovec,
 	ssize_t retval;
 	retval = readv(fd, iovec, nr);
 	if (retval <= 0)
-		THROW(EXP_RESOURCE_PROCESS_FAILURE,
+		THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 				"readv failed, return %d:%s",
 				retval, strerror(errno));
 
@@ -283,7 +282,7 @@ xx_splicev(int fd, struct iovec * __iovec,
 			retval = readv(fd, iovec, nr);
 
 		if (retval < 0) {
-			THROW(EXP_RESOURCE_PROCESS_FAILURE, "readv/writev/vmsplice failed: return %d:%s",
+			THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE, "readv/writev/vmsplice failed: return %d:%s",
 					retval, strerror(errno));
 		} else if (retval == 0) {
 			WARNING(RESOURCE, "readv/writev/vmsplice return 0, very strange, sleep 0.01 sec\n");
@@ -343,7 +342,7 @@ sigpipe_handler(int signum)
 {
 	WARNING(RESOURCE, "signal %d received by process %d\n", signum,
 			getpid());
-	THROW(EXP_RESOURCE_PROCESS_FAILURE,
+	THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 			"receive SIGPIPE, write when other end closed");
 }
 
@@ -614,17 +613,32 @@ get_package_items_worker(const char * cmd)
 {
 	struct exception_t exp;
 	TRY(exp) {
+		/* cmd should be something like: XP3|FILE:xxx.xp3 */
+		/* split the '|' first */
+		char * proto = strdupa(cmd);
+		assert(proto != NULL);
+		char * fn = __split_token(proto, '|');
+		if (fn == NULL)
+			THROW_TAINTED(EXP_RESOURCE_PROCESS_FAILURE,
+					"received wrong package_items_worker command %s", cmd);
+		struct io_functionor_t * iof = get_io_handler(proto);
+		assert(iof != NULL);
+
+		struct package_items_t * items = iof_get_package_items(iof, fn);
+		assert(items != NULL);
+		serialize_and_destroy_package_items(&items, &data_side_io);
 	} FINALLY {
 	} CATCH(exp) {
-		/* **NOTICE** this switch is very different from others!!! */
-		switch (exp.type) {
-			case EXP_UNCATCHABLE:
-			case EXP_RESOURCE_PROCESS_FAILURE:
-			case EXP_RESOURCE_PEER_SHUTDOWN:
-				RETHROW(exp);
-			default:
-				print_exception(&exp);
-		}
+		/* **NOTICE** this is very different from others!!! */
+		if (exp.level > EXP_LV_LOWEST)
+			RETHROW(exp);
+		print_exception(&exp);
+		/* return an empty list to peer */
+		struct package_items_t head;
+		head.table = NULL;
+		head.nr_items = 0;
+		head.total_sz = sizeof(head);
+		io_write_force(&data_side_io, &head, sizeof(head));
 	}
 	return;
 }
@@ -653,12 +667,13 @@ worker(void)
 		xxread(C_IN, &cmd_len, sizeof(cmd_len));
 
 		if ((cmd_len > MAX_IDLEN) || (cmd_len < 0))
-			THROW(EXP_RESOURCE_PROCESS_FAILURE,
+			THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 					"cmd_len=%d is incorrect",
 					cmd_len);
 
+		DEBUG(RESOURCE, "cmd_len=%d\n", cmd_len);
 		if (cmd_len > cmd_buffer_sz)
-			cmd = xrealloc(cmd, cmd_buffer_sz);
+			cmd = xrealloc(cmd, cmd_len);
 
 		/* read the command */
 		xxread(C_IN, cmd, cmd_len);
@@ -682,7 +697,7 @@ worker(void)
 				get_package_items_worker(&cmd[2]);
 				break;
 			default:
-				THROW(EXP_RESOURCE_PROCESS_FAILURE,
+				THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 						"got unknown command '%c'", cmd[0]);
 		}
 	}
@@ -722,7 +737,7 @@ launch_resource_process(void)
 		if (ok != OK_SIG) {
 			xclose(C_OUT);
 			xclose(D_IN);
-			THROW(EXP_RESOURCE_PROCESS_FAILURE,
+			THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE,
 					"seems resource process meet some error, it return 0x%x\n",
 					ok);
 		}
@@ -756,9 +771,11 @@ launch_resource_process(void)
 		VERBOSE(RESOURCE, "resource worker end\n");
 		switch (exp.type) {
 			case EXP_RESOURCE_PEER_SHUTDOWN:
-				VERBOSE(RESOURCE, "resource process end normally\n");
-				do_cleanup();
-				break;
+				if (exp.level <= EXP_LV_LOWEST) {
+					VERBOSE(RESOURCE, "resource process end normally\n");
+					do_cleanup();
+					break;
+				}
 			default:
 				print_exception(&exp);
 				do_cleanup();
@@ -781,13 +798,50 @@ shutdown_resource_process(void)
 
 	char x[2] = {'x', '\0'};
 	int i = 2;
-	xxwrite(C_OUT, &i, sizeof(i));
-	xxwrite(C_OUT, &x, sizeof(x));
+	struct exception_t exp;
+	TRY(exp) {
+		xxwrite(C_OUT, &i, sizeof(i));
+		xxwrite(C_OUT, &x, sizeof(x));
+	} NO_FINALLY
+	CATCH(exp) {
+		if (exp.level >= EXP_LV_UNCATCHABLE)
+			RETHROW(exp);
+		/* doesn't allow exception raise here */
+		print_exception(&exp);
+	}
 	VERBOSE(RESOURCE, "wait for process %d finish\n", resproc_pid);
-	waitpid(resproc_pid, NULL, 0);
 
-	resproc_pid = -1;
-	C_OUT = -1;
+	xclose(C_OUT);
+	xclose(D_IN);
+
+
+	for (int i = 0; i < 2; i++) {
+		int ms = 0;
+		int status = 0;
+		pid_t retval = waitpid(resproc_pid, &status, WNOHANG);
+		while (retval != resproc_pid) {
+			if (ms >= 1000)
+				break;
+			force_delay(100);
+			ms += 100;
+			retval = waitpid(resproc_pid, &status, WNOHANG);
+		}
+		if (retval != resproc_pid) {
+			/* kill it by sig 9 */
+			if (i == 0) {
+				WARNING(RESOURCE, "resource process %d is not end for 1 second, send SIGTERM\n", resproc_pid);
+				kill(resproc_pid, SIGTERM);
+			} else {
+				WARNING(RESOURCE, "resource process %d is not end for another 1 second, send SIGKILL\n", resproc_pid);
+				kill(resproc_pid, SIGKILL);
+			}
+		} else {
+			resproc_pid = -1;
+			break;
+		}
+	}
+	if (resproc_pid != -1)
+		ERROR(RESOURCE, "unable to kill resource process %d\n", resproc_pid);
 	return;
 }
 
@@ -841,14 +895,21 @@ get_package_items(const char * proto, const char * name)
 	assert(name != NULL);
 	struct iovec vecs[4];
 	static char l_cmd[2] = "l:";
-	int len = strlen(proto) + strlen(name) + 4;
+	int lp = strlen(proto);
+	int len = 2 + lp + 1 + strlen(name) + 1;
 
+	char * x_proto = alloca(lp + 2);
+	assert(x_proto != NULL);
+	strcpy(x_proto, proto);
+	x_proto[lp] = '|';
+	x_proto[lp + 1] = '\0';
+	
 	vecs[0].iov_base = &len;
 	vecs[0].iov_len = sizeof(len);
 	vecs[1].iov_base = l_cmd;
 	vecs[1].iov_len = 2;
-	vecs[2].iov_base = (char*)proto;
-	vecs[2].iov_len = strlen(proto) + 1;
+	vecs[2].iov_base = x_proto;
+	vecs[2].iov_len = lp + 1;
 	vecs[3].iov_base = (char*)name;
 	vecs[3].iov_len = strlen(name) + 1;
 

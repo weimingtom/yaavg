@@ -38,6 +38,9 @@ wrap_fopen(const char * root_dir, const char * file_name)
 	}
 
 	VERBOSE(SYSTEM, "full name is %s\n", full_name);
+	struct io_t * io;
+	struct exception_t exp;
+	TRY()
 	FILE * fp = fopen(full_name, "wb");
 	if (fp)
 		return fp;
@@ -89,6 +92,7 @@ main(int argc, char * argv[])
 	const char * xp3file = argv[1];
 	const char * root = argv[2];
 
+
 	struct stat stbuf;
 	int err = stat(xp3file, &stbuf);
 	if ((err != 0) || (!S_ISREG(stbuf.st_mode))) {
@@ -96,23 +100,57 @@ main(int argc, char * argv[])
 		exit(-1);
 	}
 
+	char * resname = NULL;
+	struct bitmap_t * b = NULL;
+	struct package_items_t * items = NULL;
 	struct exception_t exp;
 	TRY(exp) {
 		do_init();
 		launch_resource_process();
+
+		char * ioname = alloca(strlen(argv[1] + 6));
+		sprintf(ioname, "FILE:%s", argv[1]);
+		VERBOSE(SYSTEM, "ioname=%s\n", ioname);
+		items = get_package_items("XP3", ioname);
+		assert(items != NULL);
+		char ** ptr = items->table;
+		while (*ptr != NULL) {
+			char * prefix = _strtok(*ptr, '.');
+			assert(*prefix == '.');
+			if (strcmp(".tlg", prefix) == 0) {
+				resname = xrealloc(resname, strlen(ioname) + 10 + strlen(*ptr));
+				sprintf(resname, "0*XP3:%s|%s", *ptr, ioname);
+				VERBOSE(SYSTEM, "load bitmap %s\n", resname);
+
+				b = get_resource(resname,
+						(deserializer_t)bitmap_deserialize);
+				assert(b != NULL);
+				free_bitmap(b);
+				b = NULL;
+			}
+			ptr ++;
+		}
+
 	} FINALLY {
+		xfree_null(items);
+		xfree_null(resname);
+		if (b != NULL)
+			free_bitmap(b);
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)
 				&& (exp.type != EXP_RESOURCE_PROCESS_FAILURE))
 		{
 			shutdown_resource_process();
 		}
+
 	} CATCH(exp) {
 		switch (exp.type) {
 			case EXP_RESOURCE_PEER_SHUTDOWN:
 			case EXP_RESOURCE_PROCESS_FAILURE:
-				WARNING(SYSTEM, "resource process exit before main process\n");
-				/* ... */
-				do_cleanup();
+				ERROR(SYSTEM, "resource process failure before main process\n");
+				if (exp.u.val == RESOURCEEXP_TIMEOUT) {
+					ERROR(SYSTEM, "resource process timeout, we should kill it\n");
+					shutdown_resource_process();
+				}
 				break;
 			default:
 				RETHROW(exp);
