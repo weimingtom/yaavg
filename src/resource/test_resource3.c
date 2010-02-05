@@ -65,9 +65,10 @@ int main()
 		launch_resource_process();
 
 //		write_resource("0*XP3:01星空_thumb.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/2.png");
-		write_resource("0*XP3:ss_保有背景真アサシン.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/2.png");
-		write_resource("0*XP3:csセイバー炉心祈り.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/6.png");
-		write_resource("0*XP3:25時間軸説明・セイバーc_thumb.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/1.png");
+		write_resource("0*XP3:ss_保有背景真アサシン.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/1.png");
+		write_resource("0*XP3:csセイバー炉心祈り.png|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3", "/tmp/out/2.png");
+		write_resource("0*XP3:25時間軸説明・セイバーc_thumb.tlg|FILE:/home/wn/Windows/Fate/image.xp3", "/tmp/out/3.png");
+		write_resource("0*XP3:25時間軸説明・セイバーc.tlg|FILE:/home/wn/Windows/Fate/bgimage.xp3", "/tmp/out/4.png");
 
 #if 0
 		write_resource("0*FILE:no_alpha.png", "/tmp/out/1.png");
