@@ -3,6 +3,7 @@ SET(SRC
 	bitmap.c
 	bitmap_resource.h
 	bitmap_resource.c
+	tgl2.c
 	tlg_bitmap_resource.c
 	dummy_bitmap_resource.c
 	bitmap_to_png.c

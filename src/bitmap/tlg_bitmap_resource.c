@@ -13,6 +13,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 struct tlg_bitmap_resource_t {
 	struct bitmap_resource_t bitmap_resource;
@@ -184,6 +185,7 @@ tlg_load(struct io_t * io, const char * id)
 			assert(inbuf != NULL);
 			for (int i = 0; i < nr_colors; i++) {
 				outbuf[i] = xmemalign(4, blockheight * width + 10);
+				memset(outbuf[i], '\0', blockheight * width + 10);
 				assert(outbuf[i] != NULL);
 			}
 
@@ -212,13 +214,27 @@ tlg_load(struct io_t * io, const char * id)
 					int sz = io_read_le32(io);
 					if (flag == 0) {
 						io_read_force(io, inbuf, sz);
+
+char fffff[512];
+sprintf(fffff, "/tmp/out/y_blk_%d_inbuf_%d", y_blk, c);
+FILE * fffppp = fopen(fffff, "wb");
+fwrite(inbuf, sz, 1, fffppp);
+fclose(fffppp);
+
 						TRACE(BITMAP, "decompress, sz=%d, rxx=%d\n", sz, rxx);
 						rxx = decompress_slide(outbuf[c], inbuf, sz, rxx);
 					} else {
 						TRACE(BITMAP, "rawdata, sz=%d\n", sz);
 						io_read_force(io, outbuf[c], sz);
 					}
+
+char fffff[512];
+sprintf(fffff, "/tmp/out/y_blk_%d_outbuf_%d", y_blk, c);
+FILE * fffppp = fopen(fffff, "wb");
+fwrite(outbuf[c], blockheight * width + 10 , 1, fffppp);
+fclose(fffppp);
 				}
+
 
 				int y_lim = y_blk + blockheight;
 				if(y_lim > height)
@@ -245,8 +261,8 @@ tlg_load(struct io_t * io, const char * id)
 							outbufp[3] += width;
 							break;
 					}
-				}
 				prevline = current_line;
+				}
 			}
 
 			/* fill resource */
