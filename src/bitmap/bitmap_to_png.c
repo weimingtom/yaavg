@@ -149,7 +149,12 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 				prow ++;
 			}
 		}
-		png_write_image(write_ptr, rows);
+
+		png_set_rows(write_ptr, write_info_ptr, rows);
+		if ((b->format == BITMAP_BGR) || (b->format == BITMAP_BGRA))
+			png_write_png(write_ptr, write_info_ptr, PNG_TRANSFORM_BGR, NULL);
+		else
+			png_write_png(write_ptr, write_info_ptr, 0, NULL);
 		png_write_end(write_ptr, write_info_ptr);
 
 	} FINALLY {

@@ -100,6 +100,7 @@ write_rgb_color(uint8_t *outp, const uint8_t *upper, uint8_t * const * buf, int 
 		outp[0] = (((pc[0] += c[0]) + upper[0]) & 0xff);
 		outp[1] = (((pc[1] += c[1]) + upper[1]) & 0xff);
 		outp[2] = (((pc[2] += c[2]) + upper[2]) & 0xff);
+
 		upper += 3;
 		outp += 3;
 	}
@@ -214,25 +215,12 @@ tlg_load(struct io_t * io, const char * id)
 					int sz = io_read_le32(io);
 					if (flag == 0) {
 						io_read_force(io, inbuf, sz);
-
-char fffff[512];
-sprintf(fffff, "/tmp/out/y_blk_%d_inbuf_%d", y_blk, c);
-FILE * fffppp = fopen(fffff, "wb");
-fwrite(inbuf, sz, 1, fffppp);
-fclose(fffppp);
-
 						TRACE(BITMAP, "decompress, sz=%d, rxx=%d\n", sz, rxx);
 						rxx = decompress_slide(outbuf[c], inbuf, sz, rxx);
 					} else {
 						TRACE(BITMAP, "rawdata, sz=%d\n", sz);
 						io_read_force(io, outbuf[c], sz);
 					}
-
-char fffff[512];
-sprintf(fffff, "/tmp/out/y_blk_%d_outbuf_%d", y_blk, c);
-FILE * fffppp = fopen(fffff, "wb");
-fwrite(outbuf[c], blockheight * width + 10 , 1, fffppp);
-fclose(fffppp);
 				}
 
 
@@ -274,7 +262,7 @@ fclose(fffppp);
 			strcpy(retval->id, id);
 			h->id = retval->id;
 			h->id_sz = id_sz;
-			h->format = (nr_colors == 3) ? BITMAP_RGB : BITMAP_RGBA;
+			h->format = (nr_colors == 3) ? BITMAP_BGR : BITMAP_BGRA;
 			h->bpp = nr_colors;
 			h->w = width;
 			h->h = height;
