@@ -179,7 +179,7 @@ cache_remove_entry(struct cache_t * cache,
 	
 	od = strdict_remove(dict, id);
 	if (!(GET_DICT_DATA_FLAGS(od) & DICT_DATA_FL_VANISHED)) {
-		DEBUG(CACHE, "entry \"%s\" is in cache\n", id);
+		TRACE(CACHE, "entry \"%s\" is in cache\n", id);
 		struct cache_entry_t * entry = od.ptr;
 
 		cache->nr --;
@@ -190,7 +190,7 @@ cache_remove_entry(struct cache_t * cache,
 		return;
 	}
 	
-	DEBUG(CACHE, "entry \"%s\" is not in cache\n", id);
+	TRACE(CACHE, "entry \"%s\" is not in cache\n", id);
 	return;
 }
 

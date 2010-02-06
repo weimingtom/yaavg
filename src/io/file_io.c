@@ -20,8 +20,10 @@ struct file_io_t {
 	int64_t file_sz;
 	FILE * fp;
 	void * map_base;
-	char path[0];
+	char __data[0];
 };
+
+static const char unknown_file_path[] = "Unknown file";
 
 static struct io_t *
 file_open(const char * path, const char * mode)
@@ -37,8 +39,8 @@ file_open(const char * path, const char * mode)
 	r->io.functionor = &file_io_functionor;
 	/* set pprivate to fp can make our life eaiser */
 	r->io.pprivate = fp;
-	strcpy(r->path, path);
-	r->io.id = r->path;
+	strcpy(r->__data, path);
+	r->io.id = r->__data;
 
 	r->fp = fp;
 	r->permanent_mapped = FALSE;
@@ -260,6 +262,17 @@ file_get_sz(struct io_t * io)
 			struct file_io_t, io);
 	if (real_io->file_sz != -1)
 		return real_io->file_sz;
+	/* for the direct created io_t */
+	if (io->id == unknown_file_path) {
+		WARNING(IO, "You are getting file size of a struct io_t which created directly by FILE * %p. \n",
+				real_io->fp);
+		int64_t pos_save = io_tell(io);
+		io_seek(io, 0, SEEK_END);
+		int64_t pos = io_tell(io);
+		io_seek(io, pos_save, SEEK_SET);
+		real_io->file_sz = pos_save;
+		return pos;
+	}
 
 	int err;
 	struct stat64 buf;
@@ -301,6 +314,32 @@ file_permanentmap(struct io_t * io)
 	return ptr;
 }
 
+static struct io_t *
+file_build_io_from_stdfile(FILE * fp, bool_t is_write)
+{
+	assert(fp != NULL);
+	WARNING(IO, "You are building a struct io_t directly from FILE *, it is not recommanded\n");
+	WARNING(IO, "It is your responsibility to guarantee the FILE * is at proper state\n");
+	WARNING(IO, "buinding file io from std file %p, is_write=%d\n", fp, is_write);
+
+	struct file_io_t * r = xcalloc(1, sizeof(*r));
+	assert(r != NULL);
+	r->io.functionor = &file_io_functionor;
+	r->io.pprivate = fp;
+	r->io.id = unknown_file_path;
+	r->fp = fp;
+	r->permanent_mapped = FALSE;
+	r->map_base = (void*)(0xffffffff);
+	r->file_sz = -1;
+
+	if (is_write)
+		r->io.rdwr = IO_WRITE;
+	else
+		r->io.rdwr = IO_READ;
+
+	return &(r->io);
+}
+
 static void *
 file_command(struct io_t * io, const char * cmd, void * arg)
 {
@@ -308,6 +347,12 @@ file_command(struct io_t * io, const char * cmd, void * arg)
 	if (strncmp("permanentmap", cmd,
 				sizeof("permanentmap") - 1) == 0)
 		return file_permanentmap(io);
+	if (strncmp("buildfromstdfile:read", cmd,
+		sizeof("buildfromstdfile:read") - 1) == 0)
+			return file_build_io_from_stdfile(arg, FALSE);
+	if (strncmp("buildfromstdfile:write", cmd,
+		sizeof("buildfromstdfile:write") - 1) == 0)
+			return file_build_io_from_stdfile(arg, TRUE);
 	return NULL;
 	
 }

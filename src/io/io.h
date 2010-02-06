@@ -206,14 +206,10 @@ io_get_sz(struct io_t * io)
 	}
 
 	int64_t pos_save, pos;
-	int err;
 	pos_save = io_tell(io);
 	io_seek(io, 0, SEEK_END);
 	pos = io_tell(io);
 	io_seek(io, pos_save, SEEK_SET);
-	if (err < 0)
-		THROW(EXP_BAD_RESOURCE, "io %s seek(%Ld, %d) failed",
-				io->id, pos_save, SEEK_SET);
 	return pos;
 }
 

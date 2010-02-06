@@ -39,10 +39,19 @@ wrap_io_open_write(const char * root_dir, const char * file_name)
 	}
 
 	VERBOSE(SYSTEM, "full name is %s\n", full_name);
-	struct io_t * io = NULL;
-	io = NOTHROW_RET(NULL, io_open_write, "FILE", full_name);
-	if (io != NULL)
-		return io;
+
+	struct io_functionor_t * iof = get_io_handler("FILE");
+	assert(iof != NULL);
+//	struct io_t * io = NULL;
+	FILE * fp = NULL;
+//	io = NOTHROW_RET(NULL, io_open_write, "FILE", full_name);
+//	if (io != NULL)
+//		return io;
+
+	fp = fopen(full_name, "wb");
+	if (fp) {
+		return iof_command(iof, "buildfromstdfile:write", fp);
+	}
 
 	/* create all directries */
 	int full_name_sz = strlen(full_name) + 1;
@@ -75,9 +84,13 @@ wrap_io_open_write(const char * root_dir, const char * file_name)
 		pos = _strtok(pos+1, '/');
 	}
 
-	io = io_open_write("FILE", full_name);
-	assert(io != NULL);
-	return io;
+//	io = io_open_write("FILE", full_name);
+//	assert(io != NULL);
+//	return io;
+
+	fp = fopen(full_name, "wb");
+	assert(fp != NULL);
+	return iof_command(iof, "buildfromstdfile:write", fp);
 }
 
 int
