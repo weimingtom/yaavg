@@ -4,6 +4,7 @@
 #include <resource/resource.h>
 #include <resource/resource_proc.h>
 #include <bitmap/bitmap.h>
+#include <bitmap/bitmap_to_png.h>
 #include <io/io.h>
 
 #include <sys/stat.h>
@@ -24,8 +25,8 @@ cleanup_func_t cleanup_funcs[] = {
 	NULL,
 };
 
-static FILE *
-wrap_fopen(const char * root_dir, const char * file_name)
+static struct io_t *
+wrap_io_open_write(const char * root_dir, const char * file_name)
 {
 	assert(file_name != NULL);
 	char * full_name = NULL;
@@ -38,12 +39,10 @@ wrap_fopen(const char * root_dir, const char * file_name)
 	}
 
 	VERBOSE(SYSTEM, "full name is %s\n", full_name);
-	struct io_t * io;
-	struct exception_t exp;
-	TRY()
-	FILE * fp = fopen(full_name, "wb");
-	if (fp)
-		return fp;
+	struct io_t * io = NULL;
+	io = NOTHROW_RET(NULL, io_open_write, "FILE", full_name);
+	if (io != NULL)
+		return io;
 
 	/* create all directries */
 	int full_name_sz = strlen(full_name) + 1;
@@ -76,9 +75,9 @@ wrap_fopen(const char * root_dir, const char * file_name)
 		pos = _strtok(pos+1, '/');
 	}
 
-	fp = fopen(full_name, "wb");
-	assert (fp != NULL);
-	return fp;
+	io = io_open_write("FILE", full_name);
+	assert(io != NULL);
+	return io;
 }
 
 int
@@ -91,6 +90,7 @@ main(int argc, char * argv[])
 
 	const char * xp3file = argv[1];
 	const char * root = argv[2];
+	assert(root != NULL);
 
 
 	struct stat stbuf;
@@ -100,9 +100,10 @@ main(int argc, char * argv[])
 		exit(-1);
 	}
 
-	char * resname = NULL;
+	char * tmp_name = NULL;
 	struct bitmap_t * b = NULL;
 	struct package_items_t * items = NULL;
+	struct io_t * io = NULL;
 	struct exception_t exp;
 	TRY(exp) {
 		do_init();
@@ -118,22 +119,30 @@ main(int argc, char * argv[])
 			char * prefix = _strtok(*ptr, '.');
 			assert(*prefix == '.');
 			if (strcmp(".tlg", prefix) == 0) {
-				resname = xrealloc(resname, strlen(ioname) + 10 + strlen(*ptr));
-				sprintf(resname, "0*XP3:%s|%s", *ptr, ioname);
-				VERBOSE(SYSTEM, "load bitmap %s\n", resname);
+				tmp_name = xrealloc(tmp_name, strlen(ioname) + 10 + strlen(*ptr));
+				sprintf(tmp_name, "0*XP3:%s|%s", *ptr, ioname);
+				VERBOSE(SYSTEM, "load bitmap %s\n", tmp_name);
 
-				b = get_resource(resname,
+				b = get_resource(tmp_name,
 						(deserializer_t)bitmap_deserialize);
 				assert(b != NULL);
+
+				/* append the '.png' post-fix */
+				tmp_name = xrealloc(tmp_name, strlen(*ptr) + 5);
+				assert(tmp_name != NULL);
+				sprintf(tmp_name, "%s.png", *ptr);
+				io = wrap_io_open_write(root, tmp_name);
+				bitmap_to_png(b, io);
+				io_close(io);
+				io = NULL;
 				free_bitmap(b);
 				b = NULL;
 			}
 			ptr ++;
 		}
-
 	} FINALLY {
 		xfree_null(items);
-		xfree_null(resname);
+		xfree_null(tmp_name);
 		if (b != NULL)
 			free_bitmap(b);
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)

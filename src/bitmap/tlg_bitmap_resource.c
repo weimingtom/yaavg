@@ -224,6 +224,7 @@ tlg_load(struct io_t * io, const char * id)
 				uint8_t flag = io_read_byte(io);
 				int sz = io_read_le32(io);
 				if (flag == 0) {
+					TRACE(BITMAP, "compressed data, sz=%d\n", sz);
 					io_read_force(io, inbuf, sz);
 					rxx = decompress_slide(outbuf[c], out_sz, inbuf, sz, rxx);
 				} else {

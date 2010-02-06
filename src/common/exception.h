@@ -125,19 +125,19 @@ extern EXCEPTIONS_SIGJMP_BUF *
 exceptions_state_mc_init(struct catcher_t * catcher,
 		struct exception_t * exp);
 
-#define TRY(exp) \
+#define TRY(___exp) \
 	<% \
 	struct catcher_t ____catcher; \
-	____catcher.curr_exp = &(exp); \
+	____catcher.curr_exp = &(___exp); \
 	EXCEPTIONS_SIGJMP_BUF * ___buf___ = \
-		exceptions_state_mc_init(&____catcher, &(exp));	\
+		exceptions_state_mc_init(&____catcher, &(___exp));	\
 	EXCEPTIONS_SIGSETJMP(*___buf___);	\
 	while (exceptions_state_mc(CATCH_ITER_0)) 
 
 #define FINALLY { exceptions_state_mc(CATCH_FINALLY); }
 #define NO_FINALLY FINALLY
-#define CATCH(exp)	%> if (exp.type != EXP_NO_EXCEPTION)
-#define NO_CATCH(exp)	CATCH(exp) RETHROW(exp)
+#define CATCH(___exp)	%> if ((___exp).type != EXP_NO_EXCEPTION)
+#define NO_CATCH(___exp)	CATCH(___exp) RETHROW(___exp)
 
 extern void
 print_exception(struct exception_t * exp);
@@ -173,6 +173,47 @@ ATTR(format(printf, 4, 5))
 
 #define THROW_FATAL(t, fmt...) throw_exception(t, 0, EXP_LV_FATAL, __dbg_info fmt)
 #define THROW_VAL_FATAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_FATAL, __dbg_info fmt)
+
+
+#define NOTHROW(fn, ...) do {	\
+	struct exception_t ___exp;	\
+	TRY(___exp) {					\
+		fn(__VA_ARGS__);		\
+	} NO_FINALLY				\
+	CATCH(___exp) {						\
+		switch(___exp.level) {		\
+			case EXP_LV_LOWEST:	\
+			case EXP_LV_TAINTED:\
+				break;			\
+			default:			\
+				print_exception(&___exp);	\
+				RETHROW(___exp);	\
+		}						\
+	}							\
+} while(0)
+
+
+#define NOTHROW_RET(defret, fn, ...) ({	\
+	typeof((fn)(__VA_ARGS__)) ___r;\
+	struct exception_t ___exp;	\
+	TRY(___exp) {					\
+		___r = (fn)(__VA_ARGS__);\
+	} NO_FINALLY				\
+	CATCH(___exp) {						\
+		___r = defret;			\
+		switch(___exp.level) {	\
+			case EXP_LV_LOWEST:	\
+			case EXP_LV_TAINTED:\
+				break;			\
+			default:			\
+				print_exception(&___exp);	\
+				RETHROW(___exp);\
+								\
+		}						\
+	}							\
+	___r;						\
+})
+
 
 #ifdef YAAVG_DEBUG
 # define RETHROW(e) throw_exception((e).type, (e).u.xval, (e).level, \
