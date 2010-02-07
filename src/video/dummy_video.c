@@ -26,8 +26,7 @@ static void
 dummy_init(void)
 {
 	VERBOSE(VIDEO, "initing dummy video engine:\n");
-	common_video_init();
-
+	generic_video_init();
 	/* nothing to do */
 }
 

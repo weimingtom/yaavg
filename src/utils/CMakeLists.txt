@@ -3,6 +3,7 @@ SET(SRC
 	timer.c
 	base_timer.c
 	sdl_timer.c
+	rect.h
 	)
 
 ADD_LIBRARY(utils STATIC ${SRC})

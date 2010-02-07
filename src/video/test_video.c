@@ -14,7 +14,7 @@
 #include <video/video.h>
 
 #include <assert.h>
-
+#if 0
 init_func_t init_funcs[] = {
 	__dbg_init,
 	__yconf_init,
@@ -97,6 +97,11 @@ main()
 	return 0;
 }
 
+#endif
 
+int main()
+{
+	return 0;
+}
 // vim:ts=4:sw=4
 
