@@ -31,6 +31,7 @@ find_functionor(struct function_class_t * fclass, const char * param)
 		}
 	}
 	while (*pos != NULL) {
+		assert((*pos)->fclass == fclass->fclass);
 		if ((*pos)->check_usable != NULL)
 			if ((*pos)->check_usable(param)) {
 				fclass->current_functionor = *pos;

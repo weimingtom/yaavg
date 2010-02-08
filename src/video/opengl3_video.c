@@ -10,11 +10,11 @@
 
 #if defined HAVE_OPENGL && defined USE_OPENGL3
 struct video_functionor_t opengl3_video_functionor = {
-	
+	.fclass = FC_VIDEO,
 };
 #else
 struct video_functionor_t opengl3_video_functionor = {
-	
+	.fclass = FC_VIDEO,
 };
 #endif
 
