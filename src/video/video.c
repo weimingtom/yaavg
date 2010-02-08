@@ -11,13 +11,28 @@
 
 extern struct functionor_t dummy_video_functionor;
 
-static struct functionor_t * functionors[] = {
-#if 0
-	&opengl3_video_functionor,
-	&opengl_video_functionor,
-	&sdl_video_functionor,
-	&dummy_video_functionor,
+#ifdef USE_OPENGL3
+extern struct functionor_t opengl3_video_functionor;
 #endif
+#ifdef HAVE_OPENGL
+extern struct functionor_t opengl_video_functionor;
+#endif
+#ifdef HAVE_SDL
+extern struct functionor_t sdl_video_functionor;
+#endif
+
+
+static struct functionor_t * functionors[] = {
+#ifdef USE_OPENGL3
+	&opengl3_video_functionor,
+#endif
+#ifdef HAVE_OPENGL
+	&opengl_video_functionor,
+#endif
+#ifdef HAVE_SDL
+	&sdl_video_functionor,
+#endif
+	&dummy_video_functionor,
 	NULL,
 };
 
@@ -70,51 +85,5 @@ generic_video_init(void)
 	/* nothing to do */
 }
 
-#if 0
-void
-prepare_video(void)
-{
-	const char * engine = conf_get_string("video.engine", "opengl3");
-	struct functionor_t * __vf = find_functionor(&video_function_class,
-			engine);
-
-	assert(__vf != NULL);
-	if (__vf == &dummy_video_functionor)
-		WARNING(VIDEO, "we are using dummy video engine\n");
-
-	struct video_functionor_t * vf = (struct video_functionor_t*)__vf;
-
-	DEBUG(VIDEO, "find video functionor \"%s\" for engine \"%s\"\n",
-			vf->name, engine);
-	assert(vf == CUR_VID);
-}
-
-void
-common_video_init(void)
-{
-	int res_w, res_h, vp_x, vp_y, vp_w, vp_h;
-	sscanf(conf_get_string("video.resolution", "800x600"), "%dx%d",
-			&res_w, &res_h);
-	sscanf(conf_get_string("video.viewport", "(0,0,800,600)"), "(%d,%d,%d,%d)",
-			&vp_x, &vp_y, &vp_w, &vp_h);
-
-	/* clamp the screen size */
-	res_w = (res_w > 640) ? res_w : 640;
-	res_h = (res_h > 480) ? res_h : 480;
-	DEBUG(VIDEO, "\tresolution: %dx%d\n", res_w, res_h);
-	DEBUG(VIDEO, "\tviewport: (%d,%d,%d,%d)\n", vp_x, vp_y, vp_w, vp_h);
-
-	CUR_VID->viewport.x = vp_x;
-	CUR_VID->viewport.y = vp_y;
-	CUR_VID->viewport.w = vp_w;
-	CUR_VID->viewport.h = vp_h;
-	CUR_VID->width = res_w;
-	CUR_VID->height = res_h;
-	CUR_VID->fullscreen = conf_get_bool("video.fullscreen", FALSE);
-	DEBUG(VIDEO, "\tfullscreen: %d\n", CUR_VID->fullscreen);
-	CUR_VID->command_list = NULL;
-	CUR_VID->reinit_hook_list = NULL;
-}
-#endif
 // vim:ts=4:sw=4
 

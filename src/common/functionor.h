@@ -10,13 +10,17 @@
 #include <common/defs.h>
 #include <common/list.h>
 
+/* if FunctionClass & UNIQUE_FUNCTIONOR, then the find_functionor
+ * command can only be called once. */
+#define UNIQUE_FUNCTIONOR	(0x10000)
+
 enum FunctionClass {
-	FC_VIDEO,
-	FC_OPENGL_ENGINE,
-	FC_BITMAP_RESOURCE_HANDLER,
-	FC_TIMER,
-	FC_IO,
-	NR_FCS,
+	FC_VIDEO = UNIQUE_FUNCTIONOR,
+	FC_OPENGL_ENGINE = 1 & UNIQUE_FUNCTIONOR,
+	FC_BITMAP_RESOURCE_HANDLER = 2,
+	FC_TIMER = 3,
+	FC_IO = 4,
+	NR_FCS = 5,
 };
 
 #define BASE_FUNCTIONOR	\

@@ -19,5 +19,10 @@
 #cmakedefine HAVE_SDLIMAGE	1
 #cmakedefine HAVE_VMSPLICE	1
 #cmakedefine HAVE_ZLIB		1
+#cmakedefine HAVE_OPENGL	1
+#cmakedefine HAVE_XF86MISC	1
+#cmakedefine HAVE_XRANDR	1
+#cmakedefine HAVE_XF86VMODE	1
+#cmakedefine USE_OPENGL3	1
 #endif
 

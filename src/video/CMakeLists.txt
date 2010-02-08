@@ -4,7 +4,23 @@ SET(SRC
 	dummy_video.c
 	)
 
-ADD_LIBRARY(video STATIC ${SRC})
+SET(OPENGL3_SRC "")
+SET(OPENGL_SRC "")
+SET(SDL_SRC "")
+
+IF (HAVE_SDL)
+	SET(SDL_SRC sdl_video.c sdl_engine.c)
+ENDIF (HAVE_SDL)
+
+IF (HAVE_OPENGL)
+IF (USE_OPENGL3)
+	SET(OPENGL3_SRC opengl3_video.c)
+ENDIF (USE_OPENGL3)
+	SET(OPENGL_SRC opengl_video.c glx_engine.c generic_opengl.c
+		generic_opengl.h)
+ENDIF (HAVE_OPENGL)
+
+ADD_LIBRARY(video STATIC ${SRC} ${OPENGL3_SRC} ${OPENGL_SRC} ${SDL_SRC})
 
 SET(tests
 	test_video_timer
@@ -13,3 +29,4 @@ SET(tests
 
 build_tests("${tests}" "yconf;utils;video;resource;common")
 
+# vim:ts=4:sw=4

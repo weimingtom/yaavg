@@ -15,7 +15,9 @@ extern struct functionor_t file_io_functionor;
 extern struct functionor_t xp3_io_functionor;
 
 static struct functionor_t * functionors[] = {
+#ifdef HAVE_ZLIB
 	&xp3_io_functionor,
+#endif
 	&file_io_functionor,
 	NULL,
 };
