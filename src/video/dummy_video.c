@@ -11,9 +11,12 @@
 
 #include <config.h>
 #include <common/debug.h>
+#include <common/mm.h>
 #include <video/video.h>
 #include <yconf/yconf.h>
 
+static uint8_t * frontbuffer = NULL;
+static uint8_t * backbuffer = NULL;
 
 static bool_t
 dummy_check_usable(const char * param)
@@ -27,6 +30,13 @@ dummy_init(void)
 {
 	VERBOSE(VIDEO, "initing dummy video engine:\n");
 	generic_video_init();
+
+	int buffer_sz = CUR_VID->viewport.w * CUR_VID->viewport.h * 4;
+	TRACE(VIDEO, "alloc 2 * %d bytes\n", buffer_sz);
+	frontbuffer = xcalloc(1, buffer_sz);
+	assert(frontbuffer != NULL);
+	backbuffer = xcalloc(1, buffer_sz);
+	assert(backbuffer != NULL);
 	/* nothing to do */
 }
 
@@ -34,6 +44,8 @@ static void
 dummy_cleanup(void)
 {
 	DEBUG(VIDEO, "dummy video destroying\n");
+	xfree_null(frontbuffer);
+	xfree_null(backbuffer);
 }
 
 static int

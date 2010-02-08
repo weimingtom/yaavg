@@ -99,8 +99,34 @@ main()
 
 #endif
 
+init_func_t init_funcs[] = {
+	__dbg_init,
+	__yconf_init,
+	__timer_init,
+	NULL,
+};
+
+
+cleanup_func_t cleanup_funcs[] = {
+	__yconf_cleanup,
+	__io_cleanup,
+	__caches_cleanup,
+	__dbg_cleanup,
+	NULL,
+};
+
 int main()
 {
+	do_init();
+	struct exception_t exp;
+	TRY(exp) {
+		video_init();
+	} FINALLY {
+		video_cleanup();
+		do_cleanup();
+	} CATCH(exp) {
+		RETHROW(exp);
+	}
 	return 0;
 }
 // vim:ts=4:sw=4

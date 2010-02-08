@@ -76,7 +76,7 @@ void
 generic_video_init(void)
 {
 	assert(CUR_VID != NULL);
-	DEBUG(VIDEO, "init video:");
+	DEBUG(VIDEO, "init video:\n");
 	check_set_viewport();
 	CUR_VID->fullscreen = conf_get_bool("video.fullscreen", FALSE);
 	DEBUG(VIDEO, "\tresolution: %dx%d\n", CUR_VID->width, CUR_VID->height);
@@ -84,6 +84,28 @@ generic_video_init(void)
 	DEBUG(VIDEO, "\tfullscreen: %d\n", CUR_VID->fullscreen);
 	/* nothing to do */
 }
+
+void
+video_init(void)
+{
+	VERBOSE(VIDEO, "video initing\n");
+	const char * eng_str = conf_get_string("video.engine", "opengl3");
+	find_functionor(&video_function_class, eng_str);
+	assert(CUR_VID != NULL);
+	if ((void*)CUR_VID == (void*)&dummy_video_functionor)
+		WARNING(VIDEO, "doesn't support video engine %s, use %s instead\n",
+				eng_str, CUR_VID->name);
+	VERBOSE(VIDEO, "selected video engine: %s\n", CUR_VID->name);
+	vid_init();
+}
+
+void
+video_cleanup(void)
+{
+	VERBOSE(VIDEO, "video cleanuping\n");
+	vid_cleanup();
+}
+
 
 // vim:ts=4:sw=4
 

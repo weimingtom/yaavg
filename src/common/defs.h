@@ -103,6 +103,13 @@ enum process_number {
 #define max0(a, b)	max(a, b)
 #define min0(a, b)	((((a) < (b)) && ((a) != 0)) ? (a) : (b))
 
+#define swap(a, b) do {		\
+	typeof(a) ___tmp;	\
+	___tmp = a;			\
+	a = b;				\
+	b = ___tmp;			\
+} while(0)
+
 static inline char *
 _strtok(const char * str, char tok)
 {

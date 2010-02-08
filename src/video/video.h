@@ -47,28 +47,28 @@ struct video_functionor_t {
 
 #define VID_VOIDFUNC(f, ...) do { \
 	assert(CUR_VID != NULL);	\
-	if (CUR_VID->(f)) 			\
-		CUR_VID->(f)(__VA_ARGS__);		\
+	if (CUR_VID->f) 			\
+		CUR_VID->f(__VA_ARGS__);		\
 } while(0)
 
 #define VID_FUNC(f, def, ...) ({	\
-		typeof((f)(__VA_ARGS___)) ___ret___;	\
+		typeof(f(__VA_ARGS___)) ___ret___;	\
 		assert(CUR_VID != NULL);\
-		if (CUR_VID->(f))	\
-			___ret___ = CUR_VID->(f)(__VA_ARGS__);	\
+		if (CUR_VID->f)	\
+			___ret___ = CUR_VID->f(__VA_ARGS__);	\
 		else													\
 			___ret___ = def;									\
 		___ret___;												\
 })
 
-#define video_set_caption(v)	VID_VOIDFUNC(set_caption, (v))
-#define video_init()			VID_VOIDFUNC(init)
-#define video_cleanup()			VID_VOIDFUNC(cleanup)
-#define video_begin_frame()		VID_VOIDFUNC(begin_frame)
-#define video_render_frame()	VID_VOIDFUNC(render_frame)
-#define video_end_frame()		VID_VOIDFUNC(end_frame)
-#define video_swapbuffer()		VID_VOIDFUNC(swapbuffer)
-#define video_poll_events(e)		VID_FUNC(poll_events, 0, e)
+#define vid_set_caption(v)	VID_VOIDFUNC(set_caption, (v))
+#define vid_init()			VID_VOIDFUNC(init)
+#define vid_cleanup()			VID_VOIDFUNC(cleanup)
+#define vid_begin_frame()		VID_VOIDFUNC(begin_frame)
+#define vid_render_frame()	VID_VOIDFUNC(render_frame)
+#define vid_end_frame()		VID_VOIDFUNC(end_frame)
+#define vid_swapbuffer()		VID_VOIDFUNC(swapbuffer)
+#define vid_poll_events(e)		VID_FUNC(poll_events, 0, e)
 
 
 static void inline
@@ -85,8 +85,15 @@ set_video_reinit_hook_list(struct list_head * l)
 	CUR_VID->reinit_hook_list = l;
 }
 
-void
+/* not an exported function, for video functionor used internally */
+extern void
 generic_video_init(void);
+
+extern void
+video_init(void);
+
+extern void
+video_cleanup(void);
 
 #endif
 
