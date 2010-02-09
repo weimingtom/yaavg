@@ -41,14 +41,15 @@ load_resource(const char * __id)
 	/* enum always >= 0 */
 	assert(t < NR_RESOURCE_TYPES);
 
-	struct io_t * io = NULL;
 	struct resource_t * r = NULL;
 	struct loader_table_entry * loaders = &loader_table[t];
-	struct exception_t exp;
+	catch_var(struct io_t *, io, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		io = io_open(io_proto, io_name);
+		set_catched_var(io, io_open(io_proto, io_name));
 		r = loaders->normal_loader(io, __id);
 	} FINALLY {
+		get_catched_var(io);
 		if (io != NULL)
 			io_close(io);
 	} CATCH(exp) {

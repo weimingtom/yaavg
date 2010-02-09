@@ -89,6 +89,32 @@ struct exception_t {
 };
 
 
+#define define_exp(x)		volatile struct exception_t x
+/* this definition can give programmer a hint that he forgot to call set_catched_var. */
+/* don't use ___should_set and ___should_get directly */
+/* for those ver which won't get inited, we should init ___catched_##name to def. but def
+ * should be evaluated only once. */
+#define catch_var(type, name, def)			\
+	type volatile ___catched_##name; 		\
+	int ___should_set_catched_##name; \
+	int ___should_get_catched_##name; \
+	type name;								\
+	do {type ___tmp_##name = (def);			\
+		name = ___tmp_##name;				\
+		___catched_##name = ___tmp_##name;	\
+	} while(0);
+
+#define set_catched_var(name, v)	\
+	do {	\
+		___should_set_catched_##name = 0;	\
+		___catched_##name = name = v; 	\
+	} while(0)
+#define get_catched_var(name) \
+	do { \
+		___should_get_catched_##name = 0;	\
+		name = ___catched_##name;\
+	} while(0)
+
 
 #if defined(HAVE_SIGSETJMP)
 #define EXCEPTIONS_SIGJMP_BUF		sigjmp_buf
@@ -123,12 +149,12 @@ extern bool_t
 exceptions_state_mc(enum catcher_action);
 extern EXCEPTIONS_SIGJMP_BUF *
 exceptions_state_mc_init(struct catcher_t * catcher,
-		struct exception_t * exp);
+		volatile struct exception_t * exp);
 
 #define TRY(___exp) \
 	<% \
 	struct catcher_t ____catcher; \
-	____catcher.curr_exp = &(___exp); \
+	____catcher.curr_exp = (struct exception_t *)&(___exp); \
 	EXCEPTIONS_SIGJMP_BUF * ___buf___ = \
 		exceptions_state_mc_init(&____catcher, &(___exp));	\
 	EXCEPTIONS_SIGSETJMP(*___buf___);	\
@@ -136,11 +162,12 @@ exceptions_state_mc_init(struct catcher_t * catcher,
 
 #define FINALLY { exceptions_state_mc(CATCH_FINALLY); }
 #define NO_FINALLY FINALLY
-#define CATCH(___exp)	%> if ((___exp).type != EXP_NO_EXCEPTION)
-#define NO_CATCH(___exp)	CATCH(___exp) RETHROW(___exp)
+#define CATCH(___exp) %> if ((___exp).type != EXP_NO_EXCEPTION)
+#define NO_CATCH(___exp) CATCH(___exp) RETHROW(___exp)
+/* hint the programmer that he forget to call set_catched_var */
 
 extern void
-print_exception(struct exception_t * exp);
+print_exception(volatile struct exception_t * exp);
 
 extern NORETURN ATTR_NORETURN void
 throw_exception(enum exception_type type,
@@ -176,7 +203,7 @@ ATTR(format(printf, 4, 5))
 
 
 #define NOTHROW(fn, ...) do {	\
-	struct exception_t ___exp;	\
+	define_exp(___exp);	\
 	TRY(___exp) {					\
 		fn(__VA_ARGS__);		\
 	} NO_FINALLY				\
@@ -195,7 +222,7 @@ ATTR(format(printf, 4, 5))
 
 #define NOTHROW_RET(defret, fn, ...) ({	\
 	typeof((fn)(__VA_ARGS__)) ___r;\
-	struct exception_t ___exp;	\
+	define_exp(___exp);	\
 	TRY(___exp) {					\
 		___r = (fn)(__VA_ARGS__);\
 	} NO_FINALLY				\

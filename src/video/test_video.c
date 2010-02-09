@@ -118,7 +118,7 @@ cleanup_func_t cleanup_funcs[] = {
 int main()
 {
 	do_init();
-	struct exception_t exp;
+	define_exp(exp);
 	TRY(exp) {
 		video_init();
 	} FINALLY {

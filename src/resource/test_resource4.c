@@ -113,11 +113,11 @@ main(int argc, char * argv[])
 		exit(-1);
 	}
 
-	char * tmp_name = NULL;
-	struct bitmap_t * b = NULL;
-	struct package_items_t * items = NULL;
-	struct io_t * io = NULL;
-	struct exception_t exp;
+	catch_var(char *, tmp_name, NULL);
+	catch_var(struct bitmap_t *, b, NULL);
+	catch_var(struct package_items_t *, items, NULL);
+	catch_var(struct io_t *, io, NULL);
+	define_exp(exp);
 	TRY(exp) {
 		do_init();
 		launch_resource_process();
@@ -125,39 +125,51 @@ main(int argc, char * argv[])
 		char * ioname = alloca(strlen(argv[1] + 6));
 		sprintf(ioname, "FILE:%s", argv[1]);
 		VERBOSE(SYSTEM, "ioname=%s\n", ioname);
-		items = get_package_items("XP3", ioname);
+		set_catched_var(items, get_package_items("XP3", ioname));
 		assert(items != NULL);
 		char ** ptr = items->table;
 		while (*ptr != NULL) {
 			char * prefix = _strtok(*ptr, '.');
 			assert(*prefix == '.');
 			if (strcmp(".tlg", prefix) == 0) {
-				tmp_name = xrealloc(tmp_name, strlen(ioname) + 10 + strlen(*ptr));
+				set_catched_var(tmp_name, xrealloc(tmp_name, strlen(ioname) + 10 + strlen(*ptr)));
 				sprintf(tmp_name, "0*XP3:%s|%s", *ptr, ioname);
 				VERBOSE(SYSTEM, "load bitmap %s\n", tmp_name);
 
-				b = get_resource(tmp_name,
-						(deserializer_t)bitmap_deserialize);
+				set_catched_var(b, get_resource(tmp_name,
+						(deserializer_t)bitmap_deserialize));
 				assert(b != NULL);
 
 				/* append the '.png' post-fix */
-				tmp_name = xrealloc(tmp_name, strlen(*ptr) + 5);
+				set_catched_var(tmp_name, xrealloc(tmp_name, strlen(*ptr) + 5));
 				assert(tmp_name != NULL);
 				sprintf(tmp_name, "%s.png", *ptr);
-				io = wrap_io_open_write(root, tmp_name);
+
+				set_catched_var(io, wrap_io_open_write(root, tmp_name));
 				bitmap_to_png(b, io);
 				io_close(io);
-				io = NULL;
+				set_catched_var(io, NULL);
+
 				free_bitmap(b);
-				b = NULL;
+				set_catched_var(b, NULL);
 			}
 			ptr ++;
 		}
 	} FINALLY {
-		xfree_null(items);
-		xfree_null(tmp_name);
+		get_catched_var(items);
+		get_catched_var(tmp_name);
+		get_catched_var(b);
+		get_catched_var(io);
+
+		xfree_null_catched(items);
+		xfree_null_catched(tmp_name);
 		if (b != NULL)
 			free_bitmap(b);
+		if (io != NULL)
+			io_close(io);
+		set_catched_var(b, NULL);
+		set_catched_var(io, NULL);
+
 		if ((exp.type != EXP_RESOURCE_PEER_SHUTDOWN)
 				&& (exp.type != EXP_RESOURCE_PROCESS_FAILURE))
 		{

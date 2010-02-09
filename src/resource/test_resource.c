@@ -31,7 +31,7 @@ int main()
 
 	int pid;
 
-	struct exception_t exp;
+	define_exp(exp);
 	TRY(exp) {
 		do_init();
 		pid = launch_resource_process();

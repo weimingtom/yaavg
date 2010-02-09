@@ -56,6 +56,10 @@
 	(___ptr) = NULL;					\
 } while(0)
 
+#define xfree_null_catched(___ptr) do {	\
+	xfree(___ptr);					\
+	set_catched_var(___ptr, NULL);	\
+} while(0)
 
 
 /* for some polymorphism class, see png_bitmap_resource.c */

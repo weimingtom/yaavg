@@ -27,6 +27,7 @@ TARGET_LINK_LIBRARIES(gen_static_dict common)
 SET(tests
 	test_debug
 	test_exception
+	test_exception2
 	test_dict
 	test_mm
 	test_strdict

@@ -82,8 +82,9 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 
 	png_structp write_ptr = NULL;
 	png_infop write_info_ptr = NULL;
-	uint8_t ** rows = NULL;
-	struct exception_t exp;
+
+	catch_var(uint8_t **, rows, NULL);
+	define_exp(exp);
 	TRY(exp) {
 
 		write_ptr = png_create_write_struct_2(
@@ -143,9 +144,9 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 		int row_size = b->bpp * b->w;
 		DEBUG(BITMAP, "begin to write png stream\n");
 
-		rows = xmalloc(b->h * sizeof(uint8_t*));
-		uint8_t ** prow = rows;
+		set_catched_var(rows, xmalloc(b->h * sizeof(uint8_t*)));
 		assert(rows != NULL);
+		uint8_t ** prow = rows;
 		if (b->revert) {
 			for (int n = b->h - 1; n >= 0; n--) {
 				* prow = b->pixels + n * row_size;
@@ -166,7 +167,8 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 		png_write_end(write_ptr, write_info_ptr);
 
 	} FINALLY {
-		xfree_null(rows);
+		get_catched_var(rows);
+		xfree_null_catched(rows);
 		if (write_ptr != NULL)
 			png_destroy_write_struct(&write_ptr, &write_info_ptr);
 		assert(write_info_ptr == NULL);

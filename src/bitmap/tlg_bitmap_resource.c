@@ -143,10 +143,13 @@ tlg_load(struct io_t * io, const char * id)
 	DEBUG(BITMAP, "loading image %s use png loader, io is %s\n",
 			id, io->id);
 
-	struct tlg_bitmap_resource_t * retval = NULL;
-	uint8_t * inbuf = NULL;
+	/* this is an array, and hart to use exception.h to define */
+	/* we should be carefull with them */
+	uint8_t * volatile ___catched_outbuf[4] = {NULL, NULL, NULL, NULL};
 	uint8_t * outbuf[4] = {NULL, NULL, NULL, NULL};
-	struct exception_t exp;
+	catch_var(struct tlg_bitmap_resource_t *, retval, NULL);
+	catch_var(uint8_t *, inbuf, NULL);
+	define_exp(exp);
 	TRY(exp) {
 		unsigned char mark[12];
 		io_read_force(io, mark, 11);
@@ -190,12 +193,13 @@ tlg_load(struct io_t * io, const char * id)
 		/* begin decompress */
 		memset(tlg_text, '\0', sizeof(tlg_text));
 
-		inbuf = xmemalign(4, blockheight * width + 10);
+		set_catched_var(inbuf, xmemalign(4, blockheight * width + 10));
 		assert(inbuf != NULL);
 		for (int i = 0; i < nr_colors; i++) {
 			outbuf[i] = xmemalign(4, blockheight * width + 10);
 			memset(outbuf[i], '\0', blockheight * width + 10);
 			assert(outbuf[i] != NULL);
+			___catched_outbuf[i] = outbuf[i];
 		}
 
 		int out_sz = blockheight * width + 10;
@@ -207,7 +211,7 @@ tlg_load(struct io_t * io, const char * id)
 		int total_sz = sizeof(*retval) +
 			id_sz +
 			width * height * nr_colors + 7;
-		retval = xmalloc(total_sz);
+		set_catched_var(retval, xmalloc(total_sz));
 		assert(retval != NULL);
 		TRACE(BITMAP, "alloced %d data for tlg bitmap %s\n",
 				total_sz, id);
@@ -287,12 +291,15 @@ tlg_load(struct io_t * io, const char * id)
 		r->ptr = retval;
 		r->pprivate = NULL;
 	} FINALLY {
-		xfree_null(inbuf);
+		get_catched_var(inbuf);
+		xfree_null_catched(inbuf);
 		for (int i = 0; i < 4; i++) {
-			xfree_null(outbuf[i]);
+			/* ___catched_outbuf is volatile */
+			xfree_null(___catched_outbuf[i]);
 		}
 	} CATCH(exp) {
-		xfree_null(retval);
+		get_catched_var(retval);
+		xfree_null_catched(retval);
 		RETHROW(exp);
 	}
 	return &(retval->bitmap_resource);

@@ -61,11 +61,14 @@ int main()
 {
 	dbg_init(NULL);
 
-	struct dict_t * strdict = strdict_create(sizeof(kvps) / sizeof(kvps[0]) - 1,
-			STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA);
-	assert(strdict != NULL);
-	struct exception_t exp;
+	catch_var(struct dict_t *, strdict, NULL);
+	define_exp(exp);
 	TRY(exp) {
+
+		set_catched_var(strdict, strdict_create(sizeof(kvps) / sizeof(kvps[0]) - 1,
+					STRDICT_FL_DUPKEY | STRDICT_FL_DUPDATA));
+		assert(strdict != NULL);
+
 		struct kvp * pkvp = &kvps[0];
 		while (pkvp->key != NULL) {
 			dict_data_t x;
@@ -91,6 +94,7 @@ int main()
 		}
 
 	} FINALLY {
+		get_catched_var(strdict);
 		strdict_destroy(strdict);
 	} CATCH(exp) {
 		switch (exp.type) {

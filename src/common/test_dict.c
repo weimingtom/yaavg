@@ -55,12 +55,12 @@ static struct dict_entry_t entries[] = {
 
 int main()
 {
-	struct dict_t * dict = NULL;
 	dbg_init(NULL);
 
-	struct exception_t exp;
+	catch_var(struct dict_t *, dict, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		dict = dict_create(10, DICT_FL_STRKEY, NULL, 0);
+		set_catched_var(dict, dict_create(10, DICT_FL_STRKEY, NULL, 0));
 
 		struct dict_entry_t * ep = entries;
 		while (ep->key != NULL) {
@@ -72,6 +72,7 @@ int main()
 			ep ++;
 		}
 	} FINALLY {
+		get_catched_var(dict);
 		dict_destroy(dict, NULL, 0);
 	}
 	CATCH(exp) {

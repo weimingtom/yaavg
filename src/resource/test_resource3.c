@@ -30,15 +30,17 @@ cleanup_func_t cleanup_funcs[] = {
 static void
 write_resource(const char * resname, const char * filename)
 {
-	struct bitmap_t * b = NULL;
-	struct io_t * writer = NULL;
-	struct exception_t exp;
+	catch_var(struct bitmap_t *, b, NULL);
+	catch_var(struct io_t *, writer, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		writer = io_open_write("FILE", filename);
-		b = get_resource(resname,
-				(deserializer_t)bitmap_deserialize);
+		set_catched_var(writer, io_open_write("FILE", filename));
+		set_catched_var(b,
+				get_resource(resname, (deserializer_t)bitmap_deserialize));
 		bitmap_to_png(b, writer);
 	} FINALLY {
+		get_catched_var(b);
+		get_catched_var(writer);
 		if (b != NULL)
 			free_bitmap(b);
 		if (writer != NULL)
@@ -59,7 +61,7 @@ write_resource(const char * resname, const char * filename)
 
 int main()
 {
-	struct exception_t exp;
+	define_exp(exp);
 	TRY(exp) {
 		do_init();
 		launch_resource_process();

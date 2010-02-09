@@ -28,14 +28,15 @@ cleanup_func_t cleanup_funcs[] = {
 int
 main()
 {
-	struct video_functionor_t * vid = NULL;
 	struct timer_functionor_t * timer = NULL;
 	do_init();
 
-	struct exception_t exp;
+	catch_var(struct video_functionor_t *, vid, NULL);
+	define_exp(exp);
 	TRY(exp) {
 		SET_STATIC_FUNCTIONOR(vid, video_function_class, NULL);
 		assert(vid != NULL);
+		set_catched_var(vid, vid);
 		VERBOSE(SYSTEM, "found video engine: %s\n", vid->name);
 
 		SET_STATIC_FUNCTIONOR(timer, timer_function_class, NULL);
@@ -49,9 +50,10 @@ main()
 			finish_frame();
 		}
 	} FINALLY {
+		get_catched_var(vid);
 		if ((vid) && (vid->cleanup))
 			vid->cleanup();
-		vid = NULL;
+		set_catched_var(vid, NULL);
 	}
 	CATCH(exp) {
 		switch(exp.type) {

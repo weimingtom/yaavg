@@ -611,7 +611,7 @@ delete_resource_worker(const char * __id)
 static void
 get_package_items_worker(const char * cmd)
 {
-	struct exception_t exp;
+	define_exp(exp);
 	TRY(exp) {
 		/* cmd should be something like: XP3|FILE:xxx.xp3 */
 		/* split the '|' first */
@@ -646,6 +646,7 @@ get_package_items_worker(const char * cmd)
 
 
 static char * cmd = NULL;
+static char * volatile ___catched_cmd = NULL;
 static int cmd_buffer_sz = 0;
 static void
 worker(void)
@@ -674,6 +675,8 @@ worker(void)
 		DEBUG(RESOURCE, "cmd_len=%d\n", cmd_len);
 		if (cmd_len > cmd_buffer_sz)
 			cmd = xrealloc(cmd, cmd_len);
+		assert(cmd != NULL);
+		___catched_cmd = cmd;
 
 		/* read the command */
 		xxread(C_IN, cmd, cmd_len);
@@ -766,6 +769,7 @@ launch_resource_process(void)
 	} FINALLY {
 		xclose(C_IN);
 		xclose(D_OUT);
+		cmd = ___catched_cmd;
 		xfree_null(cmd);
 	} CATCH(exp) {
 		VERBOSE(RESOURCE, "resource worker end\n");

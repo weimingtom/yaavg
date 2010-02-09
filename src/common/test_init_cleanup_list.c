@@ -22,11 +22,12 @@ int main()
 {
 	dbg_init(NULL);
 	do_init();
-	struct exception_t exp;
-	struct dict_t * dict = NULL;
+	catch_var(struct dict_t *, dict, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		dict = dict_create(10, DICT_FL_STRKEY, NULL, 0);
+		set_catched_var(dict, dict_create(10, DICT_FL_STRKEY, NULL, 0));
 	} FINALLY {
+		get_catched_var(dict);
 		dict_destroy(dict, NULL, 0);
 	} CATCH(exp) {
 		switch (exp.type) {

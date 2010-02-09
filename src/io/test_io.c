@@ -25,10 +25,10 @@ int
 main()
 {
 	do_init();
-	struct io_t * io = NULL;
-	struct exception_t exp;
+	catch_var(struct io_t *, io, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		io = io_open("file", "/tmp/abc");
+		set_catched_var(io, io_open("file", "/tmp/abc"));
 		assert(io != NULL);
 		char data[5];
 		io_read(io, data, 1, 5);
@@ -48,6 +48,7 @@ main()
 		io_release_internal_buffer(io, ptr);
 
 	} FINALLY {
+		get_catched_var(io);
 		if (io != NULL) {
 			io_close(io);
 			io = NULL;

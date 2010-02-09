@@ -142,8 +142,9 @@ deserialize_package_items(struct io_t * io)
 {
 	assert(io != NULL);
 
-	struct package_items_t head, *retval = NULL;
-	struct exception_t exp;
+	struct package_items_t head;
+	catch_var(struct package_items_t *, retval, NULL);
+	define_exp(exp);
 	TRY(exp) {
 		io_read_force(io, &head, sizeof(head));
 		TRACE(IO, "deserializing a %d items description, its total sz is %d\n",
@@ -151,7 +152,7 @@ deserialize_package_items(struct io_t * io)
 		if (head.total_sz <= sizeof(head))
 			THROW(EXP_BAD_RESOURCE, "total size of a struct package_items_t is %d",
 					head.total_sz);
-		retval = xmalloc(head.total_sz);
+		set_catched_var(retval, xmalloc(head.total_sz));
 		assert(retval != NULL);
 		*retval = head;
 		io_read_force(io, retval->__data,
@@ -170,7 +171,8 @@ deserialize_package_items(struct io_t * io)
 		}
 	} NO_FINALLY
 	CATCH(exp) {
-		xfree_null(retval);
+		get_catched_var(retval);
+		xfree_null_catched(retval);
 		if (exp.level > EXP_LV_TAINTED)
 			RETHROW(exp);
 		print_exception(&exp);

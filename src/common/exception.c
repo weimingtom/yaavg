@@ -69,9 +69,9 @@ init_set_exception(struct catcher_t * c, struct exception_t * e)
 
 EXCEPTIONS_SIGJMP_BUF *
 exceptions_state_mc_init(struct catcher_t * c,
-		struct exception_t * e)
+		volatile struct exception_t * e)
 {
-	init_set_exception(c, e);
+	init_set_exception(c, (struct exception_t *)e);
 	push_catcher(c);
 	return &(c->buf);
 }
@@ -137,8 +137,9 @@ exceptions_state_mc(enum catcher_action action)
 
 
 void
-print_exception(struct exception_t * exp)
+print_exception(volatile struct exception_t * __exp)
 {
+	struct exception_t * exp = (struct exception_t *)__exp;
 #ifdef YAAVG_DEBUG
 	/* enum us unsigned, so >= 0 */
 	assert(exp->level < NR_EXP_LEVELS);

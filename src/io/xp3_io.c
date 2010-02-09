@@ -389,7 +389,6 @@ build_struct_item(const void * info_start,
 		int segments_chunk_sz,
 		int * item_sz)
 {
-	struct xp3_index_item * pitem = NULL;
 	/* read info */
 	struct info_head {
 		uint32_t flags;
@@ -435,11 +434,11 @@ build_struct_item(const void * info_start,
 	*item_sz = sizeof(struct xp3_index_item) + name_sz +
 		sizeof(struct xp3_index_item_segment) * nr_segments + 7;
 
-	pitem = xcalloc(1, *item_sz);
-	assert(pitem != NULL);
-
-	struct exception_t exp;
+	catch_var(struct xp3_index_item *, pitem, NULL);
+	define_exp(exp);
 	TRY(exp) {
+		set_catched_var(pitem, xcalloc(1, *item_sz));
+		assert(pitem != NULL);
 		pitem->utf8_name = (char*)pitem->__data;
 		/* name_sz contain the last '\0' */
 		pitem->segments = ALIGN_UP_PTR((void*)(&(pitem->__data[name_sz])), 8);
@@ -509,6 +508,7 @@ build_struct_item(const void * info_start,
 					pitem->utf8_name, pitem->ori_sz, pitem->arch_sz);
 	} FINALLY {
 	} CATCH(exp) {
+		get_catched_var(pitem);
 		xfree_null(pitem);
 		RETHROW(exp);
 	}
@@ -518,25 +518,26 @@ build_struct_item(const void * info_start,
 static struct xp3_package *
 init_xp3_package(const char * pkg_fn)
 {
-	struct io_t * pkg_io = NULL;
-	void * index_data = NULL;
-	struct xp3_package * p_xp3_package = NULL;
-	struct dict_t * index_dict = NULL;
 	/* we define pitem here to guarantee the exception handler can free it */
-	struct xp3_index_item * pitem = NULL;
 	int index_size;
 	uint8_t index_flag = 0;
-	struct exception_t exp;
+
+	catch_var(struct xp3_index_item *, pitem, NULL);
+	catch_var(struct xp3_package *, p_xp3_package, NULL);
+	catch_var(struct dict_t *, index_dict, NULL);
+	catch_var(struct io_t *, pkg_io, NULL);
+	catch_var(void *, index_data, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		pkg_io = io_open_proto(pkg_fn);
+		set_catched_var(pkg_io, io_open_proto(pkg_fn));
 		assert(pkg_io != NULL);
 		check_xp3_head(pkg_io);
 
 		int nr_items = 0;
 		do {
 			/* extract_index realloc index_data, need to be freed in caller */
-			index_data = extract_index(pkg_io, &index_flag, &index_size,
-					index_data);
+			set_catched_var(index_data, extract_index(pkg_io, &index_flag, &index_size,
+					index_data));
 
 #if 0
 			FILE* xxfp = fopen("/tmp/xxx", "wb");
@@ -575,15 +576,15 @@ init_xp3_package(const char * pkg_fn)
 				}
 
 				int item_sz;
-				pitem = build_struct_item(info_start,
+				set_catched_var(pitem, build_struct_item(info_start,
 						segments_start,
 						adlr_start,
-						segments_h.chunk_sz, &item_sz);
+						segments_h.chunk_sz, &item_sz));
 
 				/* finally we can insert index entry, using utf8_name as key */
 				if (index_dict == NULL) {
 					/* create it */
-					index_dict = strdict_create(8, STRDICT_FL_MAINTAIN_REAL_SZ);
+					set_catched_var(index_dict, strdict_create(8, STRDICT_FL_MAINTAIN_REAL_SZ));
 					assert(index_dict != NULL);
 				}
 				dict_data_t data, tmpdata;
@@ -598,11 +599,12 @@ init_xp3_package(const char * pkg_fn)
 
 				/* after we insert pitem, we must reset it to NULL to prevent
 				 * the exception handler xfree it twice (once in freeing the dict) */
-				pitem = NULL;
+				set_catched_var(pitem, NULL);
 				pindex = fc_start + file_h.chunk_sz; 
 				nr_items ++;
 			}
 			xfree_null(index_data);
+			set_catched_var(index_data, NULL);
 		} while (index_flag & TVP_XP3_INDEX_CONTINUE);
 
 		if (index_dict == NULL)
@@ -611,8 +613,8 @@ init_xp3_package(const char * pkg_fn)
 		/* now create cache entry of xp3 package */
 		/* it is possible that pkg_io->id is diferent from
 		 * pkg_fn. we have to save it. */
-		p_xp3_package = xcalloc(1, sizeof(*p_xp3_package) +
-				strlen(pkg_fn) + 1);
+		set_catched_var(p_xp3_package, xcalloc(1, sizeof(*p_xp3_package) +
+				strlen(pkg_fn) + 1));
 		assert(p_xp3_package != NULL);
 
 		strcpy(p_xp3_package->pkg_fn, pkg_fn);
@@ -658,9 +660,15 @@ init_xp3_package(const char * pkg_fn)
 		}
 
 	} FINALLY {
-		xfree_null(index_data);
-		assert(pitem == NULL);
+		get_catched_var(index_data);
+		get_catched_var(pitem);
+		xfree_null_catched(index_data);
 	} CATCH(exp) {
+		get_catched_var(pkg_io);
+		get_catched_var(index_dict);
+		get_catched_var(p_xp3_package);
+		get_catched_var(pitem);
+
 		if (pkg_io != NULL)
 			io_close(pkg_io);
 		pkg_io = NULL;
@@ -668,8 +676,8 @@ init_xp3_package(const char * pkg_fn)
 			dict_destroy(index_dict,
 					destroy_xp3_index_item, 0);
 		index_dict = NULL;
-		xfree_null(p_xp3_package);
-		xfree_null(pitem);
+		xfree_null_catched(p_xp3_package);
+		xfree_null_catched(pitem);
 		switch (exp.type) {
 			case EXP_BAD_RESOURCE:
 				THROW(EXP_BAD_RESOURCE, "corrupted xp3 file %s", pkg_fn);
@@ -714,7 +722,6 @@ init_xp3_file(const char * __id)
 	assert(pkg_fn != NULL);
 	assert(*pkg_fn != '\0');
 
-	void * tmp_storage = NULL;
 
 	int fn_sz = strlen(fn) + 1;
 	int pkg_fn_sz = strlen(pkg_fn) + 1;
@@ -727,8 +734,9 @@ init_xp3_file(const char * __id)
 	assert(xp3->index_dict != NULL);
 	assert(xp3->io != NULL);
 
-	struct xp3_file * file = NULL;
-	struct exception_t exp;
+	catch_var(void *, tmp_storage, NULL);
+	catch_var(struct xp3_file *, file, NULL);
+	define_exp(exp);
 	TRY(exp) {
 
 		/* search from index */
@@ -752,7 +760,7 @@ init_xp3_file(const char * __id)
 			total_sz = sizeof(*file) + pkg_fn_sz + fn_sz  + id_sz + 
 				item->nr_segments * sizeof(struct xp3_index_item_segment) + 7;
 		}
-		file = xmalloc(total_sz);
+		set_catched_var(file, xmalloc(total_sz));
 		assert(file != NULL);
 
 		file->package_name = (char*)file->__data;
@@ -792,7 +800,7 @@ init_xp3_file(const char * __id)
 
 				if (seg->is_compressed) {
 					TRACE(IO, "seg %d is compressed\n", i);
-					tmp_storage = xrealloc(tmp_storage, seg->arch_sz);
+					set_catched_var(tmp_storage, xrealloc(tmp_storage, seg->arch_sz));
 					assert(tmp_storage != NULL);
 					/* read tmp_storage */
 					io_seek(xp3->io, seg->start, SEEK_SET);
@@ -848,10 +856,11 @@ init_xp3_file(const char * __id)
 		ce->cache = NULL;
 		ce->pprivate = NULL;
 	} FINALLY {
-		xfree_null(tmp_storage);
+		get_catched_var(tmp_storage);
+		xfree_null_catched(tmp_storage);
 	} CATCH(exp) {
-		xfree_null(file);
-		file = NULL;
+		get_catched_var(file);
+		xfree_null_catched(file);
 		print_exception(&exp);
 		THROW(EXP_BAD_RESOURCE, "error when init file %s from xp3 package %s",
 				fn, pkg_fn);

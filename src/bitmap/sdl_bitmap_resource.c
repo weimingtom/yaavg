@@ -205,8 +205,8 @@ sdl_load(struct io_t * io, const char * id)
 			((uint8_t*)(img->pixels))[2],
 			((uint8_t*)(img->pixels))[3]);
 
-	struct bitmap_resource_t * b = NULL;
-	struct exception_t exp;
+	catch_var(struct bitmap_resource_t *, b, NULL);
+	define_exp(exp);
 	TRY(exp) {
 		/* check whether the pixel format is correct */
 		if ((f->BytesPerPixel != 3) && (f->BytesPerPixel != 4))
@@ -250,7 +250,7 @@ sdl_load(struct io_t * io, const char * id)
 
 		int id_sz = strlen(id) + 1;
 		/* create resource structure */
-		b = xcalloc(1, sizeof(*b) + id_sz);
+		set_catched_var(b, xcalloc(1, sizeof(*b) + id_sz));
 		assert(b != NULL);
 		struct resource_t * r = &b->resource;
 		struct bitmap_t * h = &b->head;
@@ -278,6 +278,8 @@ sdl_load(struct io_t * io, const char * id)
 		SDL_LockSurface(img);
 	} FINALLY {	}
 	CATCH(exp) {
+		get_catched_var(b);
+		xfree_null_catched(b);
 		SDL_FreeSurface(img);
 		RETHROW(exp);
 	}

@@ -105,19 +105,19 @@ png_load(struct io_t * io, const char * id)
 	DEBUG(BITMAP, "loading image %s use png loader, io is %s\n",
 			id, io->id);
 
-	png_structp read_ptr = NULL;
-	png_infop read_info_ptr = NULL;
-	struct png_bitmap_resource_t * png_res = NULL;
-	struct exception_t exp;
+	catch_var(png_structp, read_ptr, NULL);
+	catch_var(png_infop, read_info_ptr, NULL);
+	catch_var(struct png_bitmap_resource_t *, png_res, NULL);
+	define_exp(exp);
 	TRY(exp) {
-		read_ptr = png_create_read_struct_2(
+		set_catched_var(read_ptr, png_create_read_struct_2(
 				PNG_LIBPNG_VER_STRING,
 				NULL,
 				wrap_png_error,
 				wrap_png_warn,
 				NULL,
 				wrap_malloc,
-				wrap_free);
+				wrap_free));
 		if (read_ptr == NULL)
 			THROW(EXP_LIBPNG_ERROR, "unable to alloc png write struct");
 
@@ -126,7 +126,7 @@ png_load(struct io_t * io, const char * id)
 			THROW(EXP_LIBPNG_ERROR, "libpng internal error");
 		}
 
-		read_info_ptr = png_create_info_struct(read_ptr);
+		set_catched_var(read_info_ptr, png_create_info_struct(read_ptr));
 		if (read_info_ptr == NULL)
 			THROW(EXP_LIBPNG_ERROR, "unable to alloc png info struct");
 		png_set_read_fn(read_ptr, io, wrap_read);
@@ -195,7 +195,7 @@ png_load(struct io_t * io, const char * id)
 		TRACE(BITMAP, "the size of %s is %lux%lu, bpp is %d. we alloc %d bytes\n",
 				io->id, width, height, bpp, total_sz);
 
-		png_res = xmalloc(total_sz);
+		set_catched_var(png_res, xmalloc(total_sz));
 		assert(png_res != NULL);
 
 		struct bitmap_resource_t * btm_res = &(png_res->bitmap_resource);
@@ -233,11 +233,14 @@ png_load(struct io_t * io, const char * id)
 		r->ptr = r->pprivate = png_res;
 		/* don't return inside try block */
 	} FINALLY {
+		get_catched_var(read_ptr);
+		get_catched_var(read_info_ptr);
 		if (read_ptr != NULL)
 			png_destroy_read_struct(&read_ptr, &read_info_ptr, 0);
 		assert(read_info_ptr == NULL);
 	} CATCH(exp) {
-		xfree_null(png_res);
+		get_catched_var(png_res);
+		xfree_null_catched(png_res);
 		switch (exp.type) {
 			case EXP_LIBPNG_ERROR:
 				print_exception(&exp);

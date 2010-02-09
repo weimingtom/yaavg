@@ -107,11 +107,11 @@ int main(int argc, char * argv[])
 	char * phy_file_name = argv[1];
 	int phy_file_name_sz = strlen(phy_file_name) + 1;
 
-	char * tmp_file_name = NULL;
-	struct package_items_t * items = NULL;
-	struct io_t * io = NULL;
-	void * data = NULL;
-	struct exception_t exp;
+	catch_var(struct io_t *, io, NULL);
+	catch_var(struct package_items_t *, items, NULL);
+	catch_var(char *, tmp_file_name, NULL);
+	catch_var(void *, data, NULL);
+	define_exp(exp);
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
 
@@ -126,11 +126,10 @@ int main(int argc, char * argv[])
 
 		char * cmd_name = alloca(4 + strlen(phy_file_name));
 		sprintf(cmd_name, "FILE:%s", phy_file_name);
-		items = iof_get_package_items(io_f, cmd_name);
+		set_catched_var(items, iof_get_package_items(io_f, cmd_name));
 		assert(items != NULL);
 		char ** ptr = items->table;
 
-		data = NULL;
 		while (*ptr != NULL) {
 			if (target_fn != NULL) {
 				if (strcmp(target_fn, *ptr) != 0) {
@@ -141,7 +140,7 @@ int main(int argc, char * argv[])
 			VERBOSE(SYSTEM, "%s\n", *ptr);
 
 			int comp_fn_sz = phy_file_name_sz + strlen(*ptr) + 6;
-			tmp_file_name = xrealloc(tmp_file_name, comp_fn_sz);
+			set_catched_var(tmp_file_name, xrealloc(tmp_file_name, comp_fn_sz));
 			sprintf(tmp_file_name, "%s|FILE:%s", *ptr, phy_file_name);
 			if (*_strtok(tmp_file_name, '$') != '\0') {
 				VERBOSE(IO, "wrong file name: %s\n", tmp_file_name);
@@ -150,16 +149,15 @@ int main(int argc, char * argv[])
 			}
 
 
-			io = io_open("XP3", tmp_file_name);
+			set_catched_var(io, io_open("XP3", tmp_file_name));
 			assert(io != NULL);
 
 			/* mkdir and create the file */
 			FILE * fp = wrap_fopen(root_dir, *ptr);
 			assert(fp != NULL);
 
-			data = xrealloc(data, io_get_sz(io));
+			set_catched_var(data, xrealloc(data, io_get_sz(io)));
 			io_read_force(io, data, io_get_sz(io));
-
 #if 0
 			void * data = io_get_internal_buffer(io);
 			fwrite(data, io_get_sz(io), 1, fp);
@@ -170,17 +168,22 @@ int main(int argc, char * argv[])
 			assert(err >= 0);
 			fclose(fp);
 			io_close(io);
-			io = NULL;
+			set_catched_var(io, NULL);
 			ptr ++;
 		}
 	} FINALLY {
-		xfree_null(data);
-		xfree_null(tmp_file_name);
-		xfree_null(items);
+		get_catched_var(data);
+		get_catched_var(tmp_file_name);
+		get_catched_var(items);
+		xfree_null_catched(data);
+		xfree_null_catched(tmp_file_name);
+		xfree_null_catched(items);
 	}
 	CATCH(exp) {
+		get_catched_var(io);
 		if (io != NULL)
 			io_close(io);
+		set_catched_var(io, NULL);
 		RETHROW(exp);
 	}
 	do_cleanup();

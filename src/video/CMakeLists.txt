@@ -9,7 +9,9 @@ SET(OPENGL_SRC "")
 SET(SDL_SRC "")
 
 IF (HAVE_SDL)
-	SET(SDL_SRC sdl_video.c sdl_driver.c)
+	SET(SDL_SRC
+		sdl_video.c
+		sdl_driver.c)
 ENDIF (HAVE_SDL)
 
 IF (HAVE_OPENGL)

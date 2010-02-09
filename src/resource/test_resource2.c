@@ -55,7 +55,7 @@ int main()
 {
 	/* test start and stop */
 
-	struct exception_t exp;
+	define_exp(exp);
 	TRY(exp) {
 		do_init();
 		launch_resource_process();
