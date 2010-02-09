@@ -10,6 +10,8 @@ SET(SDL_SRC "")
 
 IF (HAVE_SDL)
 	SET(SDL_SRC
+		generic_sdl.h
+		generic_sdl.c
 		sdl_video.c
 		sdl_driver.c)
 ENDIF (HAVE_SDL)

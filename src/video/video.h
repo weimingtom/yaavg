@@ -87,7 +87,7 @@ set_video_reinit_hook_list(struct list_head * l)
 
 /* not an exported function, for video functionor used internally */
 extern void
-generic_video_init(void);
+generic_vid_init(void);
 
 extern void
 video_init(void);

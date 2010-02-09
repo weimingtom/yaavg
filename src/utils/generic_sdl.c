@@ -1,50 +1,34 @@
 /* 
- * generic_sdl.c
- * by WN @ Feb. 09, 2010
+ * utils/generic_sdl.c
+ * by WN @ Feb. 08, 2010
  */
 
 #include <config.h>
-#include <common/defs.h>
-#include <common/exception.h>
-#include <common/debug.h>
-
 #ifdef HAVE_SDL
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_video.h>
 #include <utils/generic_sdl.h>
 #include <yconf/yconf.h>
-
-void 
-init_sdl_video(bool_t use_opengl)
-{
-	bool_t inited = FALSE;
-	define_exp(exp);
-	TRY(exp) {
-		int err;
-		err = SDL_InitSubSystem(SDL_INIT_VIDEO);
-		if (err < 0) {
-			FATAL(VIDEO, "init sdl video subsystem failed: %s\n",
-					SDL_GetError());
-			THROW_FATAL(EXP_UNCATCHABLE, "init sdl failed");
-		}
-		inited = TRUE;
-	} FINALLY{ 	}
-	CATCH(exp) {
-		if (inited)
-			SDL_QuitSubSystem(SDL_INIT_VIDEO);
-		RETHROW(exp);
-	}
-	return;
-}
+#include <SDL/SDL.h>
 
 void
-destroy_sdl_video(void)
+generic_init_sdl(void)
 {
-	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+#if 0
+	SDL_SetEventFilter(NULL);
+#endif
+	SDL_EnableUNICODE(SDL_ENABLE);
+	int delay, interval;
+	delay = conf_get_int("sys.events.keyrepeatdelay", -1);
+	interval = conf_get_int("sys.events.keyrepeatinterval", -1);
+	if (delay < 0)
+		delay = SDL_DEFAULT_REPEAT_DELAY;
+	if (interval < 0)
+		interval = SDL_DEFAULT_REPEAT_INTERVAL;
+	SDL_EnableKeyRepeat(delay, interval);
 }
 
 
 #endif
+
 // vim:ts=4:sw=4
 

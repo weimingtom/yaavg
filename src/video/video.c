@@ -73,7 +73,7 @@ check_set_viewport(void)
 }
 
 void
-generic_video_init(void)
+generic_vid_init(void)
 {
 	assert(CUR_VID != NULL);
 	DEBUG(VIDEO, "init video:\n");

@@ -1,24 +1,11 @@
 /* 
- * by WN @ Feb. 09, 2010
  * generic_sdl.h
+ * by WN @ Feb. 08, 2010
  */
-#ifndef __GENERIC_SDL_H
-#define __GENERIC_SDL_H
 
-#include <config.h>
-#include <common/defs.h>
-#ifdef HAVE_SDL
-#include <SDL/SDL.h>
-#include <SDL/SDL_video.h>
-
+#ifndef __UTILS_GENERIC_SDL_H
+#define __UTILS_GENERIC_SDL_H
 void
-init_sdl_video(bool_t use_opengl);
-
-void
-close_sdl_video(void);
-
+generic_init_sdl(void);
 #endif
-#endif
-
-// vim:ts=4:sw=4
 

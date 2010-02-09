@@ -29,7 +29,7 @@ static void
 dummy_init(void)
 {
 	VERBOSE(VIDEO, "initing dummy video engine:\n");
-	generic_video_init();
+	generic_vid_init();
 
 	int buffer_sz = CUR_VID->viewport.w * CUR_VID->viewport.h * 4;
 	TRACE(VIDEO, "alloc 2 * %d bytes\n", buffer_sz);
