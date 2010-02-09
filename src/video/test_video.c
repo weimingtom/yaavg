@@ -123,10 +123,10 @@ int main()
 		video_init();
 	} FINALLY {
 		video_cleanup();
-		do_cleanup();
 	} CATCH(exp) {
 		RETHROW(exp);
 	}
+	do_cleanup();
 	return 0;
 }
 // vim:ts=4:sw=4

@@ -78,10 +78,17 @@ generic_vid_init(void)
 	assert(CUR_VID != NULL);
 	DEBUG(VIDEO, "init video:\n");
 	check_set_viewport();
+
+	CUR_VID->resizable = conf_get_bool("video.resizable", FALSE);
 	CUR_VID->fullscreen = conf_get_bool("video.fullscreen", FALSE);
+	CUR_VID->grabinput = conf_get_bool("video.grabinput", FALSE);
+	CUR_VID->bpp = conf_get_int("video.bpp", 32);
+
 	DEBUG(VIDEO, "\tresolution: %dx%d\n", CUR_VID->width, CUR_VID->height);
 	DEBUG(VIDEO, "\tviewport: " RECT_FMT "\n", RECT_ARG(CUR_VID->viewport));
 	DEBUG(VIDEO, "\tfullscreen: %d\n", CUR_VID->fullscreen);
+	DEBUG(VIDEO, "\tgrabinput: %d\n", CUR_VID->grabinput);
+	DEBUG(VIDEO, "\tbpp: %d\n", CUR_VID->bpp);
 	/* nothing to do */
 }
 
@@ -96,6 +103,7 @@ video_init(void)
 		WARNING(VIDEO, "doesn't support video engine %s, use %s instead\n",
 				eng_str, CUR_VID->name);
 	VERBOSE(VIDEO, "selected video engine: %s\n", CUR_VID->name);
+	generic_vid_init();
 	vid_init();
 }
 

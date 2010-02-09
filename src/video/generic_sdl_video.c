@@ -7,18 +7,18 @@
 
 #ifdef HAVE_SDL
 
-
 #include <common/defs.h>
 #include <common/exception.h>
 #include <common/debug.h>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_video.h>
+#include <video/generic_sdl_video.h>
 #include <utils/generic_sdl.h>
 #include <yconf/yconf.h>
 
 static void
-init_sdl_opengl(void)
+init_sdl_opengl(int bpp)
 {
 	const char * libname = conf_get_string("video.opengl.gllibrary", NULL);
 	DEBUG(VIDEO, "opengl library name: %s\n", libname);
@@ -29,7 +29,6 @@ init_sdl_opengl(void)
 
 	/* code is from darkplaces */
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	int bpp = conf_get_int("video.opengl.bpp", 16);
 	if (bpp >= 32) {
 		SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 		SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -67,12 +66,20 @@ init_sdl_opengl(void)
 	}
 }
 
-void 
-init_sdl_video(bool_t use_opengl)
+static_catch_var(bool_t, video_inited, FALSE);
+
+void
+generic_init_sdl_video(bool_t use_opengl,
+		int bpp, bool_t grabinput)
 {
-	catch_var(bool_t, inited, FALSE);
 	define_exp(exp);
 	TRY(exp) {
+		get_catched_var(video_inited);
+		if (video_inited) {
+			FATAL(VIDEO, "sdl video subsystem has already inited\n");
+			THROW_FATAL(EXP_UNCATCHABLE, "sdl video subsystem has already inited\n");
+		}
+
 		int err;
 		err = SDL_InitSubSystem(SDL_INIT_VIDEO);
 		if (err < 0) {
@@ -80,26 +87,36 @@ init_sdl_video(bool_t use_opengl)
 					SDL_GetError());
 			THROW_FATAL(EXP_UNCATCHABLE, "init sdl failed");
 		}
-		set_catched_var(inited, TRUE);
+		set_catched_var(video_inited, TRUE);
 		if (use_opengl)
-			init_sdl_opengl();
-		generic_int_sdl();
+			init_sdl_opengl(bpp);
+		if (grabinput)
+			SDL_WM_GrabInput(SDL_GRAB_ON);
+		else
+			SDL_WM_GrabInput(SDL_GRAB_OFF);
+		generic_init_sdl();
+
 	} FINALLY{ 	}
 	CATCH(exp) {
-		get_catched_var(inited);
-		if (inited)
+		get_catched_var(video_inited);
+		if (video_inited) {
+			set_catched_var(video_inited, FALSE);
 			SDL_QuitSubSystem(SDL_INIT_VIDEO);
+		}
 		RETHROW(exp);
 	}
 	return;
 }
 
 void
-destroy_sdl_video(void)
+generic_destroy_sdl_video(void)
 {
+	get_catched_var(video_inited);
+	if (!video_inited)
+		WARNING(VIDEO, "sdl video subsystem has not been initted\n");
 	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+	set_catched_var(video_inited, FALSE);
 }
-
 
 #endif
 // vim:ts=4:sw=4

@@ -2,8 +2,8 @@
  * by WN @ Feb. 09, 2010
  * generic_sdl.h
  */
-#ifndef __VIDEO_GENERIC_SDL_H
-#define __VIDEO_GENERIC_SDL_H
+#ifndef __VIDEO_GENERIC_SDL_VIDEO_H
+#define __VIDEO_GENERIC_SDL_VIDEO_H
 
 #include <config.h>
 #include <common/defs.h>
@@ -12,10 +12,11 @@
 #include <SDL/SDL_video.h>
 
 void
-init_sdl_video(bool_t use_opengl);
+generic_init_sdl_video(bool_t use_opengl, int bpp,
+		bool_t grabinput);
 
 void
-close_sdl_video(void);
+generic_destroy_sdl_video(void);
 
 #endif
 #endif

@@ -4,6 +4,7 @@ SET(SRC
 	)
 
 ADD_LIBRARY(yconf STATIC ${SRC})
+TARGET_LINK_LIBRARIES(yconf common utils)
 
 SET(tests
 	test_yconf

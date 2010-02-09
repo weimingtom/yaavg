@@ -21,10 +21,13 @@ struct video_functionor_t {
 	struct rect_t viewport;
 	int width;
 	int height;
+	int bpp;
+	bool_t resizable;
+	bool_t fullscreen;
+	bool_t grabinput;
 
 	struct list_head * command_list;
 	struct list_head * reinit_hook_list;
-	bool_t fullscreen;
 
 	void (*set_caption)(const char *);
 	void (*set_icon)(const char *);

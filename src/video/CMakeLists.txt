@@ -10,8 +10,8 @@ SET(SDL_SRC "")
 
 IF (HAVE_SDL)
 	SET(SDL_SRC
-		generic_sdl.h
-		generic_sdl.c
+		generic_sdl_video.h
+		generic_sdl_video.c
 		sdl_video.c
 		sdl_driver.c)
 ENDIF (HAVE_SDL)
@@ -25,6 +25,12 @@ ENDIF (USE_OPENGL3)
 ENDIF (HAVE_OPENGL)
 
 ADD_LIBRARY(video STATIC ${SRC} ${OPENGL3_SRC} ${OPENGL_SRC} ${SDL_SRC})
+TARGET_LINK_LIBRARIES(video common utils)
+
+IF (HAVE_SDL)
+	TARGET_LINK_LIBRARIES(video ${SDL_LIBRARI})
+ENDIF(HAVE_SDL)
+
 
 SET(tests
 	test_video_timer

@@ -27,7 +27,6 @@ generic_init_sdl(void)
 	SDL_EnableKeyRepeat(delay, interval);
 }
 
-
 #endif
 
 // vim:ts=4:sw=4
