@@ -216,7 +216,7 @@ file_map_to_mem(struct io_t * io, int from, int max_sz)
 }
 
 static void
-file_release_map(struct io_t * io, void * ptr, int from, int len)
+file_release_map(struct io_t * io, void * ptr, int from ATTR_UNUSED, int len)
 {
 	assert(io != NULL);
 	assert(io->functionor);
@@ -229,8 +229,7 @@ file_release_map(struct io_t * io, void * ptr, int from, int len)
 
 	FILE * fp = io->pprivate;
 
-	int fd = fileno(fp);
-	
+	int fd DEBUG_DEF = fileno(fp);
 	TRACE(IO, "munmap file %d len %d\n",
 			fd, len);
 	uintptr_t inner_offset = (uintptr_t)(ptr) % 4096;

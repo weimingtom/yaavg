@@ -54,10 +54,10 @@ int main()
 {
 	do_init();
 	struct resource_t * res[NR_RESOURCES];
-	for (int i = 0; i < NR_RESOURCES; i++) {
+	for (unsigned int i = 0; i < NR_RESOURCES; i++) {
 		res[i] = load_resource(name[i]);
 	}
-	for (int i = 0; i < NR_RESOURCES; i++) {
+	for (unsigned int i = 0; i < NR_RESOURCES; i++) {
 		res[i]->destroy(res[i]);
 	}
 	do_cleanup();

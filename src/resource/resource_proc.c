@@ -230,7 +230,7 @@ xxreadv(int fd, struct iovec * iovec,
 				"readv failed, return %d:%s",
 				retval, strerror(errno));
 
-	size_t total_sz = 0;
+	ssize_t total_sz = 0;
 	for (int i = 0; i < nr; i++)
 		total_sz += iovec[i].iov_len;
 	TRACE(RESOURCE, "readv: read %d bytes, return %d\n",

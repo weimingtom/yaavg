@@ -17,7 +17,7 @@ typedef int32_t dtick_t;
 extern struct function_class_t
 timer_function_class;
 
-static void inline prepare_timer(void)
+inline static void prepare_timer(void)
 {
 	find_functionor(&timer_function_class, NULL);
 }

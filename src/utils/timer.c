@@ -11,10 +11,14 @@
 #include <assert.h>
 
 extern struct functionor_t base_timer_functionor;
+#ifdef HAVE_SDL
 extern struct functionor_t sdl_timer_functionor;
+#endif
 
 static struct functionor_t * functionors[] = {
+#ifdef HAVE_SDL
 	&sdl_timer_functionor,
+#endif
 	&base_timer_functionor,
 	NULL,
 };
@@ -126,7 +130,7 @@ enter_frame(void)
 	}
 
 	/* fall back */
-	if (delta > controller.mspf_fallback) {
+	if ((tick_t)delta > controller.mspf_fallback) {
 		WARNING(TIMER, "delta is %d, fall back to %d\n",
 				delta, controller.mspf_fallback);
 		delta = controller.mspf_fallback;
@@ -150,7 +154,7 @@ finish_frame(void)
 	if (render_ms < 1)
 		render_ms = 1;
 
-	if (render_ms < controller.mspf) {
+	if ((tick_t)render_ms < controller.mspf) {
 		TRACE(TIMER, "delay %d ms\n", controller.mspf - render_ms);
 		frame_timer->delay(controller.mspf - render_ms);
 	}

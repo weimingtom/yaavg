@@ -98,7 +98,7 @@ struct phy_event {
 	union _phy_event u;
 };
 
-static void inline print_event(struct phy_event * e)
+inline static void print_event(struct phy_event * e ATTR_UNUSED)
 {
 	return;
 }

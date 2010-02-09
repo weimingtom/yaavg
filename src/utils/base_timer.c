@@ -8,7 +8,7 @@
 #include <utils/timer.h>
 
 static bool_t
-check_usable(const char * param)
+check_usable(const char * param ATTR_UNUSED)
 {
 	return TRUE;
 }

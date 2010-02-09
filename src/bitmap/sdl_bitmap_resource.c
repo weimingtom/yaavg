@@ -128,8 +128,8 @@ wrap_read(struct SDL_RWops * ops, void * ptr,
 }
 
 static int
-wrap_write(struct SDL_RWops * ops, const void * ptr,
-		int size, int maxnum)
+wrap_write(struct SDL_RWops * ops ATTR_UNUSED, const void * ptr ATTR_UNUSED,
+		int size ATTR_UNUSED, int maxnum ATTR_UNUSED)
 {
 	struct io_t * io = get_io(ops);
 	assert(io != NULL);

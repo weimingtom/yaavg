@@ -33,14 +33,16 @@ struct png_bitmap_resource_t {
 };
 
 static png_voidp
-wrap_malloc PNGARG((png_structp p, png_size_t sz))
+wrap_malloc PNGARG((png_structp p DEBUG_ARG, png_size_t sz))
 {
+	TRACE(MEMORY, "png_structp %p malloc %d bytes\n", p, sz);
 	return xmalloc(sz);
 }
 
 static void
-wrap_free PNGARG((png_structp p, png_voidp ptr))
+wrap_free PNGARG((png_structp p DEBUG_ARG, png_voidp ptr))
 {
+	TRACE(MEMORY, "png_structp %p free %p bytes\n", p, ptr);
 	xfree(ptr);
 }
 
@@ -58,14 +60,14 @@ wrap_read PNGARG((png_structp p, png_bytep byte, png_size_t size))
 static void
 wrap_png_error PNGARG((png_structp p, png_const_charp str))
 {
-	WARNING(BITMAP, "libpng report error: %s\n", str);
+	WARNING(BITMAP, "libpng report error for %p: %s\n", p, str);
 	THROW(EXP_LIBPNG_ERROR, "libpng error %s", str);
 }
 
 static void
 wrap_png_warn PNGARG((png_structp p, png_const_charp str))
 {
-	WARNING(BITMAP, "libpng report warning: %s\n", str);
+	WARNING(BITMAP, "libpng report warning for %p: %s\n", p, str);
 }
 
 static bool_t
@@ -206,7 +208,7 @@ png_load(struct io_t * io, const char * id)
 		png_res->pixels = ALIGN_UP_PTR(png_res->rows + height, 8);
 
 		strcpy(png_res->id, id);
-		for (int i = 0; i < height; i++) {
+		for (unsigned int i = 0; i < height; i++) {
 			png_res->rows[i] =
 				png_res->pixels + one_row_sz * i;
 		}

@@ -26,7 +26,7 @@ cleanup_func_t cleanup_funcs[] = {
 	NULL,
 };
 
-static void inline
+static void 
 print_bitmap(struct bitmap_t * b)
 {
 	VERBOSE(SYSTEM, "get bitmap! id=%s\n", b->id);

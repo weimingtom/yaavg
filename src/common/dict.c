@@ -11,7 +11,7 @@
 #include <string.h>
 #include <assert.h>
 
-static bool_t compare_str(void * a, void * b, uintptr_t useless)
+static bool_t compare_str(void * a, void * b, uintptr_t useless ATTR_UNUSED)
 {
 	char * sa, *sb;
 	sa = a;
@@ -143,7 +143,7 @@ lookup_entry(struct dict_t * dict, void * key, hashval_t hash)
 
 	assert(key != NULL);
 
-	int nr_checked = 0;
+	unsigned int nr_checked = 0;
 
 	TRACE(DICT, "begin lookup for hash 0x%x\n", hash);
 	do {
@@ -227,8 +227,8 @@ __dict_insert_clean(struct dict_t * dict, struct dict_entry_t * oep)
 static void
 __expand_dict(struct dict_t * dict, int minused)
 {
-	uint32_t old_size = dict->mask + 1;
-	uint32_t new_size = pow2roundup(minused);
+	int old_size = dict->mask + 1;
+	int new_size = pow2roundup(minused);
 	if (new_size < DICT_SMALL_SIZE) {
 		new_size = DICT_SMALL_SIZE;
 	}
@@ -288,7 +288,7 @@ static void
 expand_dict(struct dict_t * dict)
 {
 	assert(!IS_FIXED(dict));
-	if (dict->nr_fill * 3 >= (dict->mask + 1) * 2) {
+	if (dict->nr_fill * 3 >= ((int)(dict->mask + 1)) * 2) {
 		TRACE(DICT, "dict %p, fill=%d, used=%d, size=%d, need expansion\n",
 				dict, dict->nr_fill, dict->nr_used, dict->mask + 1);
 		__expand_dict(dict, dict->nr_used * 2);

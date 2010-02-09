@@ -38,7 +38,8 @@ load_resource(const char * __id)
 			type, io_proto, io_name);
 
 	enum resource_type t = atoi(type);
-	assert((t >= 0) && (t < NR_RESOURCE_TYPES));
+	/* enum always >= 0 */
+	assert(t < NR_RESOURCE_TYPES);
 
 	struct io_t * io = NULL;
 	struct resource_t * r = NULL;

@@ -102,12 +102,6 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	char * target_fn = NULL;
-	if (argc >= 4) {
-		target_fn = argv[3];
-		VERBOSE(SYSTEM, "target file is %s\n", target_fn);
-	}
-
 	do_init();
 
 	char * phy_file_name = argv[1];
@@ -120,6 +114,12 @@ int main(int argc, char * argv[])
 	struct exception_t exp;
 	TRY(exp) {
 		struct io_functionor_t * io_f = NULL;
+
+		char * target_fn = NULL;
+		if (argc >= 4) {
+			target_fn = argv[3];
+			VERBOSE(SYSTEM, "target file is %s\n", target_fn);
+		}
 
 		io_f = get_io_handler("XP3");
 		assert(io_f != NULL);
@@ -165,7 +165,9 @@ int main(int argc, char * argv[])
 			fwrite(data, io_get_sz(io), 1, fp);
 			io_release_internal_buffer(io, data);
 #endif
-			fwrite(data, io_get_sz(io), 1, fp);
+			int err;
+			err = fwrite(data, io_get_sz(io), 1, fp);
+			assert(err >= 0);
 			fclose(fp);
 			io_close(io);
 			io = NULL;

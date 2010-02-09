@@ -143,7 +143,7 @@ load_bitmap_resource(struct io_t * io, const char * id)
 }
 
 struct resource_t *
-load_dummy_bitmap_resource(struct io_t * io, const char * id)
+load_dummy_bitmap_resource(struct io_t * io ATTR_UNUSED, const char * id)
 {
 	return __load_bitmap_resource(NULL, id);
 }

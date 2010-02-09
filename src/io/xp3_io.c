@@ -77,7 +77,7 @@ struct xp3_file {
 	 * is compressed. see xp3_index_item.is_compressed */
 	bool_t is_compressed;
 	struct cache_entry_t ce;
-	int file_sz;
+	unsigned int file_sz;
 	char * utf8_name;
 	char * package_name;
 	char * id;
@@ -89,9 +89,9 @@ struct xp3_file {
 	uint8_t __data[0];
 };
 
-static void NONE_filter(uint8_t * data, int sz,
-		struct xp3_package * package,
-		struct xp3_file * file, int from)
+static void NONE_filter(uint8_t * data ATTR_UNUSED, int sz ATTR_UNUSED,
+		struct xp3_package * package ATTR_UNUSED,
+		struct xp3_file * file ATTR_UNUSED, int from ATTR_UNUSED)
 {
 	return;
 }
@@ -105,8 +105,8 @@ static void (*xp3_revert_filter)(uint8_t * data, int sz,
 
 static void
 FATE_SN_style_filter(uint8_t * data, int sz,
-		struct xp3_package * package,
-		struct xp3_file * file, int from)
+		struct xp3_package * package ATTR_UNUSED,
+		struct xp3_file * file ATTR_UNUSED, int from)
 {
 	/* not 0x54, no problem */
 	for (int i = 0; i < sz; i++)
@@ -223,7 +223,7 @@ check_xp3_head(struct io_t * io)
 }
 
 static void
-destroy_xp3_index_item(struct dict_entry_t * e, uintptr_t unused)
+destroy_xp3_index_item(struct dict_entry_t * e, uintptr_t unused ATTR_UNUSED)
 {
 	if (e == NULL) {
 		WARNING(IO, "received NULL dict entry here\n");
@@ -719,7 +719,7 @@ init_xp3_file(const char * __id)
 	int fn_sz = strlen(fn) + 1;
 	int pkg_fn_sz = strlen(pkg_fn) + 1;
 	int id_sz = fn_sz + pkg_fn_sz;
-	assert(id_sz == strlen(__id) + 1);
+	assert(id_sz == (int)(strlen(__id) + 1));
 
 	TRACE(IO, "init xp3 file %s:%s\n", pkg_fn, fn);
 	struct xp3_package * xp3 = get_xp3_package(pkg_fn);
@@ -761,6 +761,9 @@ init_xp3_file(const char * __id)
 		file->is_compressed = item->is_compressed;
 		file->nr_segments = item->nr_segments;
 		file->file_sz = item->ori_sz;
+		if (file->file_sz > (1UL << 31) - 1)
+			THROW(EXP_BAD_RESOURCE, "xp3 item too large: %d\n",
+					file->file_sz);
 
 		if (file->is_compressed)
 			file->u.data = ALIGN_UP_PTR((void*)(file->id + id_sz), 8);
@@ -780,8 +783,8 @@ init_xp3_file(const char * __id)
 			memcpy(file->u.segments, item->segments,
 					item->nr_segments * sizeof(struct xp3_index_item_segment));
 		} else {
-			int64_t total_ori_sz = 0;
-			int64_t total_arch_sz = 0;
+			uint64_t total_ori_sz = 0;
+			uint64_t total_arch_sz = 0;
 			for (int i = 0; i < item->nr_segments; i++) {
 				struct xp3_index_item_segment * seg = &item->segments[i];
 				TRACE(IO, "segment %d: ori_sz=%Ld, arch_sz=%Ld, start=0x%Lx, offset=0x%Lx\n",
@@ -971,6 +974,9 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 	if (size * nr == 0)
 		return 0;
 
+	assert(size > 0);
+	assert(nr > 0);
+
 	struct xp3_io_t * io = container_of(__io,
 			struct xp3_io_t, io);
 	assert(io == __io->pprivate);
@@ -979,12 +985,12 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 	assert(file != NULL);
 
 	assert(io->file_sz == file->file_sz);
-	assert((0 <= io->pos) && (io->pos <= io->file_sz));
+	assert((0 <= io->pos) && (io->pos <= (int64_t)io->file_sz));
 
 	int i;
 	if (file->is_compressed) {
 		for (i = 0; i < nr; i++) {
-			int s = min(size, io->file_sz - io->pos);
+			int s = min((uint64_t)size, io->file_sz - io->pos);
 			assert(s >= 0);
 			memcpy(ptr, file->u.data + io->pos,
 					s);
@@ -1008,12 +1014,12 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 	assert(segs != NULL);
 
 	for (i = 0; i < nr; i++) {
-		int s = min(size, io->file_sz - io->pos);
+		int s = min((uint64_t)size, io->file_sz - io->pos);
 		assert(s >= 0);
 
 		/* copy: from pos io->pos, sz=s */
 
-		while (pseg->offset + pseg->ori_sz <= io->pos) {
+		while (pseg->offset + pseg->ori_sz <= (uint64_t)io->pos) {
 			pseg ++;
 			assert(pseg - segs < file->nr_segments);
 		}
@@ -1024,7 +1030,7 @@ xp3_read(struct io_t * __io, void * ptr, int size, int nr)
 			if (from < io->pos)
 				from = io->pos;
 			int sz = io->pos + s - from;
-			if (sz > pseg->ori_sz)
+			if ((uint64_t)sz > pseg->ori_sz)
 				sz = pseg->ori_sz;
 
 			/* copy and filter */
@@ -1065,7 +1071,7 @@ xp3_map_to_mem(struct io_t * __io, int from, int max_sz)
 {
 	struct xp3_file * file = get_xp3_file_from_io(__io);
 
-	if (from + max_sz > file->file_sz)
+	if ((uint64_t)(from + max_sz) > file->file_sz)
 		max_sz = file->file_sz - from;
 	if (file->is_compressed) {
 		void * ptr = xmalloc(max_sz);
@@ -1116,7 +1122,7 @@ xp3_release_map(struct io_t * __io, void * ptr, int from, int max_sz)
 	if ((file->is_compressed) || (file->nr_segments > 1)) {
 		xfree_null(ptr);
 	} else {
-		if (from + max_sz > file->file_sz)
+		if ((uint64_t)(from + max_sz) > file->file_sz)
 			max_sz = file->file_sz - from;
 		struct xp3_package * pkg = get_xp3_package(file->package_name);
 		assert(pkg != NULL);
@@ -1257,7 +1263,7 @@ xp3_permanentmap(const char * fn)
  *					it takes effect after package cache cleanup and package reinit
  */
 static void *
-xp3_command(struct io_t * io, const char * cmd, void * arg)
+xp3_command(struct io_t * io ATTR_UNUSED, const char * cmd, void * arg ATTR_UNUSED)
 {
 	DEBUG(IO, "run command %s for xp3 io\n", cmd);
 	if (strncmp("permanentmap:", cmd,
@@ -1295,7 +1301,7 @@ xp3_seek(struct io_t * __io, int64_t offset,
 			pos = io->file_sz + offset;
 			break;
 	}
-	if ((pos < 0) || (pos > io->file_sz))
+	if ((pos < 0) || (pos > (int64_t)io->file_sz))
 		THROW(EXP_BAD_RESOURCE, "seek xp3 file %s (%Ld, %d) failed: out of range. max pos is %Ld",
 				io->id, offset, whence, io->file_sz);
 	io->pos = pos;

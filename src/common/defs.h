@@ -43,7 +43,14 @@ typedef int bool_t;
 #endif
 
 #define ATTR(x) __attribute__((x))
-
+#define ATTR_UNUSED	ATTR(unused)
+#ifdef YAAVG_DEBUG
+# define DEBUG_ARG
+# define DEBUG_DEF
+#else
+# define DEBUG_ARG ATTR_UNUSED
+# define DEBUG_DEF ATTR_UNUSED
+#endif
 
 /* The ability to declare that a function never returns is useful, but
    not really required to compile GDB successfully, so the NORETURN and

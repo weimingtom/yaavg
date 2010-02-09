@@ -41,7 +41,7 @@ struct package_items_t {
 	char ** table;
 	int nr_items;
 	/* for serialization used */
-	int total_sz;
+	unsigned int total_sz;
 	uint8_t __data[0];
 };
 
@@ -104,7 +104,7 @@ struct io_functionor_t {
 extern struct io_functionor_t *
 get_io_handler(const char * proto);
 
-static void inline
+inline static void
 io_init(struct io_functionor_t * r, const char * proto)
 {
 	if (r == NULL)
@@ -133,7 +133,7 @@ io_open_write_proto(const char * proto_name);
 struct io_t *
 io_open_write(const char * proto, const char * name);
 
-static inline int
+inline static int
 io_read(struct io_t * io, void * ptr,
 		int size, int nr)
 {
@@ -144,7 +144,7 @@ io_read(struct io_t * io, void * ptr,
 			size, nr);
 }
 
-static inline int
+inline static int
 io_write(struct io_t * io, void * ptr,
 		int size, int nr)
 {
@@ -155,7 +155,7 @@ io_write(struct io_t * io, void * ptr,
 			size, nr);
 }
 
-static inline int
+inline static int
 io_flush(struct io_t * io)
 {
 	assert(io && (io->functionor));
@@ -165,7 +165,7 @@ io_flush(struct io_t * io)
 	return 0;
 }
 
-static inline void
+inline static void
 io_seek(struct io_t * io, int64_t offset,
 		int whence)
 {
@@ -176,7 +176,7 @@ io_seek(struct io_t * io, int64_t offset,
 			whence);
 }
 
-static inline int64_t
+inline static int64_t
 io_tell(struct io_t * io)
 {
 	assert(io &&
@@ -187,7 +187,7 @@ io_tell(struct io_t * io)
 
 
 
-static inline void
+inline static void
 io_close(struct io_t * io)
 {
 	assert(io &&
@@ -196,7 +196,7 @@ io_close(struct io_t * io)
 	io->functionor->close(io);
 }
 
-static inline int64_t
+inline static int64_t
 io_get_sz(struct io_t * io)
 {
 	assert(io && (io->functionor));
@@ -213,7 +213,7 @@ io_get_sz(struct io_t * io)
 	return pos;
 }
 
-static inline int
+inline static int
 io_writev(struct io_t * io, struct iovec * vecs, int nr)
 {
 	assert(io &&
@@ -222,7 +222,7 @@ io_writev(struct io_t * io, struct iovec * vecs, int nr)
 	return io->functionor->writev(io, vecs, nr);
 }
 
-static inline int
+inline static int
 io_vmsplice_write(struct io_t * io, struct iovec * vecs, int nr)
 {
 	assert(io &&
@@ -233,7 +233,7 @@ io_vmsplice_write(struct io_t * io, struct iovec * vecs, int nr)
 
 
 
-static inline int
+inline static int
 io_vmsplice_read(struct io_t * io, struct iovec * vecs, int nr)
 {
 	assert(io &&
@@ -242,7 +242,7 @@ io_vmsplice_read(struct io_t * io, struct iovec * vecs, int nr)
 	return io->functionor->vmsplice_read(io, vecs, nr);
 }
 
-static inline int
+inline static int
 io_readv(struct io_t * io, struct iovec * vecs, int nr)
 {
 	assert(io &&
@@ -251,7 +251,7 @@ io_readv(struct io_t * io, struct iovec * vecs, int nr)
 	return io->functionor->readv(io, vecs, nr);
 }
 
-static inline void
+inline static void
 io_read_force(struct io_t * io, void * data, int sz)
 {
 	int err;
@@ -266,7 +266,7 @@ io_read_force(struct io_t * io, void * data, int sz)
 }
 
 
-static inline void
+inline static void
 io_write_force(struct io_t * io, void * data, int sz)
 {
 	int err;
@@ -281,7 +281,7 @@ io_write_force(struct io_t * io, void * data, int sz)
 }
 
 
-static inline void *
+inline static void *
 io_map_to_mem(struct io_t * io, int from, int max_sz)
 {
 	assert(io && (io->functionor));
@@ -304,7 +304,7 @@ io_map_to_mem(struct io_t * io, int from, int max_sz)
 	return ptr;
 }
 
-static inline void
+inline static void
 io_release_map(struct io_t * io, void * ptr, int from, int len)
 {
 	assert(io && (io->functionor));
@@ -313,7 +313,7 @@ io_release_map(struct io_t * io, void * ptr, int from, int len)
 	xfree(ptr);
 }
 
-static inline void *
+inline static void *
 io_get_internal_buffer(struct io_t * io)
 {
 	assert(io && (io->functionor));
@@ -321,7 +321,7 @@ io_get_internal_buffer(struct io_t * io)
 		return io->functionor->get_internal_buffer(io);
 	return io_map_to_mem(io, 0, io_get_sz(io));
 }
-static inline void
+inline static void
 io_release_internal_buffer(struct io_t * io, void * ptr)
 {
 	assert(io && (io->functionor));
@@ -331,7 +331,7 @@ io_release_internal_buffer(struct io_t * io, void * ptr)
 }
 
 
-static inline void *
+inline static void *
 iof_command(struct io_functionor_t * iof, const char * cmd, void * arg)
 {
 	assert(iof);
@@ -340,7 +340,7 @@ iof_command(struct io_functionor_t * iof, const char * cmd, void * arg)
 	return iof->command(NULL, cmd, arg);
 }
 
-static inline struct package_items_t *
+inline static struct package_items_t *
 iof_get_package_items(struct io_functionor_t * iof, const char * cmd)
 {
 	assert(iof);
@@ -350,7 +350,7 @@ iof_get_package_items(struct io_functionor_t * iof, const char * cmd)
 }
 
 
-static inline void *
+inline static void *
 io_command(struct io_t * io, const char * cmd, void * arg)
 {
 	assert(io != NULL);
@@ -360,7 +360,7 @@ io_command(struct io_t * io, const char * cmd, void * arg)
 	return io->functionor->command(io, cmd, arg);
 }
 
-static inline uint8_t
+inline static uint8_t
 io_read_byte(struct io_t * io)
 {
 	uint8_t x;
@@ -368,7 +368,7 @@ io_read_byte(struct io_t * io)
 	return x;
 }
 
-static inline uint64_t
+inline static uint64_t
 io_read_le64(struct io_t * io)
 {
 	uint64_t x;
@@ -376,7 +376,7 @@ io_read_le64(struct io_t * io)
 	return le64toh(x);
 }
 
-static inline uint64_t
+inline static uint64_t
 io_read_be64(struct io_t * io)
 {
 	uint32_t x;
@@ -384,7 +384,7 @@ io_read_be64(struct io_t * io)
 	return be64toh(x);
 }
 
-static inline uint32_t
+inline static uint32_t
 io_read_le32(struct io_t * io)
 {
 	uint32_t x;
@@ -392,7 +392,7 @@ io_read_le32(struct io_t * io)
 	return le32toh(x);
 }
 
-static inline uint32_t
+inline static uint32_t
 io_read_be32(struct io_t * io)
 {
 	uint32_t x;

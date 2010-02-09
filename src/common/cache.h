@@ -47,7 +47,7 @@ struct cache_entry_t {
  * cache_entry_destroy doesn't update dict's profiling infos,
  * the caller needs to do it by itself
  */
-static void inline cache_entry_destroy(struct cache_entry_t * e)
+inline static void cache_entry_destroy(struct cache_entry_t * e)
 {
 	if (e == NULL)
 		return;

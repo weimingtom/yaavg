@@ -28,7 +28,7 @@ struct bitmap_resource_functionor_t {
 			const char * id);
 };
 
-static void inline
+inline static void 
 destroy_bitmap_resource(struct bitmap_resource_t * r)
 {
 	r->resource.destroy(&r->resource);

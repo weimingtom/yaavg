@@ -215,7 +215,7 @@ __wrap_fclose(FILE * fp,
 /* #define MEM_MSG(str...)	FORCE(MEMORY, "@q" str) */
 #define MEM_MSG(str...)	FORCE(MEMORY, str)
 static void
-sighandler_mem_stats(int signum)
+sighandler_mem_stats(int signum ATTR_UNUSED)
 {
 #ifndef YAAVG_DEBUG
 	VERBOSE(MEMORY, "this compilation doesn't "
@@ -239,8 +239,8 @@ sighandler_mem_stats(int signum)
 		MEM_MSG("Freed bytes\t=\t\t%d\n", mi.fordblks);
 #endif
 		MEM_MSG("----------------------\n");
-#endif
 	}
+#endif
 }
 #undef MEM_MSG
 
@@ -421,7 +421,7 @@ void
 dbg_output(enum __debug_level level,
 #ifdef YAAVG_DEBUG
 		enum __debug_component comp,
-		const char * file,
+		const char * file ATTR_UNUSED,
 		const char * func,
 		int line,
 #endif

@@ -71,14 +71,14 @@ struct video_functionor_t {
 #define vid_poll_events(e)		VID_FUNC(poll_events, 0, e)
 
 
-static void inline
+inline static void 
 set_video_command_list(struct list_head * l)
 {
 	assert(CUR_VID != NULL);
 	CUR_VID->command_list = l;
 }
 
-static void inline
+inline static void 
 set_video_reinit_hook_list(struct list_head * l)
 {
 	assert(CUR_VID != NULL);

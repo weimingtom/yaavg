@@ -19,7 +19,7 @@ static const char * exception_names[] = {
 	[EXP_UNCATCHABLE] = "uncatchable exception",
 };
 
-static const char * exception_level_names[] = {
+static const char * exception_level_names[] DEBUG_DEF = {
 	[EXP_LV_NONE] = "system is okay",
 	[EXP_LV_LOWEST] = "system is safe",
 	[EXP_LV_TAINTED] = "system is tainted",
@@ -140,8 +140,9 @@ void
 print_exception(struct exception_t * exp)
 {
 #ifdef YAAVG_DEBUG
-	assert((exp->level >= 0) && (exp->level < NR_EXP_LEVELS));
-	assert((exp->type >= 0) && (exp->type < NR_EXP_TYPES));
+	/* enum us unsigned, so >= 0 */
+	assert(exp->level < NR_EXP_LEVELS);
+	assert(exp->type < NR_EXP_TYPES);
 	WARNING(SYSTEM, "(%s): %s raised at file %s [%s:%d]:\n",
 			exception_level_names[exp->level],
 			exception_names[exp->type],

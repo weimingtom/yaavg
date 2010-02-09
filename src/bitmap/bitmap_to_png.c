@@ -18,14 +18,16 @@
 #include <png.h>
 
 static png_voidp
-wrap_malloc PNGARG((png_structp p, png_size_t sz))
+wrap_malloc PNGARG((png_structp p DEBUG_ARG, png_size_t sz))
 {
+	TRACE(MEMORY, "png_structp %p malloc %d bytes\n", p, sz);
 	return xmalloc(sz);
 }
 
 static void
-wrap_free PNGARG((png_structp p, png_voidp ptr))
+wrap_free PNGARG((png_structp p DEBUG_ARG, png_voidp ptr))
 {
+	TRACE(MEMORY, "png_structp %p free %p\n", p, ptr);
 	xfree(ptr);
 }
 
@@ -51,14 +53,14 @@ wrap_flush(png_structp p)
 static void
 wrap_png_error PNGARG((png_structp p, png_const_charp str))
 {
-	WARNING(BITMAP, "libpng report error: %s\n", str);
+	WARNING(BITMAP, "libpng report error for %p: %s\n", p, str);
 	THROW(EXP_LIBPNG_ERROR, "libpng error %s", str);
 }
 
 static void
 wrap_png_warn PNGARG((png_structp p, png_const_charp str))
 {
-	WARNING(BITMAP, "libpng report warning: %s\n", str);
+	WARNING(BITMAP, "libpng report warning for %p: %s\n", p, str);
 }
 
 
@@ -74,26 +76,16 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 
 	TRACE(BITMAP, "white=%d, height=%d, bpp=%d, format=%d\n",
 			b->w, b->h, b->bpp, b->format);
-	int png_color_type;
-	switch (b->bpp) {
-		case 3:
-			png_color_type = PNG_COLOR_TYPE_RGB;
-			assert((b->format == BITMAP_RGB) || (b->format == BITMAP_BGR));
-			break;
-		case 4:
-			png_color_type = PNG_COLOR_TYPE_RGBA;
-			assert((b->format == BITMAP_RGBA) || (b->format == BITMAP_BGRA));
-			break;
-		default:
-			THROW(EXP_UNCATCHABLE, "bitmap format error: bpp=%d, type=%d",
-					b->bpp, b->format);
-	}
+	if ((b->bpp != 3) && (b->bpp != 4))
+		THROW(EXP_UNCATCHABLE, "bitmap format error: bpp=%d, type=%d",
+				b->bpp, b->format);
 
 	png_structp write_ptr = NULL;
 	png_infop write_info_ptr = NULL;
 	uint8_t ** rows = NULL;
 	struct exception_t exp;
 	TRY(exp) {
+
 		write_ptr = png_create_write_struct_2(
 				PNG_LIBPNG_VER_STRING,
 				NULL,
@@ -110,13 +102,29 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 			THROW(EXP_LIBPNG_ERROR, "libpng internal error");
 		}
 
+		/* move the setting of png_color_type after the setjmp to avoid the
+		 * "variable might be clobbered by 'longjmp' warning"
+		 * */
+		int png_color_type = PNG_COLOR_TYPE_RGBA;
+		switch (b->bpp) {
+			case 3:
+				png_color_type = PNG_COLOR_TYPE_RGB;
+				assert((b->format == BITMAP_RGB) || (b->format == BITMAP_BGR));
+				break;
+			default:
+				png_color_type = PNG_COLOR_TYPE_RGBA;
+				assert((b->format == BITMAP_RGBA) || (b->format == BITMAP_BGRA));
+				break;
+		}
+
+
 		write_info_ptr = png_create_info_struct(write_ptr);
 		if (write_info_ptr == NULL)
 			THROW(EXP_LIBPNG_ERROR, "unable to alloc png info struct");
 
 		png_set_write_fn(write_ptr, io, wrap_write, wrap_flush);
 
-		
+
 		/* start write */
 		png_set_IHDR(write_ptr, write_info_ptr, b->w, b->h, 8, png_color_type,
 				PNG_INTERLACE_NONE,

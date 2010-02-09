@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory.h>	/* strdup */
+#include <malloc.h>
 
 __BEGIN_DECLS
 
@@ -81,7 +82,7 @@ dbg_fatal(void);
 		(c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /* memory leak detection */
-#define __dbg_info_param	const char * file, const char * func, int line
+#define __dbg_info_param	const char * file ATTR_UNUSED, const char * func, int line
 extern void *
 __wrap_malloc(size_t size, __dbg_info_param);
 extern void *

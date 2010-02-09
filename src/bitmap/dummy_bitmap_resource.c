@@ -16,7 +16,7 @@ struct bitmap_resource_functionor_t
 dummy_bitmap_resource_functionor;
 
 static bool_t
-dummy_check_usable(const char * param)
+dummy_check_usable(const char * param DEBUG_ARG)
 {
 	DEBUG(BITMAP, "%s:%s\n", __func__, param);
 	return TRUE;
@@ -43,7 +43,7 @@ dummy_destroy(struct resource_t * r)
 }
 
 static struct bitmap_resource_t *
-dummy_load(struct io_t * io, const char * id)
+dummy_load(struct io_t * io ATTR(unused), const char * id)
 {
 	struct bitmap_resource_t * b = NULL;
 	WARNING(BITMAP, "load bitmap %s using dummy handler\n", id);

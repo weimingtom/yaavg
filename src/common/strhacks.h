@@ -8,7 +8,7 @@
 
 #include <ctype.h>
 
-static void inline
+inline static void
 str_toupper(char * str)
 {
 	char * p = str;
@@ -18,7 +18,7 @@ str_toupper(char * str)
 	}
 }
 
-static void inline
+inline static void
 str_tolower(char * str)
 {
 	char * p = str;

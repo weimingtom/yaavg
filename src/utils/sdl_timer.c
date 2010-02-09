@@ -9,7 +9,7 @@
 #ifdef HAVE_SDL
 
 static bool_t
-check_usable(const char * param)
+check_usable(const char * param ATTR_UNUSED)
 {
 	if (conf_get_bool("disableSDL", FALSE))
 		return FALSE;
@@ -33,7 +33,7 @@ get_ticks(void)
 #else
 
 static bool_t
-check_usable(const char * param)
+check_usable(const char * param ATTR_UNUSED)
 {
 	return FALSE;
 }
@@ -45,7 +45,7 @@ get_ticks(void)
 }
 
 static void
-delay(tick_t ms)
+delay(tick_t ms ATTR_UNUSED)
 {
 	return;
 }

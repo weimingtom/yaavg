@@ -105,8 +105,9 @@ get_bitmap(struct cache_t * c, int nr)
 }
 
 static void
-put_bitmap(struct cache_t * c, struct dummy_bitmap_t * b)
+put_bitmap(struct cache_t * c ATTR_UNUSED, struct dummy_bitmap_t * b ATTR_UNUSED)
 {
+
 }
 
 static void
