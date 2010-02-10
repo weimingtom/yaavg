@@ -127,7 +127,11 @@ render(void)
 		bool_t is_exit = FALSE;
 		while (!is_exit) {
 			delta_time = timer_enter_frame();
+
+			vid_test_screen("0*XP3:01星空.tlg|FILE:/home/wn/Windows/Fate/bgimage.xp3");
+
 			timer_finish_frame();
+			vid_swapbuffer();
 
 			struct phy_event_t ent;
 			while (vid_poll_events(&ent)) {
@@ -146,10 +150,12 @@ int main()
 	do_init();
 	define_exp(exp);
 	TRY(exp) {
+		launch_resource_process();
 		video_init();
 		render();
 	} FINALLY {
 		video_cleanup();
+		shutdown_resource_process();
 	} CATCH(exp) {
 		RETHROW(exp);
 	}

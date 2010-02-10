@@ -7,6 +7,7 @@
 #include <common/debug.h>
 #include <common/exception.h>
 #include <common/cache.h>
+#include <common/mm.h>
 #include <yconf/yconf.h>
 
 #include <video/video.h>
@@ -26,12 +27,31 @@ static SDL_Surface * main_screen = NULL;
 struct video_functionor_t sdl_video_functionor;
 
 
-struct sdl_bitmap {
+struct sdl_bitmap_t {
 	struct cache_entry_t ce;
-	SDL_Surface * surface;
+	/* crossponding bitmap */
+	/* one bitmap matches */
+	struct bitmap_t * b;
+	SDL_Surface * s;
 };
 
 static struct cache_t sdl_bitmap_cache;
+
+static void
+destroy_sdl_bitmap(struct sdl_bitmap_t * sb)
+{
+	assert(sb != NULL);
+	TRACE(VIDEO, "destroy sdl_bitmap %s\n",
+			sb->ce.id);
+	SDL_Surface * s = sb->s;
+	struct bitmap_t * b = sb->b;
+	assert(b->ref_count > 0);
+	SDL_FreeSurface(s);
+	b->ref_count --;
+	if (b->ref_count == 0)
+		free_bitmap(b);
+	xfree(sb);
+}
 
 static bool_t
 sdlv_check_usable(const char * param)
@@ -118,85 +138,75 @@ sdlv_poll_events(struct phy_event_t * e)
 static SDL_Surface *
 get_surface(const char * name)
 {
+
+	struct cache_entry_t * ce = cache_get_entry(
+			&sdl_bitmap_cache, name);
+	if (ce != NULL)
+		return ((struct sdl_bitmap_t * )(ce->data))->s;
+
 	struct bitmap_t * b = get_resource(name,
 			(deserializer_t)bitmap_deserialize, NULL);
 	assert(b != NULL);
+	assert(b->pixels != NULL);
 
 	/* create the surface from pixels */
 	uint32_t rmask, gmask, bmask, amask;
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-	switch (b->format) {
-		case BITMAP_RGB:
-			rmask = 0xff;
-			gmask = 0xff00;
-			bmask = 0xff0000;
-			amask = 0;
-			break;
-		case BITMAP_RGBA:
-			rmask = 0xff;
-			gmask = 0xff00;
-			bmask = 0xff0000;
-			amask = 0xff000000;
-			break;
-		case BITMAP_BGR:
-			rmask = 0xff0000;
-			gmask = 0xff00;
-			bmask = 0xff;
-			amask = 0;
-			break;
-		case BITMAP_BGRA:
-			rmask = 0xff0000;
-			gmask = 0xff00;
-			bmask = 0xff;
-			amask = 0xff000000;
-			break;
-	}
-#else
-	switch (b->format) {
-		case BITMAP_RGB:
-			rmask = 0xff0000;
-			gmask = 0xff00;
-			bmask = 0xff;
-			amask = 0;
-			break;
-		case BITMAP_RGBA:
-			rmask = 0xff;
-			gmask = 0xff00;
-			bmask = 0xff0000;
-			amask = 0xff000000;
-			break;
-		case BITMAP_BGR:
-			rmask = 0xff0000;
-			gmask = 0xff00;
-			bmask = 0xff;
-			amask = 0;
-			break;
-		case BITMAP_BGRA:
-			rmask = 0xff0000;
-			gmask = 0xff00;
-			bmask = 0xff;
-			amask = 0xff000000;
-			break;
-	}
-#endif
+	SET_COLOR_MASKS(b->format, rmask, gmask, bmask, amask);
+	SDL_Surface * s = SDL_CreateRGBSurfaceFrom(
+			b->pixels,
+			b->w,
+			b->h,
+			b->bpp * 8,
+			b->pitch,
+			rmask,
+			gmask,
+			bmask,
+			amask);
+	assert(s != NULL);
+	TRACE(VIDEO, "%s is a %dx%dx%d bitmap, pitch=%d\n",
+			name, b->w, b->h, b->bpp, b->pitch);
+	/* create the sdl_bitmap */
+	struct sdl_bitmap_t * sb = xmalloc(sizeof(*sb));
+	assert(sb != NULL);
+	sb->b = b;
+	sb->s = s;
 
-	free_bitmap(b);
+	b->ref_count ++;
+
+	/* build the cache entry */
+	ce = &sb->ce;
+	ce->id = b->id;
+	ce->data = sb;
+	ce->sz = sizeof(*sb) + sizeof(*s);
+	/* estimate */
+	if (b->ref_count == 1)
+		ce->sz += sizeof(*b) + b->id_sz +
+			b->pitch * b->h + 15;
+	ce->destroy_arg = sb;
+	ce->destroy = (cache_destroy_t)(destroy_sdl_bitmap);
+	ce->cache = NULL;
+	ce->pprivate = NULL;
+
+	/* insert */
+	cache_insert(&sdl_bitmap_cache, ce);
+	return s;
 }
 
-void
+static void
 sdlv_test_screen(const char * bitmap_name)
 {
 	assert(bitmap_name != NULL);
 	TRACE(VIDEO, "test show bitmap %s\n", bitmap_name);
-	SDL_Surface * bitmap = NULL;
-	struct cache_entry_t * ce = cache_get_entry(
-			&sdl_bitmap_cache, bitmap_name);
-	if (ce == NULL) {
-		
-	} else {
-		bitmap = ce->data;
-	}
+	SDL_Surface * bitmap = get_surface(bitmap_name);
+	assert(bitmap != NULL);
+	SDL_BlitSurface(bitmap, NULL, main_screen, NULL);
 	return;
+}
+
+static void
+sdlv_swapbuffer(void)
+{
+	SDL_UpdateRect(main_screen, 0, 0, 0, 0);
 }
 
 struct video_functionor_t sdl_video_functionor = {
@@ -205,6 +215,7 @@ struct video_functionor_t sdl_video_functionor = {
 	.check_usable = sdlv_check_usable,
 	.init = sdlv_init,
 	.cleanup = sdlv_cleanup,
+	.swapbuffer = sdlv_swapbuffer,
 	.poll_events = sdlv_poll_events,
 	.test_screen = sdlv_test_screen,
 };

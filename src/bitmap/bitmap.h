@@ -24,6 +24,40 @@ enum bitmap_format {
 	BITMAP_BGRA,
 };
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define SET_COLOR_MASKS(format, rmask, gmask, bmask, amask)	\
+	do {	\
+		switch (format) {	\
+			case BITMAP_RGB:	\
+				rmask = 0xff;	\
+				gmask = 0xff00;	\
+				bmask = 0xff0000;	\
+				amask = 0;	\
+				break;	\
+			case BITMAP_RGBA:	\
+				rmask = 0xff;	\
+				gmask = 0xff00;	\
+				bmask = 0xff0000;	\
+				amask = 0xff000000;	\
+				break;	\
+			case BITMAP_BGR:	\
+				rmask = 0xff0000;	\
+				gmask = 0xff00;	\
+				bmask = 0xff;	\
+				amask = 0;	\
+				break;	\
+			case BITMAP_BGRA:	\
+				rmask = 0xff0000;	\
+				gmask = 0xff00;	\
+				bmask = 0xff;	\
+				amask = 0xff000000;	\
+				break;	\
+		}	\
+	} while(0)
+#else
+# define BITMAP_FORMAT_TO_MASKS(format, rmask, gmask, bmask, amask) do { } while(0)
+# error I do not know the rgba masks in big endian machine, please tell me
+#endif
 /* data should be fixed when deserializing */
 /* when deserializing, id is actually the length of id */
 /* and pixels is actually the length of pixels.
@@ -47,6 +81,7 @@ struct bitmap_t {
 	int w, h;
 	/* pitch is the size of each line **IN BYTES** */
 	int pitch;
+	int ref_count;
 	uint8_t * pixels;
 	/* private */
 	void (*destroy_bitmap)(struct bitmap_t * b);

@@ -44,6 +44,9 @@ alloc_bitmap(struct bitmap_t * phead, int id_sz, int align)
 	*res = *phead;
 	res->id = (char *)(res->__data);
 	res->pitch = new_pitch;
+	/* ref_count is maintained by caller,
+	 * bitmap.c doesn't care about it */
+	res->ref_count = 0;
 	res->pixels = PIXELS_PTR(res->__data + id_sz);
 	res->destroy_bitmap = NULL;
 	return res;
@@ -112,6 +115,7 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 			io_read(io, r->pixels, data_sz, 1);
 		}
 	} else {
+		WARNING(BITMAP, "FIXME: I haven't tested this code\n");
 		for (int i = 0; i < r->h; i++) {
 			/* each time we increace new pitch, but load old pitch.
 			 * if new pitch is larger, some byte is never written.

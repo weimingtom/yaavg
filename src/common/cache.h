@@ -38,6 +38,8 @@ struct cache_entry_t {
 	int sz;
 	void * destroy_arg;
 	cache_destroy_t destroy;
+	/* cache must be set to NULL when
+	 * the first time this entry is created. */
 	struct cache_t * cache;
 	struct list_head lru_list;
 	void * pprivate;
@@ -47,7 +49,8 @@ struct cache_entry_t {
  * cache_entry_destroy doesn't update dict's profiling infos,
  * the caller needs to do it by itself
  */
-inline static void cache_entry_destroy(struct cache_entry_t * e)
+inline static void
+cache_entry_destroy(struct cache_entry_t * e)
 {
 	if (e == NULL)
 		return;
