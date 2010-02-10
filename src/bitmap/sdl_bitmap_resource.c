@@ -264,6 +264,7 @@ sdl_load(struct io_t * io, const char * id)
 		h->bpp = f->BytesPerPixel;
 		h->w = img->w;
 		h->h = img->h;
+		h->pitch = img->w * h->bpp;
 		h->pixels = (uint8_t*)(img->pixels);
 
 		r->id = h->id;

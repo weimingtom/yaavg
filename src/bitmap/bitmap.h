@@ -45,8 +45,8 @@ struct bitmap_t {
 	/* bpp is Bytes per pixer */
 	int bpp;
 	int w, h;
-	/* CURRENTLY NOT USED */
-	int row_align;		/* 4, 8 or 16 */
+	/* pitch is the size of each line **IN BYTES** */
+	int pitch;
 	uint8_t * pixels;
 	/* private */
 	void (*destroy_bitmap)(struct bitmap_t * b);
@@ -57,17 +57,18 @@ struct bitmap_t {
 static inline int
 bitmap_data_size(struct bitmap_t * s)
 {
-	return s->w * s->h * s->bpp;
+	return s->pitch * s->h;
 }
 
+struct bitmap_deserlize_param {
+	int align;	/* align each line with 1, 4, 8 or 16 */
+};
+
 struct bitmap_t *
-bitmap_deserialize(struct io_t *);
+bitmap_deserialize(struct io_t *, struct bitmap_deserlize_param *);
 
 void
 free_bitmap(struct bitmap_t * ptr);
-
-struct bitmap_t *
-alloc_bitmap(struct bitmap_t * head, int id_sz);
 
 __END_DECLS
 #endif

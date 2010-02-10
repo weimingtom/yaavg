@@ -223,6 +223,7 @@ png_load(struct io_t * io, const char * id)
 		h->format = format;
 		h->bpp = bpp;
 		h->w = width;
+		h->pitch = width * bpp;
 		h->h = height;
 		h->pixels = png_res->pixels;
 

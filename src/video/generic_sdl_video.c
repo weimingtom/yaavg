@@ -16,6 +16,7 @@
 #include <video/generic_sdl_video.h>
 #include <utils/generic_sdl.h>
 #include <yconf/yconf.h>
+#include <events/phy_events.h>
 
 static void
 init_sdl_opengl(int bpp)
@@ -95,7 +96,6 @@ generic_init_sdl_video(bool_t use_opengl,
 		else
 			SDL_WM_GrabInput(SDL_GRAB_OFF);
 		generic_init_sdl();
-
 	} FINALLY{ 	}
 	CATCH(exp) {
 		get_catched_var(video_inited);

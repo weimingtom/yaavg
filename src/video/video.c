@@ -51,8 +51,8 @@ check_set_viewport(void)
 	
 	sscanf(conf_get_string("video.resolution", "800x600"), "%dx%d",
 			&res_w, &res_h);
-	sscanf(conf_get_string("video.viewport", "(0,0,800,600)"), "(%d,%d,%d,%d)",
-			&vp_x, &vp_y, &vp_w, &vp_h);
+	sscanf(conf_get_string("video.viewport", "(0,0,800,600)"),
+			"(%d,%d,%d,%d)", &vp_x, &vp_y, &vp_w, &vp_h);
 
 	struct rect_t screen = {0, 0, res_w, res_h};
 	struct rect_t viewport = {0, 0, res_w, res_h};

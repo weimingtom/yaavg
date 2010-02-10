@@ -10,31 +10,31 @@
 #include <stdint.h>
 
 enum phy_event_type {
-	PHY_NO_EVENTS = 0,
-	RKEYBEGIN,
-	PHY_KEY_DOWN,
-	PHY_KEY_UP,
-	RKEYEND,
-	RMOUSEBEGIN,
-	PHY_MOUSE_MOVE,
-	PHY_MOUSE_UP,
-	PHY_MOUSE_DOWN,
-	RMOUSEEND,
-	RSYSBEGIN,
-	PHY_QUIT,
-	RSYSEND,
-	RVIDEOBEGIN,
-	PHY_VIDEO_ACTIVE,
-	PHY_VIDEO_EXPOSE,
-	PHY_VIDEO_RESIZE,
-	RVIDEOEND,
+	EVENT_NO_EVENT = 0,
+	EVENT_keybegin,
+	EVENT_PHY_KEY_DOWN,
+	EVENT_PHY_KEY_UP,
+	EVENT_keyend,
+	EVENT_mousebegin,
+	EVENT_PHY_MOUSE_MOVE,
+	EVENT_PHY_MOUSE_UP,
+	EVENT_PHY_MOUSE_DOWN,
+	EVENT_mouseend,
+	EVENT_sysbegin,
+	EVENT_PHY_QUIT,
+	EVENT_sysend,
+	EVENT_videobegin,
+	EVENT_PHY_VIDEO_ACTIVE,
+	EVENT_PHY_VIDEO_EXPOSE,
+	EVENT_PHY_VIDEO_RESIZE,
+	EVENT_videoend,
 };
 
-#define IS_XX_EVENT(x, e)	(((R##x##BEGIN) < (e)) && ((R##x##END) > (e)))
-#define IS_KEY_EVENT(e)	IS_XX_EVENT(KEY, e)
-#define IS_MOUSE_EVENT(e)	IS_XX_EVENT(MOUSE, e)
-#define IS_SYS_EVENT(e)	IS_XX_EVENT(SYS, e)
-#define IS_VIDEO_EVENT IS_XX_EVENT(VIDEO, e)
+#define IS_XX_EVENT(x, e)	(((EVENT_##x##begin) < (e)) && ((EVENT_##x##end) > (e)))
+#define IS_KEY_EVENT(e)	IS_XX_EVENT(key, e)
+#define IS_MOUSE_EVENT(e)	IS_XX_EVENT(mouse, e)
+#define IS_SYS_EVENT(e)	IS_XX_EVENT(sys, e)
+#define IS_VIDEO_EVENT IS_XX_EVENT(video, e)
 
 /* same as SDL mod */
 enum key_mod {
@@ -54,7 +54,6 @@ enum key_mod {
 };
 
 struct key_event {
-	enum phy_event_type type;
 	uint8_t scancode;
 	enum key_mod modifier;
 	uint16_t ascii_code;
@@ -66,7 +65,6 @@ struct key_event {
 #define IS_B4_PRESSED(s)	((s) & 0x08)
 
 struct mouse_event {
-	enum phy_event_type type;
 	uint8_t state;	/* mouse button states */
 	uint16_t x, y;
 	/* mouse acceleration */
@@ -75,33 +73,29 @@ struct mouse_event {
 
 
 struct active_event {
-	enum phy_event_type type;
 	bool_t active;
 	uint8_t state;
 };
 
 struct resize_event {
-	enum phy_event_type type;
 	int w;
 	int h;
 };
 
 union _phy_event {
-	enum phy_event_type type;
 	struct key_event key;
 	struct mouse_event mouse;
 	struct active_event active;
 	struct resize_event resize;
 };
 
-struct phy_event {
+struct phy_event_t {
+	enum phy_event_type type;
 	union _phy_event u;
 };
 
-inline static void print_event(struct phy_event * e ATTR_UNUSED)
-{
-	return;
-}
+void
+print_event(struct phy_event_t * e);
 
 #endif
 

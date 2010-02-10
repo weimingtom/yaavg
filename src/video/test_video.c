@@ -120,7 +120,6 @@ cleanup_func_t cleanup_funcs[] = {
 static void
 render(void)
 {
-
 	define_exp(exp);
 	TRY(exp) {
 		dtick_t delta_time = 0;
@@ -130,25 +129,15 @@ render(void)
 			delta_time = timer_enter_frame();
 			timer_finish_frame();
 
-			struct phy_event ent;
+			struct phy_event_t ent;
 			while (vid_poll_events(&ent)) {
-				
-			}
-#if 0
-			struct phy_event ent;
-			while (video_poll_events(&ent)) {
-				print_event(&ent);
-				if (ent.u.type == PHY_QUIT) {
-					VERBOSE(VIDEO, "system exit\n");
+				if (ent.type == EVENT_PHY_QUIT)
 					is_exit = TRUE;
-					break;
-				}
 			}
-#endif
 		}
 	} FINALLY { }
 	CATCH(exp) {
-		
+		RETHROW(exp);
 	}
 }
 

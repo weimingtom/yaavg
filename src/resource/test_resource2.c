@@ -61,13 +61,13 @@ int main()
 		launch_resource_process();
 
 		struct bitmap_t * b = get_resource("0*FILE:/tmp/xxx.png",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 		free_bitmap(b);
 
 
 		b = get_resource("0*FILE:./no_alpha.png",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 		free_bitmap(b);
 #if 0
@@ -80,29 +80,29 @@ int main()
 
 
 		b = get_resource("0*FILE:./largepng.png",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 		free_bitmap(b);
 
 		b = get_resource("0*FILE:./jpegtest.jpeg",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 		free_bitmap(b);
 
 		b = get_resource("0*FILE:./out/RNImage/allcl1.jpg",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 		free_bitmap(b);
 
 		b = get_resource("0*XP3:allcl1.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 		free_bitmap(b);
 
 		/* write the bitmap */
 
 		b = get_resource("0*FILE:./have_alpha.png",
-				(deserializer_t)bitmap_deserialize);
+				(deserializer_t)bitmap_deserialize, NULL);
 		print_bitmap(b);
 
 		struct io_t * writer = io_open_write_proto("FILE:/tmp/xxx.png");

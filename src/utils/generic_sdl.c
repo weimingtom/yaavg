@@ -5,6 +5,7 @@
 
 #include <config.h>
 #ifdef HAVE_SDL
+#include <signal.h>
 
 #include <utils/generic_sdl.h>
 #include <yconf/yconf.h>
@@ -26,6 +27,13 @@ generic_init_sdl(void)
 		interval = SDL_DEFAULT_REPEAT_INTERVAL;
 	SDL_EnableKeyRepeat(delay, interval);
 }
+
+void
+generic_sdl_unblock_sigint(void)
+{
+	signal(SIGINT, SIG_DFL);
+}
+
 
 #endif
 

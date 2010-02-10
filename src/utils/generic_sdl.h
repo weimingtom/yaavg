@@ -7,5 +7,9 @@
 #define __UTILS_GENERIC_SDL_H
 void
 generic_init_sdl(void);
+
+void
+generic_sdl_unblock_sigint(void);
+
 #endif
 

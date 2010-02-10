@@ -20,7 +20,7 @@ enum resource_sub_exception {
 	RESOURCEEXP_TIMEOUT,
 };
 
-typedef void * (*deserializer_t)(struct io_t * io);
+typedef void * (*deserializer_t)(struct io_t * io, void * param);
 
 /* the resource process should be launched after do_init */
 
@@ -34,7 +34,7 @@ extern struct io_functionor_t resource_io_functionor;
 
 void *
 get_resource(const char * name,
-		deserializer_t deserializer);
+		deserializer_t deserializer, void * param);
 
 void
 delete_resource(const char * name);

@@ -49,7 +49,7 @@ dummy_cleanup(void)
 }
 
 static int
-dummy_poll_events(struct phy_event * e)
+dummy_poll_events(struct phy_event_t * e)
 {
 	int err;
 	struct timeval tv;
@@ -68,7 +68,7 @@ dummy_poll_events(struct phy_event * e)
 		return 0;
 	
 	assert(err == 1);
-	e->u.type = PHY_QUIT;
+	e->type = EVENT_PHY_QUIT;
 	return 1;
 }
 

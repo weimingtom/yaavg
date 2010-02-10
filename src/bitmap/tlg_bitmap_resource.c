@@ -282,6 +282,7 @@ tlg_load(struct io_t * io, const char * id)
 		h->bpp = nr_colors;
 		h->w = width;
 		h->h = height;
+		h->pitch = width * nr_colors;
 		h->pixels = retval->pixels;
 
 		r->id = h->id;

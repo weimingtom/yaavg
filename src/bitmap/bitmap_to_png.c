@@ -70,6 +70,7 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 	assert(b != NULL);
 	assert(io != NULL);
 	assert(io->rdwr & IO_WRITE);
+	assert(b->pitch >= b->w * b->bpp);
 
 	DEBUG(BITMAP, "write bitmap %s to %s as png stream\n",
 			b->id, io->id);
@@ -141,7 +142,7 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 		png_write_info(write_ptr, write_info_ptr);
 
 		/* begin write data */
-		int row_size = b->bpp * b->w;
+		int row_size = b->pitch;
 		DEBUG(BITMAP, "begin to write png stream\n");
 
 		set_catched_var(rows, xmalloc(b->h * sizeof(uint8_t*)));

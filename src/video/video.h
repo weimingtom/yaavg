@@ -43,10 +43,10 @@ struct video_functionor_t {
 	struct bitmap_t * (*screenshot)(void);
 
 	/* fill the phy_event struct. if return 0, there's no events left */
-	int (*poll_events)(struct phy_event * e);
+	int (*poll_events)(struct phy_event_t * e);
 
 	/* only for test */
-	void (*test_screen)(struct bitmap_t * b);
+	void (*test_screen)(const char * bitmap_name);
 };
 
 #define CUR_VID	((struct video_functionor_t*)(video_function_class.current_functionor))
@@ -58,7 +58,7 @@ struct video_functionor_t {
 } while(0)
 
 #define VID_FUNC(f, def, ...) ({	\
-		typeof(f(__VA_ARGS___)) ___ret___;	\
+		typeof(CUR_VID->f(__VA_ARGS__)) ___ret___;	\
 		assert(CUR_VID != NULL);\
 		if (CUR_VID->f)	\
 			___ret___ = CUR_VID->f(__VA_ARGS__);	\

@@ -253,7 +253,7 @@ xxreadv(int fd, struct iovec * iovec,
 	return total_read;
 }
 
-static inline ssize_t
+static ssize_t
 xx_splicev(int fd, struct iovec * __iovec,
 		int __nr, bool_t use_vmsplice, bool_t write)
 {
@@ -336,9 +336,16 @@ xxvmsplice_write(int fd, struct iovec * iovec,
 }
 #endif
 
-
-static void
-sigpipe_handler(int signum)
+/* 
+ * the semantic of SIGPIPE:
+ * if write to a pipe when the other end has been closed:
+ * 		if SIGPIPE's handler is set to SIG_IGN, then the write will return -1;
+ * 		if SIGPIPE's handler is set to some handler, then the handler is executed, and write is return -1
+ * 		if SIGPIPE's handler is set to SIG_DFL, then the process killed.
+ *
+ */
+static void ATTR_UNUSED
+sigpipe_handler(int signum) 
 {
 	WARNING(RESOURCE, "signal %d received by process %d\n", signum,
 			getpid());
@@ -722,7 +729,9 @@ launch_resource_process(void)
 	assert(err == 0);
 
 	/* regist the SIGPIPE handler */
-	signal(SIGPIPE, sigpipe_handler);
+	/* signal(SIGPIPE, sigpipe_handler); */
+	/* we ignore sigpipe. if other end closed, write will return -1 */
+	signal(SIGPIPE, SIG_IGN);
 
 	/* fork */
 	resproc_pid = fork();
@@ -876,10 +885,12 @@ delete_resource(const char * name)
 
 void *
 get_resource(const char * name,
-		deserializer_t deserializer)
+		deserializer_t deserializer, void * param)
 {
 	struct iovec vecs[3];
 	static char d_cmd[2] = "r:";
+
+	assert(C_OUT > 0);
 
 	int len = 3 + strlen(name);
 
@@ -894,7 +905,7 @@ get_resource(const char * name,
 
 	xxwritev(C_OUT, vecs, 3);
 
-	return deserializer(&cmd_side_io);
+	return deserializer(&cmd_side_io, param);
 }
 
 struct package_items_t *

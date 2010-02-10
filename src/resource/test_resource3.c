@@ -36,7 +36,8 @@ write_resource(const char * resname, const char * filename)
 	TRY(exp) {
 		set_catched_var(writer, io_open_write("FILE", filename));
 		set_catched_var(b,
-				get_resource(resname, (deserializer_t)bitmap_deserialize));
+				get_resource(resname, (deserializer_t)bitmap_deserialize,
+					NULL));
 		bitmap_to_png(b, writer);
 	} FINALLY {
 		get_catched_var(b);

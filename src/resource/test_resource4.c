@@ -137,7 +137,7 @@ main(int argc, char * argv[])
 				VERBOSE(SYSTEM, "load bitmap %s\n", tmp_name);
 
 				set_catched_var(b, get_resource(tmp_name,
-						(deserializer_t)bitmap_deserialize));
+						(deserializer_t)bitmap_deserialize, NULL));
 				assert(b != NULL);
 
 				/* append the '.png' post-fix */
