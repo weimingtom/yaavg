@@ -59,7 +59,7 @@ static struct time_controller controller = {
 };
 
 void
-begin_frame_loop(void)
+timer_begin_frame_loop(void)
 {
 	SET_STATIC_FUNCTIONOR(frame_timer, timer_function_class, NULL);
 	assert(frame_timer != NULL);
@@ -84,7 +84,7 @@ begin_frame_loop(void)
 }
 
 dtick_t
-enter_frame(void)
+timer_enter_frame(void)
 {
 	tick_t current = frame_timer->get_ticks();
 	dtick_t delta = current - controller.last_frame_tick;
@@ -141,7 +141,7 @@ enter_frame(void)
 }
 
 void
-finish_frame(void)
+timer_finish_frame(void)
 {
 	/* count fps */
 	/* untimate fps, don't delay */
@@ -161,13 +161,13 @@ finish_frame(void)
 }
 
 tick_t
-get_current(void)
+timer_get_current(void)
 {
 	return controller.last_frame_tick;
 }
 
 void
-force_delay(tick_t ms)
+timer_force_delay(tick_t ms)
 {
 	if (frame_timer == NULL)
 		SET_STATIC_FUNCTIONOR(frame_timer, timer_function_class, NULL);

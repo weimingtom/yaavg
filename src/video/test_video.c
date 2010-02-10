@@ -115,12 +115,50 @@ cleanup_func_t cleanup_funcs[] = {
 	NULL,
 };
 
+
+
+static void
+render(void)
+{
+
+	define_exp(exp);
+	TRY(exp) {
+		dtick_t delta_time = 0;
+		timer_begin_frame_loop();
+		bool_t is_exit = FALSE;
+		while (!is_exit) {
+			delta_time = timer_enter_frame();
+			timer_finish_frame();
+
+			struct phy_event ent;
+			while (vid_poll_events(&ent)) {
+				
+			}
+#if 0
+			struct phy_event ent;
+			while (video_poll_events(&ent)) {
+				print_event(&ent);
+				if (ent.u.type == PHY_QUIT) {
+					VERBOSE(VIDEO, "system exit\n");
+					is_exit = TRUE;
+					break;
+				}
+			}
+#endif
+		}
+	} FINALLY { }
+	CATCH(exp) {
+		
+	}
+}
+
 int main()
 {
 	do_init();
 	define_exp(exp);
 	TRY(exp) {
 		video_init();
+		render();
 	} FINALLY {
 		video_cleanup();
 	} CATCH(exp) {

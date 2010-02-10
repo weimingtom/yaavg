@@ -29,19 +29,19 @@ struct timer_functionor_t {
 };
 
 extern void
-begin_frame_loop(void);
+timer_begin_frame_loop(void);
 
 extern dtick_t
-enter_frame(void);
+timer_enter_frame(void);
 
 extern void
-finish_frame(void);
+timer_finish_frame(void);
 
 tick_t
-get_current(void);
+timer_get_current(void);
 
 void
-force_delay(tick_t ms);
+timer_force_delay(tick_t ms);
 
 #endif
 // vim:ts=4:sw=4

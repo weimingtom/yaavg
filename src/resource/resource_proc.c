@@ -285,8 +285,8 @@ xx_splicev(int fd, struct iovec * __iovec,
 			THROW_FATAL(EXP_RESOURCE_PROCESS_FAILURE, "readv/writev/vmsplice failed: return %d:%s",
 					retval, strerror(errno));
 		} else if (retval == 0) {
-			WARNING(RESOURCE, "readv/writev/vmsplice return 0, very strange, sleep 0.01 sec\n");
-			force_delay(10);
+			WARNING(RESOURCE, "readv/writev/vmsplice returns 0, very strange, sleep 0.01 sec\n");
+			timer_force_delay(10);
 		}
 		total_spliced += retval;
 
@@ -813,39 +813,44 @@ shutdown_resource_process(void)
 		/* doesn't allow exception raise here */
 		print_exception(&exp);
 	}
-	VERBOSE(RESOURCE, "wait for process %d finish\n", resproc_pid);
 
 	xclose(C_OUT);
 	xclose(D_IN);
 
 
-	for (int i = 0; i < 2; i++) {
+	VERBOSE(RESOURCE, "wait for process %d finish\n", resproc_pid);
+	for (int i = 0; i < 3; i++) {
 		int ms = 0;
 		int status = 0;
 		pid_t retval = waitpid(resproc_pid, &status, WNOHANG);
 		while (retval != resproc_pid) {
 			if (ms >= 1000)
 				break;
-			force_delay(100);
+			timer_force_delay(100);
 			ms += 100;
 			retval = waitpid(resproc_pid, &status, WNOHANG);
 		}
 		if (retval != resproc_pid) {
 			/* kill it by sig 9 */
-			if (i == 0) {
-				WARNING(RESOURCE, "resource process %d is not end for 1 second, send SIGTERM\n", resproc_pid);
-				kill(resproc_pid, SIGTERM);
-			} else {
-				WARNING(RESOURCE, "resource process %d is not end for another 1 second, send SIGKILL\n", resproc_pid);
-				kill(resproc_pid, SIGKILL);
+			switch (i) {
+				case 0:
+					WARNING(RESOURCE,
+							"resource process %d is still alive for 1 second, send SIGTERM\n", resproc_pid);
+					kill(resproc_pid, SIGTERM);
+					break;
+				case 1:
+					WARNING(RESOURCE,
+							"resource process %d is still alive for another 1 second, send SIGKILL\n", resproc_pid);
+					kill(resproc_pid, SIGKILL);
+					break;
+				default:
+					ERROR(RESOURCE, "failed to kill process %d\n", resproc_pid);
 			}
 		} else {
-			resproc_pid = -1;
+			VERBOSE(RESOURCE, "resource process %d is ended\n", resproc_pid);
 			break;
 		}
 	}
-	if (resproc_pid != -1)
-		ERROR(RESOURCE, "unable to kill resource process %d\n", resproc_pid);
 	return;
 }
 

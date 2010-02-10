@@ -12,6 +12,8 @@
 #if defined HAVE_SDL
 #include <SDL/SDL.h>
 
+/* needn't use volatile shadow because we set it after everything
+ * is okay. */
 static SDL_Surface * main_screen = NULL;
 struct video_functionor_t sdl_video_functionor;
 
@@ -30,6 +32,7 @@ sdlv_init(void)
 {
 	DEBUG(VIDEO, "initing sdl video\n");
 	assert(CUR_VID == &sdl_video_functionor);
+	assert(main_screen == NULL);
 
 	generic_init_sdl_video(FALSE,
 			CUR_VID->bpp, CUR_VID->grabinput);

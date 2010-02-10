@@ -44,6 +44,9 @@ struct video_functionor_t {
 
 	/* fill the phy_event struct. if return 0, there's no events left */
 	int (*poll_events)(struct phy_event * e);
+
+	/* only for test */
+	void (*test_screen)(struct bitmap_t * b);
 };
 
 #define CUR_VID	((struct video_functionor_t*)(video_function_class.current_functionor))
@@ -72,6 +75,7 @@ struct video_functionor_t {
 #define vid_end_frame()		VID_VOIDFUNC(end_frame)
 #define vid_swapbuffer()		VID_VOIDFUNC(swapbuffer)
 #define vid_poll_events(e)		VID_FUNC(poll_events, 0, e)
+#define vid_test_screen(b)		VID_VOIDFUNC(test_screen, b)
 
 
 inline static void 

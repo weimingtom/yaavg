@@ -44,10 +44,10 @@ main()
 		VERBOSE(SYSTEM, "found timer engine: %s\n", timer->name);
 
 		dtick_t delta_time = 0;
-		begin_frame_loop();
+		timer_begin_frame_loop();
 		for (;;) {
-			delta_time = enter_frame();
-			finish_frame();
+			delta_time = timer_enter_frame();
+			timer_finish_frame();
 		}
 	} FINALLY {
 		get_catched_var(vid);
