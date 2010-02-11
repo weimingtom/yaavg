@@ -7,19 +7,29 @@
 #include <SDL/SDL.h>
 
 int
-generic_sdl_poll_events(struct phy_event_t * phe)
+generic_sdl_poll_events(struct phy_event_t * evt)
 {
-	assert(phe != NULL);
+	assert(evt != NULL);
 	SDL_Event e;
 	int ret = SDL_PollEvent(&e);
 
-	/* form the phe */
+	/* form the evt */
 	switch (e.type) {
 		case SDL_QUIT:
-			phe->type = EVENT_PHY_QUIT;
+			evt->type = EVENT_PHY_QUIT;
+			break;
+		case SDL_KEYDOWN:
+			evt->type = EVENT_PHY_KEY_DOWN;
+			evt->u.key.scancode = e.key.keysym.scancode;
+			evt->u.key.mod = e.key.keysym.mod;
+			break;
+		case SDL_KEYUP:
+			evt->type = EVENT_PHY_KEY_UP;
+			evt->u.key.scancode = e.key.keysym.scancode;
+			evt->u.key.mod = e.key.keysym.mod;
 			break;
 		default:
-			phe->type = EVENT_NO_EVENT;
+			evt->type = EVENT_NO_EVENT;
 	}
 	return ret;
 }

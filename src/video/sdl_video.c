@@ -129,12 +129,6 @@ sdlv_cleanup(void)
 	generic_destroy_sdl_video();
 }
 
-static int
-sdlv_poll_events(struct phy_event_t * e)
-{
-	return generic_sdl_poll_events(e);
-}
-
 static SDL_Surface *
 get_surface(const char * name)
 {
@@ -216,7 +210,7 @@ struct video_functionor_t sdl_video_functionor = {
 	.init = sdlv_init,
 	.cleanup = sdlv_cleanup,
 	.swapbuffer = sdlv_swapbuffer,
-	.poll_events = sdlv_poll_events,
+	.poll_events = generic_sdl_poll_events,
 	.test_screen = sdlv_test_screen,
 };
 

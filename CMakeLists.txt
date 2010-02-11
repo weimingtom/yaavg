@@ -135,8 +135,6 @@ IF ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 ENDIF ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 
 OPTION(ENABLE_SCREENSHOT "Enable screenshot" ON)
-OPTION(STATIC_OPENGL
-	"OpenGL linkage, if ON, statically load libGL.so. Affect GLX linkage" OFF)
 
 # check environment
 

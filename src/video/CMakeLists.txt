@@ -12,16 +12,29 @@ IF (HAVE_SDL)
 	SET(SDL_SRC
 		generic_sdl_video.h
 		generic_sdl_video.c
-		sdl_video.c
-		sdl_driver.c)
+		sdl_video.c)
 ENDIF (HAVE_SDL)
 
 IF (HAVE_OPENGL)
+
 IF (USE_OPENGL3)
-	SET(OPENGL3_SRC opengl3_video.c)
+	SET(OPENGL3_SRC gl3.h opengl3_video.c)
 ENDIF (USE_OPENGL3)
-	SET(OPENGL_SRC opengl_video.c glx_driver.c generic_opengl.c
-		generic_opengl.h)
+
+SET(OPENGL_SRC
+	opengl.h
+	opengl_video.c
+	gl_driver.h
+	generic_opengl.c
+	generic_opengl.h)
+
+IF (HAVE_SDL)
+	LIST(APPEND OPENGL_SRC sdl_gl_driver.c)
+ENDIF (HAVE_SDL)
+IF (HAVE_X11)
+	LIST(APPEND OPENGL_SRC glx_gl_driver.c)
+ENDIF (HAVE_X11)
+
 ENDIF (HAVE_OPENGL)
 
 ADD_LIBRARY(video STATIC ${SRC} ${OPENGL3_SRC} ${OPENGL_SRC} ${SDL_SRC})

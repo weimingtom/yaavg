@@ -46,6 +46,7 @@ ENTRY_STR("video.resolution", "800x600"),
 ENTRY_STR("video.viewport", "(0,0,800,600)"),
 ENTRY_BOL("video.fullscreen", FALSE),
 ENTRY_BOL("video.resizable", FALSE),
+/* grabinput will block M-F4 */
 ENTRY_BOL("video.grabinput", FALSE),
 ENTRY_INT("video.bpp", 32),
 ENTRY_INT("video.gl.glx.fullscreen.engine", 3),

@@ -6,13 +6,11 @@
 #ifndef __YAAVG_VIDEO_H
 #define __YAAVG_VIDEO_H
 
-#include <config.h>
 #include <common/defs.h>
 #include <common/functionor.h>
 #include <bitmap/bitmap.h>
 #include <events/phy_events.h>
 #include <utils/rect.h>
-#include <assert.h>
 extern struct function_class_t
 video_function_class;
 
@@ -39,7 +37,6 @@ struct video_functionor_t {
 
 	void (*render_frame)(void);
 	void (*swapbuffer)(void);
-	void (*toggle_full_screen)(void);
 	struct bitmap_t * (*screenshot)(void);
 
 	/* fill the phy_event struct. if return 0, there's no events left */

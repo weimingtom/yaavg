@@ -55,7 +55,8 @@ enum key_mod {
 
 struct key_event {
 	uint8_t scancode;
-	enum key_mod modifier;
+	/* mod is choosed same as SDL's SDLMod */
+	enum key_mod mod;
 	uint16_t ascii_code;
 };
 

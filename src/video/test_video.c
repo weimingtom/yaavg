@@ -45,10 +45,10 @@ render(void)
 			video_end_frame();
 			finish_frame();
 			video_swapbuffer();
-			struct phy_event ent;
-			while (video_poll_events(&ent)) {
-				print_event(&ent);
-				if (ent.u.type == PHY_QUIT) {
+			struct phy_event evt;
+			while (video_poll_events(&evt)) {
+				print_event(&evt);
+				if (evt.u.type == PHY_QUIT) {
 					VERBOSE(VIDEO, "system exit\n");
 					is_exit = TRUE;
 					break;
@@ -131,12 +131,20 @@ render(void)
 			vid_test_screen("0*XP3:01星空.tlg|FILE:/home/wn/Windows/Fate/bgimage.xp3");
 
 			timer_finish_frame();
+
 			vid_swapbuffer();
 
-			struct phy_event_t ent;
-			while (vid_poll_events(&ent)) {
-				if (ent.type == EVENT_PHY_QUIT)
+			struct phy_event_t evt;
+			while (vid_poll_events(&evt)) {
+				print_event(&evt);
+				if (evt.type == EVENT_PHY_QUIT)
 					is_exit = TRUE;
+				if (evt.type == EVENT_PHY_KEY_DOWN) {
+					if (evt.u.key.scancode == 0x18)
+						is_exit = TRUE;
+					if (evt.u.key.scancode == 0x09)
+						is_exit = TRUE;
+				}
 			}
 		}
 	} FINALLY { }
