@@ -13,6 +13,7 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_video.h>
+#include <video/video.h>
 #include <video/generic_sdl_video.h>
 #include <utils/generic_sdl.h>
 #include <yconf/yconf.h>
@@ -21,11 +22,17 @@
 static void
 init_sdl_opengl(int bpp)
 {
-	const char * libname = conf_get_string("video.opengl.gllibrary", NULL);
-	DEBUG(VIDEO, "opengl library name: %s\n", libname);
-	if (SDL_GL_LoadLibrary(libname) != 0) {
-		ERROR(VIDEO, "load opengl library %s failed: %s\n", libname, SDL_GetError());
-		THROW_FATAL(EXP_UNCATCHABLE, "load opengl library failed");
+	static_catch_var(bool_t, libgl_loaded, FALSE);
+
+	get_catched_var(libgl_loaded);
+	if (!libgl_loaded) {
+		const char * libname = conf_get_string("video.opengl.gllibrary", NULL);
+		DEBUG(VIDEO, "opengl library name: %s\n", libname);
+		if (SDL_GL_LoadLibrary(libname) != 0) {
+			ERROR(VIDEO, "load opengl library %s failed: %s\n", libname, SDL_GetError());
+			THROW_FATAL(EXP_UNCATCHABLE, "load opengl library failed");
+		}
+		set_catched_var(libgl_loaded, TRUE);
 	}
 
 	/* code is from darkplaces */
@@ -46,7 +53,7 @@ init_sdl_opengl(int bpp)
 		SDL_GL_SetAttribute (SDL_GL_DEPTH_SIZE, 16);
 	}
 
-	if (conf_get_bool("video.gl.stereo", FALSE))
+	if (conf_get_bool("video.opengl.stereo", FALSE))
 		SDL_GL_SetAttribute(SDL_GL_STEREO, 1);
 
 	int swapcontrol = conf_get_int("video.opengl.swapcontrol", 0);
@@ -65,12 +72,13 @@ init_sdl_opengl(int bpp)
 		if (err < 0)
 			WARNING(VIDEO, "set opengl multisample samples failes: %s\n", SDL_GetError());
 	}
+
 }
 
 static_catch_var(bool_t, video_inited, FALSE);
 
-void
-generic_init_sdl_video(bool_t use_opengl,
+static void
+init_sdl_video_base(bool_t use_opengl,
 		int bpp, bool_t grabinput)
 {
 	define_exp(exp);
@@ -108,6 +116,53 @@ generic_init_sdl_video(bool_t use_opengl,
 	return;
 }
 
+SDL_Surface *
+generic_init_sdl_video(bool_t use_opengl)
+{
+	assert(CUR_VID != NULL);
+	DEBUG(VIDEO, "initing sdl video\n");
+
+	init_sdl_video_base(use_opengl,
+			CUR_VID->bpp, CUR_VID->grabinput);
+
+	catch_var(SDL_Surface *, screen, NULL);
+	define_exp(exp);
+	TRY(exp) {
+		int flags = 0;
+		if (CUR_VID->fullscreen)
+			flags |= SDL_FULLSCREEN;
+		if (CUR_VID->resizable)
+			flags |= SDL_RESIZABLE;
+		set_catched_var(screen,
+				SDL_SetVideoMode(
+					CUR_VID->width,
+					CUR_VID->height,
+					CUR_VID->bpp,
+					flags));
+		if (screen == NULL) {
+			FATAL(VIDEO, "SDL_SetVideoMode failed: %s\n",
+					SDL_GetError());
+			THROW_FATAL(EXP_UNCATCHABLE, "SDL_SetVideoMode failed");
+		}
+
+		/* notice the '!' */
+		/* unblock sigint should be done after the init of screen */
+		if (!conf_get_bool("video.sdl.blocksigint", TRUE))
+			generic_sdl_unblock_sigint();
+
+	} FINALLY { }
+	CATCH(exp) {
+		get_catched_var(screen);
+		if (screen != NULL) {
+			SDL_FreeSurface(screen);
+			set_catched_var(screen, NULL);
+		}
+		generic_destroy_sdl_video();
+	}
+	return screen;
+}
+
+/* don't unload opengl driver */
 void
 generic_destroy_sdl_video(void)
 {

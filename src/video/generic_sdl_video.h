@@ -11,9 +11,8 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_video.h>
 
-void
-generic_init_sdl_video(bool_t use_opengl, int bpp,
-		bool_t grabinput);
+SDL_Surface *
+generic_init_sdl_video(bool_t use_opengl);
 
 void
 generic_destroy_sdl_video(void);

@@ -3,6 +3,8 @@ SET(SRC
 	timer.c
 	base_timer.c
 	sdl_timer.c
+	regexp.c
+	regexp.h
 	rect.h
 	)
 

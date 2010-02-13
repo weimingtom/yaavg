@@ -157,12 +157,16 @@ int main()
 {
 	do_init();
 	define_exp(exp);
+	catch_var(bool_t, video_inited, FALSE);
 	TRY(exp) {
 		launch_resource_process();
 		video_init();
+		set_catched_var(video_inited, TRUE);
 		render();
 	} FINALLY {
-		video_cleanup();
+		get_catched_var(video_inited);
+		if (video_inited)
+			video_cleanup();
 		shutdown_resource_process();
 	} CATCH(exp) {
 		RETHROW(exp);

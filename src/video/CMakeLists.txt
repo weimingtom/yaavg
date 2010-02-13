@@ -16,17 +16,18 @@ IF (HAVE_SDL)
 ENDIF (HAVE_SDL)
 
 IF (HAVE_OPENGL)
-
+ADD_SUBDIRECTORY(dynamic_opengl)
 IF (USE_OPENGL3)
 	SET(OPENGL3_SRC gl3.h opengl3_video.c)
 ENDIF (USE_OPENGL3)
 
 SET(OPENGL_SRC
-	opengl.h
 	opengl_video.c
 	gl_driver.h
+	gl_driver.c
 	generic_opengl.c
-	generic_opengl.h)
+	generic_opengl.h
+	)
 
 IF (HAVE_SDL)
 	LIST(APPEND OPENGL_SRC sdl_gl_driver.c)
@@ -38,7 +39,7 @@ ENDIF (HAVE_X11)
 ENDIF (HAVE_OPENGL)
 
 ADD_LIBRARY(video STATIC ${SRC} ${OPENGL3_SRC} ${OPENGL_SRC} ${SDL_SRC})
-TARGET_LINK_LIBRARIES(video common utils events yconf)
+TARGET_LINK_LIBRARIES(video dynamic_opengl common utils events yconf)
 
 IF (HAVE_SDL)
 	TARGET_LINK_LIBRARIES(video ${SDL_LIBRARY})
@@ -49,6 +50,7 @@ SET(tests
 	test_video_timer
 	test_video
 	)
+
 
 build_tests("${tests}" "yconf;utils;video;resource;common")
 

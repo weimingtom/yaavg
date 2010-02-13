@@ -8,8 +8,11 @@
 
 #include <config.h>
 #include <common/functionor.h>
+#include <events/phy_events.h>
 #include <GL/gl.h>
 #include <GL/glext.h>
+#include <video/dynamic_opengl/opengl_funcs.h>
+#include <assert.h>
 
 extern struct function_class_t
 gl_driver_function_class;
@@ -23,6 +26,7 @@ struct gl_driver_functionor_t {
 	/* a table and a very long string */
 	const GLubyte ** extensions;
 
+	/* if set to 3 first, init opengl3 */
 	int major_version;
 	int minor_version;
 	int full_version;
@@ -32,7 +36,7 @@ struct gl_driver_functionor_t {
 	bool_t texture_RECT;
 	bool_t texture_COMPRESSION;
 
-	void (*get_proc_address)(const char * name);
+	void (*init_opengl_funcs)(void);
 
 	/* same as video.h */
 	void (*set_caption)(const char *);
@@ -67,6 +71,9 @@ struct gl_driver_functionor_t {
 			___ret___ = def;									\
 		___ret___;												\
 })
+
+#define drv_init()	DRV_VOIDFUNC(init)
+#define drv_cleanup() DRV_VOIDFUNC(cleanup)
 
 #endif
 

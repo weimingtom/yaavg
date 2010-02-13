@@ -66,53 +66,13 @@ sdlv_check_usable(const char * param)
 static void
 sdlv_init(void)
 {
-	DEBUG(VIDEO, "initing sdl video\n");
 	assert(CUR_VID == &sdl_video_functionor);
-	assert(main_screen == NULL);
+	main_screen = generic_init_sdl_video(FALSE);
+	assert(main_screen != NULL);
 
-	generic_init_sdl_video(FALSE,
-			CUR_VID->bpp, CUR_VID->grabinput);
-
-	catch_var(SDL_Surface *, screen, NULL);
-	define_exp(exp);
-	TRY(exp) {
-		int flags = 0;
-		if (CUR_VID->fullscreen)
-			flags |= SDL_FULLSCREEN;
-		if (CUR_VID->resizable)
-			flags |= SDL_RESIZABLE;
-		set_catched_var(screen,
-				SDL_SetVideoMode(
-					CUR_VID->width,
-					CUR_VID->height,
-					CUR_VID->bpp,
-					flags));
-		if (screen == NULL) {
-			FATAL(VIDEO, "SDL_SetVideoMode failed: %s\n",
-					SDL_GetError());
-			THROW_FATAL(EXP_UNCATCHABLE, "SDL_SetVideoMode failed");
-		}
-
-		/* notice the '!' */
-		/* unblock sigint should be done after the init of screen */
-		if (!conf_get_bool("video.sdl.blocksigint", TRUE))
-			generic_sdl_unblock_sigint();
-
-		/* init the bitmap cache */
-		cache_init(&sdl_bitmap_cache, "sdl bitmap cache",
-				conf_get_int("video.sdl.bitmapcachesz", 0xa00000));
-
-	} FINALLY { }
-	CATCH(exp) {
-		get_catched_var(screen);
-		if (screen != NULL) {
-			SDL_FreeSurface(screen);
-			set_catched_var(screen, NULL);
-		}
-		generic_destroy_sdl_video();
-	}
-
-	main_screen = screen;
+	/* init the bitmap cache */
+	cache_init(&sdl_bitmap_cache, "sdl bitmap cache",
+			conf_get_int("video.sdl.bitmapcachesz", 0xa00000));
 }
 
 static void

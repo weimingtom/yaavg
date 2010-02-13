@@ -12,7 +12,7 @@
 #define SEQ_PART(x) ((x) & 0xffff)
 static const char * function_class_names[NR_FCS] = {
 	[SEQ_PART(FC_VIDEO)] = "video",
-	[SEQ_PART(FC_OPENGL_ENGINE)] = "OpenGL engine",
+	[SEQ_PART(FC_OPENGL_DRIVER)] = "OpenGL engine",
 	[SEQ_PART(FC_BITMAP_RESOURCE_HANDLER)] = "bitmap resource handler",
 	[SEQ_PART(FC_TIMER)] = "timer handler",
 	[SEQ_PART(FC_IO)] = "IO handler",
@@ -39,10 +39,10 @@ find_functionor(struct function_class_t * fclass, const char * param)
 			}
 		pos ++;
 	}
-	THROW(EXP_FUNCTIONOR_NOT_FOUND,
+	THROW_FATAL(EXP_FUNCTIONOR_NOT_FOUND,
 			"unable to find suitable functionor for class \"%s\" "
 			" with param \"%s\"",
-			function_class_names[fclass->fclass], param);
+			function_class_names[SEQ_PART(fclass->fclass)], param);
 	return NULL;
 }
 

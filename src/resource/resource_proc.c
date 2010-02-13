@@ -737,7 +737,19 @@ launch_resource_process(void)
 	resproc_pid = fork();
 	assert(resproc_pid >= 0);
 	if (resproc_pid != 0) {
+		/* put the child into itselvs process group.
+		 * the child also do the same work. this is to prevent
+		 * race condition.
+		 *
+		 * we put child into a single because a C-c
+		 * from console won't cause the main process to quit, but
+		 * it will be send to resource proc if it reside in
+		 * the same process group with main process.
+		 * */
 		/* father */
+		setpgid(resproc_pid, resproc_pid);
+		errno = 0;
+
 		VERBOSE(RESOURCE, "resource process created: pid=%d\n",
 				resproc_pid);
 		/* close the unneed pipe */
@@ -758,6 +770,9 @@ launch_resource_process(void)
 	}
 
 	/* child */
+	setpgid(getpid(), getpid());
+	errno = 0;
+
 	/* reinit debug */
 	dbg_init("/tmp/yaavg_resource_log");
 	//dbg_init(NULL);
