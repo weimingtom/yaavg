@@ -144,6 +144,8 @@ render(void)
 						is_exit = TRUE;
 					if (evt.u.key.scancode == 0x09)
 						is_exit = TRUE;
+					if (evt.u.key.scancode == 0x1c)
+						vid_toggle_fullscreen();
 				}
 			}
 		}

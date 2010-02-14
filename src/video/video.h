@@ -41,6 +41,7 @@ struct video_functionor_t {
 
 	/* fill the phy_event struct. if return 0, there's no events left */
 	int (*poll_events)(struct phy_event_t * e);
+	void (*toggle_fullscreen)(void);
 
 	/* only for test */
 	void (*test_screen)(const char * bitmap_name);
@@ -73,6 +74,7 @@ struct video_functionor_t {
 #define vid_swapbuffer()		VID_VOIDFUNC(swapbuffer)
 #define vid_poll_events(e)		VID_FUNC(poll_events, 0, e)
 #define vid_test_screen(b)		VID_VOIDFUNC(test_screen, b)
+#define vid_toggle_fullscreen() VID_VOIDFUNC(toggle_fullscreen)
 
 
 inline static void 

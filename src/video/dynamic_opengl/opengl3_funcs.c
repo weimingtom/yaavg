@@ -9,9 +9,11 @@
 struct opengl3_functions _gl3_funcs;
 
 struct func_entry __gl3_func_map[] = {
-#define DEF(x) {.name = "gl" #x, .ptr = (void**)&(gl3(x))},
+#define DEF(x) {.name = "gl" #x, .ptr = (void**)&(gl3_name(x))},
+#define DEF2(f, n) {.name = "gl" #n, .ptr = (void**)&(gl3_name(f))},
 #include  "opengl3_funcs_list.h"
 #undef DEF
+#undef DEF2
 	{.name = NULL, .ptr = NULL},
 };
 

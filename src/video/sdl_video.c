@@ -171,6 +171,7 @@ struct video_functionor_t sdl_video_functionor = {
 	.cleanup = sdlv_cleanup,
 	.swapbuffer = sdlv_swapbuffer,
 	.poll_events = generic_sdl_poll_events,
+	.toggle_fullscreen = generic_sdl_toggle_fullscreen,
 	.test_screen = sdlv_test_screen,
 };
 

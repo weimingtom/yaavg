@@ -7,6 +7,7 @@
 
 #include <GL/glx.h>
 #include <GL/glxext.h>
+#include <assert.h>
 
 extern struct glx_functions {
 #define DEF(x)	typeof(glX##x) * _glX##x;
@@ -14,7 +15,8 @@ extern struct glx_functions {
 #undef DEF
 } _glx_funcs;
 
-#define glX(x)	_glx_funcs._glX##x
+#define glX_name(x)	_glx_funcs._glX##x
+#define glX(x, ...) ({assert(glX_name(x) != NULL); glX_name(x)(__VA_ARGS__);})
 extern struct func_entry __glx_func_map[];
 
 #endif

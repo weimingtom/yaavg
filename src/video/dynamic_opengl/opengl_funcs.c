@@ -9,9 +9,11 @@
 struct opengl_functions _gl_funcs;
 
 struct func_entry __gl_func_map[] = {
-#define DEF(x) {.name = "gl" #x, .ptr = (void**)&(gl(x))},
+#define DEF(x) {.name = "gl" #x, .ptr = (void**)&(gl_name(x))},
+#define DEF2(f, n) {.name = "gl" #n, .ptr = (void**)&(gl_name(f))},
 #include  "opengl_funcs_list.h"
 #undef DEF
+#undef DEF2
 	{.name = NULL, .ptr = NULL},
 };
 

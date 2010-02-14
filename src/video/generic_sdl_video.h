@@ -17,6 +17,9 @@ generic_init_sdl_video(bool_t use_opengl);
 void
 generic_destroy_sdl_video(void);
 
+void
+generic_sdl_toggle_fullscreen(void);
+
 #endif
 #endif
 

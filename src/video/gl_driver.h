@@ -19,24 +19,10 @@ gl_driver_function_class;
 
 struct gl_driver_functionor_t {
 	BASE_FUNCTIONOR
-	const GLubyte * vendor;
-	const GLubyte * renderer;
-	const GLubyte * version;
-	const GLubyte * glsl_version;
-	/* a table and a very long string */
-	const GLubyte ** extensions;
-
-	/* if set to 3 first, init opengl3 */
+	/* it is actually an input ver. if set to 3,
+	 * the driver will create opengl 3 context. */
 	int major_version;
-	int minor_version;
-	int full_version;
-
-	int max_texture_size;
-	bool_t texture_NPOT;
-	bool_t texture_RECT;
-	bool_t texture_COMPRESSION;
-
-	void (*init_opengl_funcs)(void);
+	void * (*get_proc_address)(const char * name);
 
 	/* same as video.h */
 	void (*set_caption)(const char *);
@@ -49,6 +35,7 @@ struct gl_driver_functionor_t {
 
 	void (*render_frame)(void);
 	void (*swapbuffer)(void);
+	void (*toggle_fullscreen)(void);
 
 	/* fill the phy_event struct. if return 0, there's no events left */
 	int (*poll_events)(struct phy_event_t * e);

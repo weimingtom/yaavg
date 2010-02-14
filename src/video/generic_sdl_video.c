@@ -19,6 +19,8 @@
 #include <yconf/yconf.h>
 #include <events/phy_events.h>
 
+static SDL_Surface * main_screen = NULL;
+
 static void
 init_sdl_opengl(int bpp)
 {
@@ -133,6 +135,8 @@ generic_init_sdl_video(bool_t use_opengl)
 			flags |= SDL_FULLSCREEN;
 		if (CUR_VID->resizable)
 			flags |= SDL_RESIZABLE;
+		if (use_opengl)
+			flags |= SDL_OPENGL;
 		set_catched_var(screen,
 				SDL_SetVideoMode(
 					CUR_VID->width,
@@ -150,6 +154,11 @@ generic_init_sdl_video(bool_t use_opengl)
 		if (!conf_get_bool("video.sdl.blocksigint", TRUE))
 			generic_sdl_unblock_sigint();
 
+		if (screen->flags & SDL_FULLSCREEN)
+			CUR_VID->fullscreen = TRUE;
+		else
+			CUR_VID->fullscreen = FALSE;
+
 	} FINALLY { }
 	CATCH(exp) {
 		get_catched_var(screen);
@@ -159,7 +168,22 @@ generic_init_sdl_video(bool_t use_opengl)
 		}
 		generic_destroy_sdl_video();
 	}
+	main_screen = screen;
 	return screen;
+}
+
+void
+generic_sdl_toggle_fullscreen(void)
+{
+	if (SDL_WM_ToggleFullScreen(main_screen)) {
+		VERBOSE(VIDEO, "toggle fullscreen success\n");
+		if (main_screen->flags & SDL_FULLSCREEN)
+			CUR_VID->fullscreen = TRUE;
+		else
+			CUR_VID->fullscreen = FALSE;
+	} else {
+		VERBOSE(VIDEO, "toggle fullscreen failed\n");
+	}
 }
 
 /* don't unload opengl driver */

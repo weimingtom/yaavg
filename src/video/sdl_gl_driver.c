@@ -36,6 +36,8 @@ static void
 sdlgl_init(void)
 {
 	assert(CUR_VID == &opengl_video_functionor);
+	assert(CUR_DRV->major_version != 3);
+
 	main_screen = generic_init_sdl_video(TRUE);
 	assert(main_screen != NULL);
 	return;
@@ -60,8 +62,10 @@ struct gl_driver_functionor_t sdl_gl_driver_functionor = {
 	.fclass = FC_OPENGL_DRIVER,
 	.check_usable = sdlgl_check_usable,
 	.init = sdlgl_init,
-	.poll_events = generic_sdl_poll_events,
 	.cleanup = sdlgl_cleanup,
+	.get_proc_address = SDL_GL_GetProcAddress,
+	.poll_events = generic_sdl_poll_events,
+	.toggle_fullscreen = generic_sdl_toggle_fullscreen,
 };
 
 #else
