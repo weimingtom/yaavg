@@ -33,9 +33,6 @@ bool_t GL_texture_NPOT = FALSE;
 bool_t GL_texture_RECT = FALSE;
 bool_t GL_texture_COMPRESSION = FALSE;
 
-
-
-
 static const char *
 glerrno_to_desc(GLenum errno)
 {
