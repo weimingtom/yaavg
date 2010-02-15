@@ -104,6 +104,12 @@ struct exception_t {
 		___catched_##name = ___tmp_##name;	\
 	} while(0);
 
+#define catch_var_nodef(type, name)				\
+	type volatile ___catched_##name; 		\
+	int ___should_set_catched_##name; \
+	int ___should_get_catched_##name; \
+	type name;
+
 #define static_catch_var(type, name, def)		\
 	static type volatile ___catched_##name = def; 	\
 	static int ___should_set_catched_##name;	\

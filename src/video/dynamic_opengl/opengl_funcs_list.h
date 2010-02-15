@@ -4,6 +4,8 @@ DEF(GetString)
 DEF(GetError)
 DEF(Enable)
 DEF(GetIntegerv)
+DEF(Hint)
+DEF(PixelStorei)
 
 DEF(CompressedTexImage3D)
 DEF(CompressedTexImage2D)

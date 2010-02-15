@@ -44,6 +44,8 @@ extern bool_t GL_texture_NPOT;
 extern bool_t GL_texture_RECT;
 extern bool_t GL_texture_COMPRESSION;
 
+#define UNPACK_ALIGNMENT	(1)
+
 #endif
 
 // vim:ts=4:sw=4

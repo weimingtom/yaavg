@@ -101,13 +101,48 @@ extern int
 __wrap_fclose(FILE * stream, __dbg_info_param);
 
 #ifndef __DEBUG_C
+# ifdef malloc
+#  undef malloc
+# endif
 # define malloc(s)	__wrap_malloc((s), __FILE__, __FUNCTION__, __LINE__)
+
+# ifdef memalign
+#  undef memalign
+# endif
 # define memalign(b, s)	__wrap_memalign((b), (s), __FILE__, __FUNCTION__, __LINE__)
+
+
+# ifdef calloc
+#  undef calloc
+# endif
 # define calloc(c, s)	__wrap_calloc((c), (s), __FILE__, __FUNCTION__, __LINE__)
+
+
+# ifdef free
+#  undef free
+# endif
 # define free(ptr)		__wrap_free((ptr), __FILE__, __FUNCTION__, __LINE__)
+
+# ifdef strdup
+#  undef strdup
+# endif
 # define strdup(s)	__wrap_strdup((s), __FILE__, __FUNCTION__, __LINE__)
+
+
+# ifdef realloc
+#  undef realloc
+# endif
 # define realloc(p, n)	__wrap_realloc((p), (n), __FILE__, __FUNCTION__, __LINE__)
+
+
+# ifdef fopen
+#  undef fopen
+# endif
 # define fopen(fn, t)	__wrap_fopen((fn), (t), __FILE__, __FUNCTION__, __LINE__)
+
+# ifdef fclose
+#  undef fclose
+# endif
 # define fclose(fp)	__wrap_fclose((fp), __FILE__, __FUNCTION__, __LINE__)
 #endif
 

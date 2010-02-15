@@ -48,7 +48,7 @@ __debug_component_names[NR_DEBUG_COMPONENTS] = {
 
 static const enum __debug_level
 __debug_component_levels[NR_DEBUG_COMPONENTS] = {
-	[SYSTEM]	= DBG_LV_VERBOSE,
+	[SYSTEM]	= DBG_LV_TRACE,
 	[MEMORY]	= DBG_LV_VERBOSE,
 	[FILE_STREAM]	= DBG_LV_VERBOSE,
 	[DICT]		= DBG_LV_VERBOSE,

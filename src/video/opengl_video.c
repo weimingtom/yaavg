@@ -90,6 +90,34 @@ check_extension(const char * conf_key, ...)
 }
 
 static void
+reset_hints(void)
+{
+	/* set all hints to nicest */
+//	if (GL_full_version < MKVER(3, 0)) {
+		/* these hints are deprecated in opengl 3, and will cause
+		 * error in forward compatible context. However, in
+		 * opengl_video, we are not using such context. */
+		gl(Hint, GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
+		gl(Hint, GL_POINT_SMOOTH_HINT, GL_NICEST);
+		gl(Hint, GL_FOG_HINT, GL_NICEST);
+
+		if (GL_full_version >= MKVER(1, 4))
+			gl(Hint, GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+//	}
+
+	if (GL_full_version >= MKVER(1, 3))
+		gl(Hint, GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);
+
+
+
+	gl(Hint, GL_LINE_SMOOTH_HINT, GL_NICEST);
+	gl(Hint, GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+
+	if (GL_full_version >= MKVER(2, 0))
+		gl(Hint, GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+}
+
+static void
 check_features(void)
 {
 	gl(GetIntegerv, GL_MAX_TEXTURE_SIZE, &GL_max_texture_size);
@@ -220,6 +248,11 @@ gl_init(void)
 	assert(GL_extensions_dict != NULL);
 	GL_POP_ERROR();
 	check_features();
+	GL_POP_ERROR();
+
+	gl(PixelStorei, GL_UNPACK_ALIGNMENT, UNPACK_ALIGNMENT);
+
+	reset_hints();
 	GL_POP_ERROR();
 
 	return;
