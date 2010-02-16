@@ -41,9 +41,10 @@ ENDIF (HAVE_LIBPNG)
 
 SET(tests
 	test_bitmap
+	test_split_bitmap
 	)
 
 
-build_tests("${tests}" "yconf;utils;bitmap;common")
+build_tests("${tests}" "yconf;utils;bitmap;common;resource")
 
 

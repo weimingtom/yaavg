@@ -15,7 +15,7 @@
 #include <video/generic_sdl_video.h>
 #include <events/phy_events.h>
 #include <events/sdl_events.h>
-#include <resource/resource_proc.h>
+#include <resource/resource_types.h>
 #include <bitmap/bitmap.h>
 
 #if defined HAVE_SDL
@@ -98,8 +98,7 @@ get_surface(const char * name)
 	if (ce != NULL)
 		return ((struct sdl_bitmap_t * )(ce->data))->s;
 
-	struct bitmap_t * b = get_resource(name,
-			(deserializer_t)bitmap_deserialize, NULL);
+	struct bitmap_t * b = load_bitmap(name, NULL);
 	assert(b != NULL);
 	assert(b->pixels != NULL);
 

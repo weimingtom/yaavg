@@ -171,7 +171,7 @@ generic_bitmap_serialize(struct resource_t * r, struct io_t * io)
 	vecs[0].iov_base = &head;
 	vecs[0].iov_len = sizeof(head);
 
-	vecs[1].iov_base = b->head.id;
+	vecs[1].iov_base = (void*)(b->head.id);
 	vecs[1].iov_len = b->head.id_sz;
 
 	vecs[2].iov_base = b->head.pixels;

@@ -3,6 +3,8 @@ SET(SRC
 	resource_proc.c
 	resource.h
 	resource.c
+	resource_types.h
+	resource_types.c
 	)
 
 ADD_LIBRARY(resource STATIC ${SRC})

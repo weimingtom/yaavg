@@ -73,18 +73,21 @@ struct bitmap_t {
 	/* 
 	 * some bitmap, such as AIR's PDT, is reverted. see bitmap_to_png.c
 	 * */
-	char * id;
+	const char * id;
+	/* this is important for deserializing */
 	int id_sz;
 	enum bitmap_format format;
 	/* bpp is Bytes per pixer */
 	int bpp;
-	int w, h;
+	int x, y, w, h;
 	/* pitch is the size of each line **IN BYTES** */
 	int pitch;
+	int align;
+	int total_sz;
 	int ref_count;
 	uint8_t * pixels;
 	/* private */
-	void (*destroy_bitmap)(struct bitmap_t * b);
+	void (*destroy)(struct bitmap_t * b);
 	uint8_t __data[0];
 };
 
@@ -104,6 +107,55 @@ bitmap_deserialize(struct io_t *, struct bitmap_deserlize_param *);
 
 void
 free_bitmap(struct bitmap_t * ptr);
+
+
+struct bitmap_array_t {
+	/* not null original_bitmap indicates that it
+	 * satisfies the size limitation and won't be freed
+	 * when this array is alloced. in this situation,
+	 * tiles is also pointed to original_bitmap, id field
+	 * is original_bitmap->id, no additional string is alloced.
+	 * nr_w, nr_h and nr_tiles are all 1; total_sz
+	 * is original_bitmap->total_sz plus the size of
+	 * the array structure. */
+	/* null original_bitmap indicates that the original bitmap
+	 * doesn't satisify the size limitation and been splitted.
+	 * the original bitmap can be safely freed. in this situation,
+	 * the head field is copied from original_bitmap, tiles are
+	 * array of struct bitmap_t, all data stored in __data field */
+	struct bitmap_t * original_bitmap;
+	/* tiles is an array of bitmap head */
+	struct bitmap_t head;
+	struct bitmap_t * tiles;
+
+	const char * id;
+
+	int align;
+	int sz_lim_w;
+	int sz_lim_h;
+	int nr_w;
+	int nr_h;
+	int nr_tiles;
+	int total_sz;
+	void (*destroy)(struct bitmap_array_t * b);
+
+	uint8_t __data[0];
+};
+
+/* 
+ * split a big bitmap into small pieces.
+ * sz_w and sz_h are the size limitation of small tiles.
+ *
+ * return value: return an array of bitmaps.
+ *
+ * if b satisifies the size limitation, return NULL.
+ */
+struct bitmap_array_t *
+split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align);
+
+void
+free_bitmap_array(struct bitmap_array_t * ptr);
+
 
 __END_DECLS
 #endif

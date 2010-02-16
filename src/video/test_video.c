@@ -128,7 +128,7 @@ render(void)
 		while (!is_exit) {
 			delta_time = timer_enter_frame();
 
-			vid_test_screen("0*XP3:01星空.tlg|FILE:/home/wn/Windows/Fate/bgimage.xp3");
+			vid_test_screen("0*XP3:ss_保有背景真アサシン.tlg|FILE:/home/wn/Windows/Fate/image.xp3");
 
 			timer_finish_frame();
 

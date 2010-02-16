@@ -74,9 +74,11 @@ dummy_load(struct io_t * io ATTR(unused), const char * id)
 	}
 
 	h->bpp = DUMMY_BPP;
+	h->x = h->y = 0;
 	h->w = DUMMY_W;
 	h->h = DUMMY_H;
 	h->pitch = DUMMY_W * DUMMY_BPP;
+	h->align = 1;
 	h->pixels = __dummy_pixels;
 
 	r->id = h->id;

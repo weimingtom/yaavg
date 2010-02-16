@@ -280,9 +280,11 @@ tlg_load(struct io_t * io, const char * id)
 		h->id_sz = id_sz;
 		h->format = (nr_colors == 3) ? BITMAP_RGB : BITMAP_RGBA;
 		h->bpp = nr_colors;
+		h->x = h->y = 0;
 		h->w = width;
 		h->h = height;
 		h->pitch = width * nr_colors;
+		h->align = 1;
 		h->pixels = retval->pixels;
 
 		r->id = h->id;
