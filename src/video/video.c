@@ -55,7 +55,7 @@ check_set_viewport(void)
 			"(%d,%d,%d,%d)", &vp_x, &vp_y, &vp_w, &vp_h);
 
 	struct rect_t screen = {0, 0, res_w, res_h};
-	struct rect_t viewport = {0, 0, res_w, res_h};
+	struct rect_t viewport = {vp_x, vp_y, vp_w, vp_h};
 
 	if ((res_w <= 0) || (res_h <= 0))
 		THROW(EXP_CORRUPTED_CONF, "resolution: " RECT_FMT, RECT_ARG(screen));
@@ -67,7 +67,7 @@ check_set_viewport(void)
 	if (!(rects_same(inter, viewport)))
 		THROW(EXP_CORRUPTED_CONF, "resolution: " RECT_FMT ", viewport: " RECT_FMT,
 				RECT_ARG(screen), RECT_ARG(viewport));
-	CUR_VID->viewport = viewport;
+	CUR_VID->viewport = inter;
 	CUR_VID->width = res_w;
 	CUR_VID->height = res_h;
 }
@@ -89,6 +89,7 @@ generic_vid_init(void)
 	DEBUG(VIDEO, "\tfullscreen: %d\n", CUR_VID->fullscreen);
 	DEBUG(VIDEO, "\tgrabinput: %d\n", CUR_VID->grabinput);
 	DEBUG(VIDEO, "\tbpp: %d\n", CUR_VID->bpp);
+
 	/* nothing to do */
 }
 

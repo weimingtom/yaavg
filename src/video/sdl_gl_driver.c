@@ -57,6 +57,12 @@ sdlgl_cleanup(void)
 	generic_destroy_sdl_video();
 }
 
+static void
+sdlgl_swapbuffer(void)
+{
+	SDL_GL_SwapBuffers();
+}
+
 struct gl_driver_functionor_t sdl_gl_driver_functionor = {
 	.name = "SDLOpenGLDriver",
 	.fclass = FC_OPENGL_DRIVER,
@@ -66,6 +72,7 @@ struct gl_driver_functionor_t sdl_gl_driver_functionor = {
 	.get_proc_address = SDL_GL_GetProcAddress,
 	.poll_events = generic_sdl_poll_events,
 	.toggle_fullscreen = generic_sdl_toggle_fullscreen,
+	.swapbuffer = sdlgl_swapbuffer,
 };
 
 #else

@@ -118,6 +118,24 @@ reset_hints(void)
 }
 
 static void
+reshape(void)
+{
+	struct rect_t vp = CUR_VID->viewport;
+	DEBUG(OPENGL, "viewport: (%d, %d, %d, %d)\n",
+			vp.x, vp.y, vp.w, vp.h);
+	gl(Viewport, vp.x, vp.y, vp.w, vp.h);
+	if (GL_major_version < 3) {
+		/* revert y axis */
+		gl(MatrixMode, GL_PROJECTION);
+		gl(LoadIdentity);
+		gl(Ortho, -1, 1, -1, 1, -1, 1);
+
+		gl(MatrixMode, GL_MODELVIEW);
+		gl(LoadIdentity);
+	}
+}
+
+static void
 check_features(void)
 {
 	gl(GetIntegerv, GL_MAX_TEXTURE_SIZE, &GL_max_texture_size);
@@ -181,6 +199,7 @@ gl_init(void)
 	set_func(swapbuffer);
 	set_func(poll_events);
 	set_func(toggle_fullscreen);
+	set_func(swapbuffer);
 #undef set_func
 
 	/* init opengl information */
@@ -250,11 +269,18 @@ gl_init(void)
 	check_features();
 	GL_POP_ERROR();
 
-	gl(PixelStorei, GL_UNPACK_ALIGNMENT, UNPACK_ALIGNMENT);
-
 	reset_hints();
 	GL_POP_ERROR();
 
+	gl(PixelStorei, GL_UNPACK_ALIGNMENT, UNPACK_ALIGNMENT);
+	gl(Enable, GL_BLEND);
+
+	gl(ClearColor, 0.0, 0.0, 0.0, 0.0);
+	gl(Clear, GL_COLOR_BUFFER_BIT);
+	GL_POP_ERROR();
+
+	reshape();
+	GL_POP_ERROR();
 	return;
 }
 
@@ -274,15 +300,32 @@ gl_cleanup(void)
 	return;
 }
 
+static void
+gl_test_screen(const char * b)
+{
+	gl(Clear, GL_COLOR_BUFFER_BIT);
+
+	gl(Color4f, 1.0, 1.0, 1.0, 1.0);
+	gl(Begin, GL_LINES);
+	gl(Vertex2d, -1, 0);
+	gl(Vertex2d, 1, 0);
+	gl(Vertex2d, 0, -1);
+	gl(Vertex2d, 0, 1);
+	gl(End);
+	GL_POP_ERROR();
+}
+
 struct video_functionor_t opengl_video_functionor = {
 	.name = "OpenGLVideo",
 	.fclass = FC_VIDEO,
 	.check_usable = gl_check_usable,
 	.init = gl_init,
+	.cleanup = gl_cleanup,
+	.test_screen = gl_test_screen,
 	/* redirect to driver's poll_events */
 	.poll_events = NULL,
 	.toggle_fullscreen = NULL,
-	.cleanup = gl_cleanup,
+	.swapbuffer = NULL,
 };
 
 #else
