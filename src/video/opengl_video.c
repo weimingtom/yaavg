@@ -93,7 +93,7 @@ static void
 reset_hints(void)
 {
 	/* set all hints to nicest */
-//	if (GL_full_version < MKVER(3, 0)) {
+	if (GL_full_version < MKVER(3, 0)) {
 		/* these hints are deprecated in opengl 3, and will cause
 		 * error in forward compatible context. However, in
 		 * opengl_video, we are not using such context. */
@@ -103,7 +103,7 @@ reset_hints(void)
 
 		if (GL_full_version >= MKVER(1, 4))
 			gl(Hint, GL_GENERATE_MIPMAP_HINT, GL_NICEST);
-//	}
+	}
 
 	if (GL_full_version >= MKVER(1, 3))
 		gl(Hint, GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);

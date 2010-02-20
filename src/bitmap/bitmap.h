@@ -9,10 +9,12 @@
 #include <common/cache.h>
 #include <common/defs.h>
 #include <common/functionor.h>
+#include <utils/rect.h>
 #include <io/io.h>
 
 __BEGIN_DECLS
 
+/* PIXELS_ALIGN should be power of 2, and no less than 8 */
 #define PIXELS_ALIGN	(16)
 #define PIXELS_PTR(ptr)	((uint8_t*)(ALIGN_UP_PTR((ptr), PIXELS_ALIGN)))
 
@@ -108,6 +110,8 @@ bitmap_deserialize(struct io_t *, struct bitmap_deserlize_param *);
 void
 free_bitmap(struct bitmap_t * ptr);
 
+struct bitmap_t *
+clip_bitmap(struct bitmap_t * ori, struct rect_t rect, int align);
 
 struct bitmap_array_t {
 	/* not null original_bitmap indicates that it

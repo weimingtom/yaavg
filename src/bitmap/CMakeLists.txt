@@ -42,6 +42,7 @@ ENDIF (HAVE_LIBPNG)
 SET(tests
 	test_bitmap
 	test_split_bitmap
+	test_clip_bitmap
 	)
 
 

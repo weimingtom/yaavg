@@ -22,6 +22,8 @@ alloc_bitmap(struct bitmap_t * phead, int id_sz, int align)
 {
 	int new_pitch;
 	assert(align <= PIXELS_ALIGN);
+	if (align == 0)
+		align = phead->align;
 	if ((align != 0) && (align != 1)) {
 		assert(is_power_of_2(align));
 		new_pitch = ALIGN_UP(phead->w * phead->bpp, align);
@@ -36,7 +38,9 @@ alloc_bitmap(struct bitmap_t * phead, int id_sz, int align)
 		id_sz +
 		new_pitch * phead->h +
 		PIXELS_ALIGN - 1;
-	/* for the deserializer */
+	/* for the deserializer:
+	 * alloc a little more data can simplify the 
+	 * data fill procedure */
 	if (phead->pitch > new_pitch)
 		total_sz += phead->pitch - new_pitch;
 
@@ -333,6 +337,33 @@ free_bitmap_array(struct bitmap_array_t * ba)
 		ba->destroy(ba);
 	else
 		xfree(ba);
+}
+
+struct bitmap_t *
+clip_bitmap(struct bitmap_t * ori, struct rect_t rect, int align)
+{
+	assert(ori != NULL);
+	assert((rect.x >= 0) && (rect.y >= 0));
+	assert((rect.x + rect.w < ori->w) && (rect.y + rect.h < ori->h));
+
+	/* create the bitmap */
+#define clipped_id_fmt "%s-clipped-" RECT_FMT, ori->id, RECT_ARG(rect)
+	int id_sz = snprintf(NULL, 0, clipped_id_fmt) + 1;
+	struct bitmap_t head = *ori;
+	head.x = rect.x;
+	head.y = rect.y;
+	head.w = rect.w;
+	head.h = rect.h;
+	struct bitmap_t * r = alloc_bitmap(&head, id_sz, align);
+	assert(r != NULL);
+	snprintf((char*)r->id, id_sz + 1, clipped_id_fmt);
+#undef clipped_id_fmt
+	/* an xfree is enough */
+	r->destroy = NULL;
+
+	/* copy data! */
+	copy_bitmaps_pixels(r, ori, rect.x, rect.y);
+	return r;
 }
 
 // vim:ts=4:sw=4

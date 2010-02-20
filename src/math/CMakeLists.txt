@@ -17,6 +17,8 @@ SET(SRC
 	sqrt.h
 	matrix.h
 	matrix.c
+	rect_mesh.h
+	rect_mesh.c
 	)
 
 
