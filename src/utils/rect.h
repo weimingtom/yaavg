@@ -44,6 +44,8 @@ struct rect_d_t { double x, y, w, h; };
 	___r;							\
 })
 
+#define rect_xbound(r)	((r).x + (r).w)
+#define rect_ybound(r)	((r).y + (r).h)
 
 #endif
 

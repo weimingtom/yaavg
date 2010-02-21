@@ -86,6 +86,8 @@ struct bitmap_t {
 	int pitch;
 	int align;
 	int total_sz;
+	/* ref_count is maintained by caller,
+	 * bitmap.c doesn't care about it */
 	int ref_count;
 	uint8_t * pixels;
 	/* private */
@@ -118,13 +120,18 @@ struct bitmap_array_t {
 	 * satisfies the size limitation and won't be freed
 	 * when this array is alloced. in this situation,
 	 * tiles is also pointed to original_bitmap, id field
-	 * is original_bitmap->id, no additional string is alloced.
+	 * is original_bitmap->id, **NOTE** additional string is alloced.
 	 * nr_w, nr_h and nr_tiles are all 1; total_sz
 	 * is original_bitmap->total_sz plus the size of
-	 * the array structure. */
+	 * the array structure.
+	 * **NOTE** when destroying bitmap array, the original bitmap will also
+	 * be freed.
+	 * **NOTE** no matter whetner the original bitmap satisfies the size limitation,
+	 * the ref_count field of bitmap is not affected.
+	 * */
 	/* null original_bitmap indicates that the original bitmap
 	 * doesn't satisify the size limitation and been splitted.
-	 * the original bitmap can be safely freed. in this situation,
+	 * the original bitmap can be safely freed then. in this situation,
 	 * the head field is copied from original_bitmap, tiles are
 	 * array of struct bitmap_t, all data stored in __data field */
 	struct bitmap_t * original_bitmap;

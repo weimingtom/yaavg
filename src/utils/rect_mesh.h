@@ -7,8 +7,8 @@
 #define __RECT_MESH_H
 
 #include <common/defs.h>
+#include <common/mm.h>
 #include <utils/rect.h>
-
 
 /* 
  * rect_mesh is a big rectangle splitted into small tiles.
@@ -63,30 +63,56 @@ struct mesh_rect {
 	struct vec3 pv;
 };
 
-struct rect_mesh_t;
 struct rect_mesh_tile_t {
+	/* the number is used to represent the texture number
+	 * in opengl. */
 	int number;
-	struct rect_mesh_t * mesh;
-	struct rect_mesh_tile_t * ref;
 	struct mesh_rect rect;
 };
 
+#define mesh_tile_xy(m, x, y)	((m)->tiles[(y) * (m)->nr_w + (x)])
+#define mesh_frect(m)		((m)->big_rect.frect)
+#define mesh_irect(m)		((m)->big_rect.irect)
+#define tile_irect(t)		((t)->rect.irect)
+#define tile_frect(t)		((t)->rect.frect)
+#define get_tile_pos(m, t, x, y)	do {	\
+	(x) = ((t) - (&((m)->tiles[0]))) % (m->nr_w);	\
+	(y) = ((t) - (&((m)->tiles[0]))) / (m->nr_w);	\
+} while(0)
+
+/* mr is short for mesh_rect */
+#define ix_to_fx(mr, __x)	\
+	((((float)((__x) - (mr)->irect.x)) / ((float)((mr)->irect.w))) * ((mr)->frect.w) + (mr)->frect.x)
+#define iy_to_fy(mr, __y)	\
+	((((float)((__y) - (mr)->irect.y)) / ((float)((mr)->irect.h))) * ((mr)->frect.h) + (mr)->frect.y)
+
+#define fx_to_ix(mr, __x)	\
+	(__x - (mr)->frect.x) / (mr)->frect.w * (mr)->irect.w + (mr)->irect.x
+#define fy_to_iy(mr, __y)	\
+	(__y - (mr)->frect.y) / (mr)->frect.h * (mr)->irect.h + (mr)->irect.y
+
 struct rect_mesh_t {
-	struct mesh_rect rect;
+	/* this is the big rect */
+	struct mesh_rect big_rect;
 	int nr_w, nr_h;
+	void (*destroy)(struct rect_mesh_t *);
 	struct rect_mesh_tile_t tiles[0];
 };
 
+#define destroy_rect_mesh(m)	(((m)->destroy)((m)))
+
 /* map a coordinator (x, y) of a big mesh into the 
  * coodinator in a tile (nr) */
-void
+extern struct rect_mesh_tile_t *
 map_coord_to_mesh(struct rect_mesh_t * mesh,
-		int x, int y, int * ox, int * oy, int * nr);
+		int x, int y, int * ox, int * oy);
 
-void
+extern struct rect_mesh_tile_t *
 map_coord_to_mesh_f(struct rect_mesh_t * mesh,
-		float x, float y, float * ox, float * oy, int * nr);
+		float x, float y, float * ox, float * oy);
 
+extern struct rect_mesh_t *
+alloc_rect_mesh(int nr_w, int nr_h);
 
 #endif
 

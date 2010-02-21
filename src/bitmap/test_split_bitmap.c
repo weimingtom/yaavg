@@ -46,7 +46,7 @@ int main()
 		char name[128];
 		for (int j = 0; j < array->nr_h; j++) {
 			for (int i = 0; i < array->nr_w; i++) {
-				snprintf(name, 128, "/tmp/%dx%d.png", i, j);
+				snprintf(name, 128, "/tmp/%dx%d.png", j, i);
 				define_exp(exp);
 				catch_var(struct io_t *, writer, NULL);
 				TRY(exp) {

@@ -160,6 +160,8 @@ bitmap_in_array_destroy(struct bitmap_t * b)
 static void
 bitmap_array_destroy(struct bitmap_array_t * ba)
 {
+	if (ba->original_bitmap)
+		free_bitmap(ba->original_bitmap);
 	xfree(ba);
 }
 
@@ -209,7 +211,7 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 		assert(r != NULL);
 		r->original_bitmap = b;
 		r->head = *b;
-		r->tiles = b;
+		r->tiles = NULL;
 		r->id = (char*)r->__data;
 		strcpy((void*)r->id, b->id);
 		r->align = align;
@@ -218,7 +220,7 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 		r->nr_tiles = 1;
 		r->nr_h = 1;
 		r->nr_w = 1;
-		r->total_sz = sizeof(*r) + b->total_sz;
+		r->total_sz = total_sz + b->total_sz;
 		r->destroy = bitmap_array_destroy;
 		DEBUG(BITMAP, "%s satisifies the requirements\n",
 				b->id);
@@ -249,7 +251,6 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 	if (right_edge_w == 0)
 		right_edge_w = sz_lim_w;
 	int right_edge_sz =	right_edge_w * sz_lim_h * b->bpp + align - 1;
-
 
 	int bottom_edge_h = b->h % sz_lim_h;
 	if (bottom_edge_h == 0)
@@ -344,7 +345,7 @@ clip_bitmap(struct bitmap_t * ori, struct rect_t rect, int align)
 {
 	assert(ori != NULL);
 	assert((rect.x >= 0) && (rect.y >= 0));
-	assert((rect.x + rect.w < ori->w) && (rect.y + rect.h < ori->h));
+	assert((rect_xbound(rect) < ori->w) && (rect_ybound(rect) < ori->h));
 
 	/* create the bitmap */
 #define clipped_id_fmt "%s-clipped-" RECT_FMT, ori->id, RECT_ARG(rect)

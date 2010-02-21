@@ -6,6 +6,8 @@ SET(SRC
 	regexp.c
 	regexp.h
 	rect.h
+	rect_mesh.c
+	rect_mesh.h
 	)
 
 IF (HAVE_SDL)
@@ -23,6 +25,7 @@ ENDIF(HAVE_SDL)
 TARGET_LINK_LIBRARIES(utils common ${CMAKE_REQUIRED_LIBRARIES})
 
 SET(tests
-	test_timer)
+	test_timer
+	test_rect_mesh)
 build_tests("${tests}" "yconf;utils;common")
 
