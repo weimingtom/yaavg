@@ -167,3 +167,5 @@ __wrap_fclose(FILE * stream, __dbg_info_param);
 __END_DECLS
 #endif
 
+// vim:ts=4:sw=4
+
