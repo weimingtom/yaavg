@@ -13,8 +13,8 @@ cleanup_func_t cleanup_funcs[] = {
 	NULL,
 };
 
-#define SCREEN_W	(800)
-#define SCREEN_H	(600)
+#define SCREEN_W	(1024)
+#define SCREEN_H	(768)
 #define TEXTURE_LIM	(256)
 #define NR_W		((SCREEN_W + TEXTURE_LIM - 1) / TEXTURE_LIM)
 #define NR_H		((SCREEN_H + TEXTURE_LIM - 1) / TEXTURE_LIM)
@@ -46,7 +46,7 @@ build_mesh(void)
 	for (int j = 0; j < NR_H; j++) {
 		for (int i = 0; i < NR_W; i++) {
 			struct rect_mesh_tile_t * tile =
-				&mesh_tile_xy(mesh, i, j);
+				mesh_tile_xy(mesh, i, j);
 			tile->number = n;
 
 			struct rect_t irect = {
@@ -75,9 +75,10 @@ build_mesh(void)
 }
 
 static void
-do_test(void)
+do_test1(void)
 {
 	struct rect_mesh_t * mesh = build_mesh();
+	print_rect_mesh(mesh);
 
 	int i_ox, i_oy;
 	struct rect_mesh_tile_t * tile1 =
@@ -104,14 +105,40 @@ do_test(void)
 			TEXTURE_LIM, TEXTURE_LIM,
 			tile3->number, i_ox, i_oy);
 
+	struct rect_mesh_tile_t * tile4 =
+		map_coord_to_mesh_f(mesh, 0.5, 0.5,
+				&f_ox, &f_oy);
+	VERBOSE(SYSTEM, "(0.5, 0.5) --> %d (%f, %f)\n",
+			tile4->number, f_ox, f_oy);
+
 	destroy_rect_mesh(mesh);
+}
+
+static void
+do_test2(void)
+{
+	struct rect_mesh_t * mesh = build_mesh();
+	assert(mesh != NULL);
+
+	struct rect_f_t clip = {
+		.x = 0.25,
+		.y = 0.25,
+		.w = 0.5,
+		.h = 0.5,
+	};
+	struct rect_mesh_t * c_mesh = clip_rect_mesh_f(mesh, clip);
+	print_rect_mesh(c_mesh);
+	destroy_rect_mesh(c_mesh);
+	destroy_rect_mesh(mesh);
+	
 }
 
 int main()
 {
 	do_init();
 
-	do_test();
+	do_test1();
+	do_test2();
 
 	do_cleanup();
 	return 0;

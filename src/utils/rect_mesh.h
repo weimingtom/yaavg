@@ -60,7 +60,7 @@ struct mesh_rect {
 	struct rect_f_t frect;
 	/* pv is used for texture rendering, this file doesn't
 	 * operate this field */
-	struct vec3 pv;
+	struct vec3 pv[4];
 };
 
 struct rect_mesh_tile_t {
@@ -70,7 +70,7 @@ struct rect_mesh_tile_t {
 	struct mesh_rect rect;
 };
 
-#define mesh_tile_xy(m, x, y)	((m)->tiles[(y) * (m)->nr_w + (x)])
+#define mesh_tile_xy(m, x, y)	(&((m)->tiles[(y) * (m)->nr_w + (x)]))
 #define mesh_frect(m)		((m)->big_rect.frect)
 #define mesh_irect(m)		((m)->big_rect.irect)
 #define tile_irect(t)		((t)->rect.irect)
@@ -81,15 +81,22 @@ struct rect_mesh_tile_t {
 } while(0)
 
 /* mr is short for mesh_rect */
+/* c is coord, w or h */
+#define ilen_to_flen(mr, len, c)	\
+	(((float)(len) / (float)(mr)->irect.c) * (mr)->frect.c)
+#define flen_to_ilen(mr, len, c)	\
+	((len / (mr)->frect.c) * (mr)->irect.c)
+
 #define ix_to_fx(mr, __x)	\
-	((((float)((__x) - (mr)->irect.x)) / ((float)((mr)->irect.w))) * ((mr)->frect.w) + (mr)->frect.x)
+	(ilen_to_flen((mr), (__x) - (mr)->irect.x, w) + (mr)->frect.x)
 #define iy_to_fy(mr, __y)	\
-	((((float)((__y) - (mr)->irect.y)) / ((float)((mr)->irect.h))) * ((mr)->frect.h) + (mr)->frect.y)
+	(ilen_to_flen((mr), (__y) - (mr)->irect.y, h) + (mr)->frect.y)
 
 #define fx_to_ix(mr, __x)	\
-	(__x - (mr)->frect.x) / (mr)->frect.w * (mr)->irect.w + (mr)->irect.x
+	(flen_to_ilen(mr, (__x) - (mr)->frect.x, w) + (mr)->irect.x)
 #define fy_to_iy(mr, __y)	\
-	(__y - (mr)->frect.y) / (mr)->frect.h * (mr)->irect.h + (mr)->irect.y
+	(flen_to_ilen(mr, (__y) - (mr)->frect.y, h) + (mr)->irect.y)
+
 
 struct rect_mesh_t {
 	/* this is the big rect */
@@ -113,6 +120,18 @@ map_coord_to_mesh_f(struct rect_mesh_t * mesh,
 
 extern struct rect_mesh_t *
 alloc_rect_mesh(int nr_w, int nr_h);
+
+extern void
+print_rect_mesh(struct rect_mesh_t * m);
+
+extern void
+print_rect_mesh_tile(struct rect_mesh_tile_t * t);
+
+extern struct rect_mesh_t *
+clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip);
+
+extern struct rect_mesh_t *
+clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip);
 
 #endif
 

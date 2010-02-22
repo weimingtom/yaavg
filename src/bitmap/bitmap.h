@@ -167,7 +167,6 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align);
 void
 free_bitmap_array(struct bitmap_array_t * ptr);
 
-
 __END_DECLS
 #endif
 

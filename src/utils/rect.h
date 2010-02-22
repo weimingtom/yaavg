@@ -47,6 +47,10 @@ struct rect_d_t { double x, y, w, h; };
 #define rect_xbound(r)	((r).x + (r).w)
 #define rect_ybound(r)	((r).y + (r).h)
 
+#define rect_in(big, small)	\
+	(((small).x >= (big).x) && ((small).x + (small).w <= (big).x + (big).w) \
+	 && ((small).y >= (big).y) && ((small).y + (small).h <= (big).y + (big).h))
+
 #endif
 
 // vim:ts=4:sw=4

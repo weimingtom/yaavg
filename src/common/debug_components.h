@@ -23,6 +23,7 @@ enum __debug_component {
 	BITMAP,
 	IO,
 	RESOURCE,
+	OTHER,
 	NR_DEBUG_COMPONENTS,
 };
 
@@ -44,6 +45,7 @@ __debug_component_names[NR_DEBUG_COMPONENTS] = {
 	[BITMAP]	= "BTM",
 	[IO]		= "I/O",
 	[RESOURCE]	= "RES",
+	[OTHER]		= "OTH",
 };
 
 static const enum __debug_level
@@ -61,6 +63,7 @@ __debug_component_levels[NR_DEBUG_COMPONENTS] = {
 	[BITMAP]	= DBG_LV_DEBUG,
 	[IO]		= DBG_LV_VERBOSE,
 	[RESOURCE]	= DBG_LV_VERBOSE,
+	[OTHER]		= DBG_LV_VERBOSE,
 };
 #endif
 #endif
