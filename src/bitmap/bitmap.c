@@ -158,15 +158,6 @@ bitmap_in_array_destroy(struct bitmap_t * b)
 }
 
 static void
-rect_mesh_in_bitmap_array_destroy(struct rect_mesh_t * r)
-{
-	WARNING(BITMAP, "rect_mesh %p is part of a bitmap array and shouldn't not be destroied\n",
-			r);
-	return;
-}
-
-
-static void
 bitmap_array_destroy(struct bitmap_array_t * ba)
 {
 	if (ba->original_bitmap)
@@ -216,7 +207,6 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 	if ((b->w <= sz_lim_w) && (b->h <= sz_lim_h) && (b->align == align)) {
 		/* the simplest situation */
 		int total_sz = sizeof(struct bitmap_array_t) +
-			get_rect_mesh_total_sz(1, 1) +
 			strlen(b->id) + 1;
 		struct bitmap_array_t * r = xmalloc(total_sz);
 		assert(r != NULL);
@@ -225,15 +215,8 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 		r->tiles = NULL;
 
 		/* init the mesh */
-		r->mesh = (struct rect_mesh_t *)(r->__data);
-		trival_init_mesh_rect(&(r->mesh->big_rect), b->w, b->h);
-		r->mesh->nr_w = r->mesh->nr_h = 1;
-		r->mesh->destroy = rect_mesh_in_bitmap_array_destroy;
-		trival_init_mesh_rect(&(r->mesh->tiles[0].rect), b->w, b->h);
-		r->mesh->tiles[0].number = 0;
 
-
-		r->id = (char*)(r->__data + get_rect_mesh_total_sz(1, 1));
+		r->id = (char*)(r->__data);
 		strcpy((void*)r->id, b->id);
 
 		r->align = align;
@@ -294,7 +277,6 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 
 	int total_sz = sizeof(struct bitmap_array_t) +
 		id_sz +
-		get_rect_mesh_total_sz(nr_w, nr_h) +
 		nr_total * sizeof(struct bitmap_t) +
 		tiles_total_sz;
 
@@ -307,14 +289,8 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 	
 	r->original_bitmap = NULL;
 
-	r->mesh = (struct rect_mesh_t *)(r->__data);
-	/* init the big rect */
-	trival_init_mesh_rect(&(r->mesh->big_rect), b->w, b->h);
-	r->mesh->nr_w = nr_w;
-	r->mesh->nr_h = nr_h;
-	r->mesh->destroy = rect_mesh_in_bitmap_array_destroy;
 
-	r->id = ((void*)(r->mesh) + get_rect_mesh_total_sz(nr_w, nr_h));
+	r->id = (void*)(r->__data);
 	r->align = align;
 	r->sz_lim_w = sz_lim_w;
 	r->sz_lim_h = sz_lim_h;
@@ -333,7 +309,6 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 
 
 	struct bitmap_t * curr = r->tiles;
-	struct rect_mesh_tile_t * curr_tile = r->mesh->tiles;
 #define build_curr(_w, _h, x_start, y_start) do {	\
 		*curr = r->head;			\
 		curr->x = x_start;			\
@@ -345,10 +320,7 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 		copy_bitmaps_pixels(curr, b, (x_start), (y_start));	\
 		curr->total_sz = curr->pitch * curr->h + sizeof(*curr) + align - 1;\
 		curr_pixel = curr->pixels + curr->pitch * (_h);	\
-		trival_init_mesh_rect(&(curr_tile->rect), (_w), (_h));	\
-		curr_tile->number = 0;	\
 		curr ++;		\
-		curr_tile ++;	\
 	} while(0)
 
 	for (int y = 0; y < nr_h - 1; y++) {
@@ -368,6 +340,29 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 
 	DEBUG(BITMAP, "bitmap %s split over\n", r->id);
 	return r;
+}
+
+void
+fill_mesh_by_array(struct bitmap_array_t * array, struct rect_mesh_t * mesh)
+{
+	assert(array != NULL);
+	assert(mesh != NULL);
+	assert(mesh->nr_w == array->nr_w);
+	assert(mesh->nr_h == array->nr_h);
+
+	trival_init_mesh_rect(&mesh->big_rect,
+			array->head.w, array->head.h);
+	struct bitmap_t * curr_bitmap = array->tiles;
+	struct rect_mesh_tile_t * curr_tile = mesh->tiles;
+	for (int y = 0; y < mesh->nr_h; y++) {
+		for (int x = 0; x < mesh->nr_w; x++) {
+			trival_init_mesh_rect(&(curr_tile->rect),
+					curr_bitmap->w,
+					curr_bitmap->h);
+			curr_bitmap ++;
+			curr_tile ++;
+		}
+	}
 }
 
 void

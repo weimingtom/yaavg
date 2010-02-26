@@ -108,8 +108,6 @@ reset_hints(void)
 	if (GL_full_version >= MKVER(1, 3))
 		gl(Hint, GL_TEXTURE_COMPRESSION_HINT, GL_NICEST);
 
-
-
 	gl(Hint, GL_LINE_SMOOTH_HINT, GL_NICEST);
 	gl(Hint, GL_POLYGON_SMOOTH_HINT, GL_NICEST);
 
@@ -299,6 +297,12 @@ gl_cleanup(void)
 	drv_cleanup();
 	return;
 }
+
+/* texture cache */
+struct opengl_texture_array_cache_entry_t {
+	
+};
+
 
 static void
 gl_test_screen(const char * b)

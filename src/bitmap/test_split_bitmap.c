@@ -6,6 +6,7 @@
 #include <resource/resource_types.h>
 #include <bitmap/bitmap.h>
 #include <bitmap/bitmap_to_png.h>
+#include <utils/rect_mesh.h>
 #include <io/io.h>
 
 #include <sys/stat.h>
@@ -40,7 +41,8 @@ int main()
 		if (array->original_bitmap == NULL) {
 			free_bitmap(b);
 		}
-
+		struct rect_mesh_t * mesh = build_mesh_by_array(array);
+		assert(mesh != NULL);
 
 		VERBOSE(SYSTEM, "%dx%d\n", array->nr_w, array->nr_h);
 		char name[128];
@@ -61,6 +63,9 @@ int main()
 				}
 			}
 		}
+
+		print_rect_mesh(mesh);
+		destroy_rect_mesh(mesh);
 
 		if (array->original_bitmap != NULL) {
 			free_bitmap(array->original_bitmap);

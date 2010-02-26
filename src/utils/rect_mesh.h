@@ -114,6 +114,11 @@ struct rect_mesh_t {
 	/* this is the big rect */
 	struct mesh_rect big_rect;
 	int nr_w, nr_h;
+	
+	/* private1 is used to hold old destroy
+	 * in opengl video*/
+	uintptr_t private1;
+
 	void (*destroy)(struct rect_mesh_t *);
 	struct rect_mesh_tile_t tiles[0];
 };

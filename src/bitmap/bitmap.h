@@ -149,7 +149,6 @@ struct bitmap_array_t {
 	int nr_h;
 	int nr_tiles;
 	int total_sz;
-	struct rect_mesh_t * mesh;
 	void (*destroy)(struct bitmap_array_t * b);
 
 	uint8_t __data[0];
@@ -165,6 +164,18 @@ struct bitmap_array_t {
  */
 struct bitmap_array_t *
 split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align);
+
+void
+fill_mesh_by_array(struct bitmap_array_t * array, struct rect_mesh_t * mesh);
+
+static inline struct rect_mesh_t *
+build_mesh_by_array(struct bitmap_array_t * array)
+{
+	assert(array != NULL);
+	struct rect_mesh_t * m = alloc_rect_mesh(array->nr_w, array->nr_h);
+	fill_mesh_by_array(array, m);
+	return m;
+}
 
 void
 free_bitmap_array(struct bitmap_array_t * ptr);
