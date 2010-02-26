@@ -18,8 +18,7 @@ free_rect_mesh(struct rect_mesh_t * m)
 struct rect_mesh_t *
 alloc_rect_mesh(int nr_w, int nr_h)
 {
-	int total_sz = sizeof(struct rect_mesh_t) +
-		nr_w * nr_h * sizeof(struct rect_mesh_tile_t);
+	int total_sz = get_rect_mesh_total_sz(nr_w, nr_h);
 	struct rect_mesh_t * ret = xmalloc(total_sz);
 	assert(ret != NULL);
 	ret->nr_w = nr_w;

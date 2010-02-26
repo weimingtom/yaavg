@@ -63,6 +63,18 @@ struct mesh_rect {
 	struct vec3 pv[4];
 };
 
+static inline void
+trival_init_mesh_rect(struct mesh_rect * mr, int iw, int ih)
+{
+	memset(mr, '\0', sizeof(*mr));
+	mr->irect.x = mr->irect.y = 0;
+	mr->irect.w = iw;
+	mr->irect.h = ih;
+
+	mr->frect.x = mr->frect.y = 0.0;
+	mr->frect.w = mr->frect.h = 1.0;
+}
+
 struct rect_mesh_tile_t {
 	/* the number is used to represent the texture number
 	 * in opengl. */
@@ -106,7 +118,10 @@ struct rect_mesh_t {
 	struct rect_mesh_tile_t tiles[0];
 };
 
-#define destroy_rect_mesh(m)	(((m)->destroy)((m)))
+#define destroy_rect_mesh(m)	do {	\
+	if ((m)->destroy)	\
+		(m)->destroy((m));	\
+} while(0)
 
 /* map a coordinator (x, y) of a big mesh into the 
  * coodinator in a tile (nr) */
@@ -117,6 +132,10 @@ map_coord_to_mesh(struct rect_mesh_t * mesh,
 extern struct rect_mesh_tile_t *
 map_coord_to_mesh_f(struct rect_mesh_t * mesh,
 		float x, float y, float * ox, float * oy);
+
+#define get_rect_mesh_total_sz(_nr_w, _nr_h) ({\
+		sizeof(struct rect_mesh_t) + \
+		(_nr_w) * (_nr_h) * sizeof(struct rect_mesh_tile_t) ;})
 
 extern struct rect_mesh_t *
 alloc_rect_mesh(int nr_w, int nr_h);

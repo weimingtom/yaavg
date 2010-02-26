@@ -88,7 +88,6 @@ do_test1(void)
 	VERBOSE(SYSTEM, "(700, 500) --> %d (%d, %d)\n",
 			tile1->number, i_ox, i_oy);
 
-
 	float f_ox, f_oy;
 	struct rect_mesh_tile_t * tile2 =
 		map_coord_to_mesh_f(mesh, 0.3, 0.6,

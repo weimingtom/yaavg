@@ -10,6 +10,7 @@
 #include <common/defs.h>
 #include <common/functionor.h>
 #include <utils/rect.h>
+#include <utils/rect_mesh.h>
 #include <io/io.h>
 
 __BEGIN_DECLS
@@ -71,10 +72,10 @@ enum bitmap_format {
  */
 struct bitmap_t {
 	/* public */
-	bool_t revert;
 	/* 
 	 * some bitmap, such as AIR's PDT, is reverted. see bitmap_to_png.c
 	 * */
+	bool_t revert;
 	const char * id;
 	/* this is important for deserializing */
 	int id_sz;
@@ -148,6 +149,7 @@ struct bitmap_array_t {
 	int nr_h;
 	int nr_tiles;
 	int total_sz;
+	struct rect_mesh_t * mesh;
 	void (*destroy)(struct bitmap_array_t * b);
 
 	uint8_t __data[0];
