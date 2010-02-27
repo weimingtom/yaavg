@@ -170,10 +170,10 @@ int main()
 		if (video_inited)
 			video_cleanup();
 		shutdown_resource_process();
+		do_cleanup();
 	} CATCH(exp) {
 		RETHROW(exp);
 	}
-	do_cleanup();
 	return 0;
 }
 // vim:ts=4:sw=4

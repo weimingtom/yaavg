@@ -8,12 +8,14 @@
 #include <common/exception.h>
 #include <common/dict.h>
 #include <common/bithacks.h>
+#include <common/cache.h>
 #include <yconf/yconf.h>
 #include <video/video.h>
 #include <video/gl_driver.h>
 #include <video/generic_opengl.h>
 #include <video/dynamic_opengl/dynamic_opengl.h>
 #include <video/dynamic_opengl/opengl_funcs.h>
+#include <video/opengl_texture.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -26,66 +28,6 @@ gl_check_usable(const char * param)
 	VERBOSE(OPENGL, "%s:%s\n", __func__, param);
 	if (strcasecmp(param, "opengl") == 0)
 		return TRUE;
-	return FALSE;
-}
-
-static void
-build_extensions(void)
-{
-	assert(GL_extensions_dict == NULL);
-	/* create the dict */
-	GL_extensions_dict =
-		strdict_create(128, STRDICT_FL_DUPKEY);
-	assert(GL_extensions_dict != NULL);
-
-	const char * __extensions = (const char *)gl(GetString, GL_EXTENSIONS);
-	/* scan the string, identify each ' ' and replace it with '\0', then insert it
-	 * into GL_extensions_dict */
-	assert(__extensions != NULL);
-	char * extensions = strdupa(__extensions);
-	char * p = extensions;
-	char * pp = p;
-	dict_data_t data;
-	data.bol = TRUE;
-
-	while (*p != '\0') {
-		if (*p == ' ') {
-			*p = '\0';
-			strdict_insert(GL_extensions_dict, pp, data);
-			TRACE(OPENGL, "extension %s\n", pp);
-			pp = p + 1;
-		}
-		p++;
-	}
-}
-
-static bool_t
-check_extension(const char * conf_key, ...)
-{
-	va_list args;
-	bool_t retval = FALSE;
-
-	if (conf_key != NULL) {
-		retval = conf_get_bool(conf_key, TRUE);
-		/* conf set this feature to FALSE */
-		if (!retval)
-			return FALSE;
-	}
-
-	va_start(args, conf_key);
-	const char * f = va_arg(args, const char *);
-	while(f != NULL) {
-		assert(strlen(f) < 64);
-		TRACE(OPENGL, "check for feature %s\n", f);
-		dict_data_t d = strdict_get(GL_extensions_dict, f);
-		if (!(GET_DICT_DATA_FLAGS(d) & DICT_DATA_FL_VANISHED)) {
-			DEBUG(OPENGL, "find %s\n", f);
-			va_end(args);
-			return TRUE;
-		}
-		f = va_arg(args, const char *);
-	}
-	va_end(args);
 	return FALSE;
 }
 
@@ -113,6 +55,9 @@ reset_hints(void)
 
 	if (GL_full_version >= MKVER(2, 0))
 		gl(Hint, GL_FRAGMENT_SHADER_DERIVATIVE_HINT, GL_NICEST);
+
+	/* turn off edge flag */
+	gl(EdgeFlag, GL_FALSE);
 }
 
 static void
@@ -131,45 +76,6 @@ reshape(void)
 		gl(MatrixMode, GL_MODELVIEW);
 		gl(LoadIdentity);
 	}
-}
-
-static void
-check_features(void)
-{
-	gl(GetIntegerv, GL_MAX_TEXTURE_SIZE, &GL_max_texture_size);
-	DEBUG(OPENGL, "system max texture size: %d\n", GL_max_texture_size);
-	int conf_mts = conf_get_int("video.opengl.texture.maxsize", 0);
-	if (conf_mts != 0) {
-		conf_mts = pow2roundup(conf_mts);
-		if (conf_mts < GL_max_texture_size)
-			GL_max_texture_size = conf_mts;
-	}
-	DEBUG(OPENGL, "max texture size is set to %d\n", GL_max_texture_size);
-
-#define verbose_feature(name, exp) do {\
-	if (exp)	\
-		DEBUG(OPENGL, name " is enabled\n");	\
-	else		\
-		DEBUG(OPENGL, name " is disabled\n");	\
-	} while(0)
-
-	GL_texture_NPOT = check_extension("video.opengl.texture.enableNPOT",
-			"GL_ARB_texture_non_power_of_two",
-			NULL);
-	verbose_feature("NPOT texture", GL_texture_NPOT);
-
-	GL_texture_RECT = check_extension("video.opengl.texture.enableRECT",
-			"GL_ARB_texture_rectangle",
-			"GL_EXT_texture_rectangle",
-			"GL_NV_texture_rectangle",
-			NULL);
-	verbose_feature("RECT texture", GL_texture_RECT);
-
-	GL_texture_COMPRESSION = check_extension("video.opengl.texture.enableCOMPRESSION",
-			"GL_ARB_texture_compression",
-			NULL);
-	verbose_feature("texture compression", GL_texture_COMPRESSION);
-#undef verbose_feature
 }
 
 static void
@@ -202,70 +108,9 @@ gl_init(void)
 
 	/* init opengl information */
 	assert(CUR_DRV->get_proc_address != NULL);
+
 	init_func_list(CUR_DRV->get_proc_address, __gl_func_map);
-
-	GL_vendor = strdup((char*)gl(GetString, GL_VENDOR));
-	GL_renderer = strdup((char*)gl(GetString, GL_RENDERER));
-	GL_version = strdup((char*)gl(GetString, GL_VERSION));
-	/* according to opengl spec, the version string of opengl and
-	 * glsl is 
-	 *
-	 * <version number> <space> <vendor spec information>
-	 *
-	 * and <version number> is
-	 *
-	 * major.minor
-	 *
-	 * or
-	 *
-	 * major.minor.release
-	 *
-	 * */
-
-	/* build gl version */
-	int err;
-	err = sscanf(GL_version, "%d.%d", &GL_major_version, &GL_minor_version);
-	assert(err == 2);
-	assert((GL_major_version > 0) && (GL_major_version <= 3));
-	assert(GL_minor_version > 0);
-	GL_full_version = MKVER(GL_major_version, GL_minor_version);
-
-	const char * tmp = (const char *)gl(GetString, GL_SHADING_LANGUAGE_VERSION);
-	if (GL_POP_ERROR() != GL_NO_ERROR) {
-		WARNING(OPENGL, "Doesn't support glsl\n");
-		GL_glsl_version = NULL;
-	} else {
-		GL_glsl_version = strdup(tmp);
-
-		err = sscanf(GL_glsl_version, "%d.%d", &GLSL_major_version, &GLSL_minor_version);
-		assert(err == 2);
-		assert(GLSL_major_version > 0);
-		assert(GLSL_minor_version > 0);
-		GLSL_full_version = MKVER(GLSL_major_version, GLSL_minor_version);
-	}
-
-	VERBOSE(OPENGL, "OpenGL engine information:\n");
-	VERBOSE(OPENGL, "\tvendor: %s\n", GL_vendor);
-	VERBOSE(OPENGL, "\trenderer: %s\n", GL_renderer);
-	VERBOSE(OPENGL, "\tversion: %s\n", GL_version);
-	VERBOSE(OPENGL, "\tglsl version: %s\n", GL_glsl_version);
-
-	int x;
-	gl(GetIntegerv, GL_SAMPLES, &x);
-	VERBOSE(OPENGL, "\tSamples : %d\n", x);
-	gl(GetIntegerv, GL_SAMPLE_BUFFERS, &x);
-	VERBOSE(OPENGL, "\tSample buffers : %d\n", x);
-	if (x > 0)
-		gl(Enable, GL_MULTISAMPLE);
-	if (GL_POP_ERROR())
-		WARNING(OPENGL, "platform does not support multisample\n");
-
-	build_extensions();
-
-	assert(GL_extensions_dict != NULL);
-	GL_POP_ERROR();
-	check_features();
-	GL_POP_ERROR();
+	check_opengl_features();
 
 	reset_hints();
 	GL_POP_ERROR();
@@ -279,6 +124,11 @@ gl_init(void)
 
 	reshape();
 	GL_POP_ERROR();
+
+
+	/* init the txarray_cache */
+	opengl_texture_cache_init();
+
 	return;
 }
 
@@ -286,22 +136,14 @@ static void
 gl_cleanup(void)
 {
 	DEBUG(OPENGL, "closing opengl video\n");
-	xfree_null(GL_vendor);
-	xfree_null(GL_version);
-	xfree_null(GL_renderer);
-	xfree_null(GL_glsl_version);
-	if (GL_extensions_dict != NULL) {
-		strdict_destroy(GL_extensions_dict);
-		GL_extensions_dict = NULL;
-	}
+
+	cleanup_opengl_features();
 	drv_cleanup();
+
+	opengl_texture_cache_cleanup();
+
 	return;
 }
-
-/* texture cache */
-struct opengl_texture_array_cache_entry_t {
-	
-};
 
 
 static void
@@ -310,12 +152,44 @@ gl_test_screen(const char * b)
 	gl(Clear, GL_COLOR_BUFFER_BIT);
 
 	gl(Color4f, 1.0, 1.0, 1.0, 1.0);
-	gl(Begin, GL_LINES);
-	gl(Vertex2d, -1, 0);
-	gl(Vertex2d, 1, 0);
-	gl(Vertex2d, 0, -1);
-	gl(Vertex2d, 0, 1);
-	gl(End);
+
+	static GLfloat axis[] = {
+		-1.0, 0,
+		1.0, 0,
+		0, -1.0,
+		0, 1.0,
+		0, 0,
+		0.1, 0.5,
+	};
+
+	gl(EnableClientState, GL_VERTEX_ARRAY);
+	gl(VertexPointer, 2, GL_FLOAT, 0, axis);
+	gl(DrawArrays, GL_LINES, 0, sizeof(axis) / sizeof(GLfloat));
+	gl(DisableClientState, GL_VERTEX_ARRAY);
+
+	static struct vec3 pvecs[4] = {
+		[0] = {-1.0,  1.0, 0.0},
+		[1] = {-1.0, -1.0, 0.0},
+		[2] = { 1.0, -1.0, 0.0},
+		[3] = { 1.0,  1.0, 0.0},
+	};
+
+	static struct vec3 tvecs[4] = {
+		[0] = { 0.0, 0.0, 0.0},
+		[1] = { 0.0, 1.0, 0.0},
+		[2] = { 1.0, 1.0, 0.0},
+		[3] = { 1.0, 0.0, 0.0},
+	};
+	
+	if (!prepare_texture(pvecs, tvecs,
+			GL_LINEAR,
+			GL_LINEAR,
+			GL_REPEAT,
+			GL_REPEAT,
+			b))
+		THROW_FATAL(EXP_UNCATCHABLE, "prepare %s failed\n", b);
+	draw_texture(tvecs, b);
+
 	GL_POP_ERROR();
 }
 

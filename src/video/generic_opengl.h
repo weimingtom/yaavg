@@ -16,6 +16,12 @@ gl_pop_error_debug(const char * file, const char * func, int line);
 extern GLenum
 gl_pop_error_nodebug(void);
 
+void
+check_opengl_features(void);
+
+void
+cleanup_opengl_features(void);
+
 #ifdef YAAVG_DEBUG
 # define GL_POP_ERROR() gl_pop_error_debug(__FILE__, __FUNCTION__, __LINE__)
 #else
@@ -43,6 +49,10 @@ extern int GL_max_texture_size;
 extern bool_t GL_texture_NPOT;
 extern bool_t GL_texture_RECT;
 extern bool_t GL_texture_COMPRESSION;
+extern bool_t GL_vertex_buffer_object;
+extern bool_t GL_pixel_buffer_object;
+extern bool_t GL_vertex_array_object;
+extern int GL_max_vertex_attribs;
 
 #define UNPACK_ALIGNMENT	(1)
 

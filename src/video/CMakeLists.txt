@@ -23,6 +23,8 @@ ENDIF (USE_OPENGL3)
 
 SET(OPENGL_SRC
 	opengl_video.c
+	opengl_texture.c
+	opengl_texture.h
 	gl_driver.h
 	gl_driver.c
 	generic_opengl.c

@@ -102,8 +102,8 @@ __cache_insert(struct cache_t * cache,
 			WARNING(CACHE, "insert an cache entry \"%s\" into cache \"%s\" twice, promote the old one\n",
 					oe->id, cache->name);
 		} else {
-			WARNING(CACHE, "replace object %s\n", oe->id);
-			WARNING(CACHE, "destroy the old object %s\n", oe->id);
+			DEBUG(CACHE, "replace object %s\n", oe->id);
+			DEBUG(CACHE, "destroy the old object %s\n", oe->id);
 			cache_entry_destroy(oe);
 		}
 	}

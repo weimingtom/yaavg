@@ -40,4 +40,8 @@ DEF2(CompressedTexSubImage2D, CompressedTexSubImage2DEXT)
 DEF2(CompressedTexSubImage1D, CompressedTexSubImage1DEXT)
 DEF2(GetCompressedTexImage, GetCompressedTexImageEXT)
 
-
+DEF(EdgeFlag)
+DEF(EnableClientState)
+DEF(DisableClientState)
+DEF(VertexPointer)
+DEF(DrawArrays)

@@ -105,6 +105,10 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 
 	assert(r != NULL);
 
+	bool_t fix_revert = FALSE;
+	if ((head.revert) && (p->fix_revert))
+		fix_revert = TRUE;
+
 	/* read id */
 	io_read(io, (char*)r->id, head.id_sz, 1);
 	DEBUG(BITMAP, "read id: %s\n", r->id);
@@ -112,7 +116,7 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 			head.pitch, r->pitch);
 
 	/* read pixels */
-	if (head.pitch == r->pitch) {
+	if ((head.pitch == r->pitch) && (!fix_revert)) {
 		if (io->functionor->vmsplice_read) {
 			struct iovec vec;
 			vec.iov_base = r->pixels;
@@ -124,13 +128,15 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 	} else {
 		WARNING(BITMAP, "FIXME: I haven't tested this code\n");
 		for (int i = 0; i < r->h; i++) {
-			/* each time we increace new pitch, but load old pitch.
+			/* each time we increace new pitch bytes, but load old pitch bytes.
 			 * if new pitch is larger, some byte is never written.
 			 * if old pitch is larger, the padding data is lost.
 			 * the alloc_bitmap will alloc some more bytes if old pitch
 			 * is larger, so below code never cause memory corruption
 			 * */
-			void * ptr = r->pixels + r->pitch * i;
+			void * ptr = fix_revert ?
+					(r->pixels + r->pitch * i) :
+					(r->pixels + r->pitch * (r->h - 1 - i));
 			if (io->functionor->vmsplice_read) {
 				struct iovec vec;
 				vec.iov_base = ptr;
@@ -142,6 +148,8 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 			}
 		}
 	}
+	if (fix_revert)
+		r->revert = FALSE;
 	/* write the sync */
 	sync = END_DESERIALIZE_SYNC;
 	io_write(io, &sync, sizeof(sync), 1);

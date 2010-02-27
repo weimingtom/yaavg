@@ -144,9 +144,20 @@ generic_init_sdl_video(bool_t use_opengl)
 					CUR_VID->bpp,
 					flags));
 		if (screen == NULL) {
-			FATAL(VIDEO, "SDL_SetVideoMode failed: %s\n",
+			ERROR(VIDEO, "SDL_SetVideoMode failed: %s, try to disable \"video.opengl.multisample\"\n",
 					SDL_GetError());
-			THROW_FATAL(EXP_UNCATCHABLE, "SDL_SetVideoMode failed");
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+			set_catched_var(screen,
+					SDL_SetVideoMode(
+						CUR_VID->width,
+						CUR_VID->height,
+						CUR_VID->bpp,
+						flags));
+			if (screen == NULL) {
+				ERROR(VIDEO, "still failed: %s\n", SDL_GetError());
+				THROW_FATAL(EXP_UNCATCHABLE, "SDL_SetVideoMode failed");
+			}
 		}
 
 		/* notice the '!' */
@@ -167,6 +178,7 @@ generic_init_sdl_video(bool_t use_opengl)
 			set_catched_var(screen, NULL);
 		}
 		generic_destroy_sdl_video();
+		RETHROW(exp);
 	}
 	main_screen = screen;
 	return screen;

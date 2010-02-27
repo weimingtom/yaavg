@@ -104,7 +104,10 @@ bitmap_data_size(struct bitmap_t * s)
 }
 
 struct bitmap_deserlize_param {
-	int align;	/* align each line with 1, 4, 8 or 16 */
+	/* align each line with 1, 4, 8 or 16 */
+	int align;
+	/* force to build a non-revert bitmap */
+	bool_t fix_revert;
 };
 
 struct bitmap_t *
