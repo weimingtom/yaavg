@@ -17,4 +17,4 @@ def_exp_type(EXP_RESOURCE_PROCESS_FAILURE, "faulty of resource process")
 def_exp_type(EXP_RESOURCE_PEER_SHUTDOWN, "peer process shutdown")
 def_exp_type(EXP_CACHE_LOCKED, "cache operation called when cache locked")
 def_exp_type(EXP_NO_SSE2, "os doesn't support sse2")
-
+def_exp_type(EXP_VIDEO_EXCEPTION, "render error")

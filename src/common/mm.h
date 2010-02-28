@@ -17,7 +17,7 @@
 		___ptr = malloc((___sz));\
 		if (___ptr == NULL)	\
 			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
-			___ptr; \
+		___ptr; \
 		})
 
 #define xmemalign(___boundary, ___sz)	({	\

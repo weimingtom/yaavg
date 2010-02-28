@@ -45,3 +45,6 @@ DEF(EnableClientState)
 DEF(DisableClientState)
 DEF(VertexPointer)
 DEF(DrawArrays)
+DEF(DeleteTextures)
+DEF(GenTextures)
+

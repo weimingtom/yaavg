@@ -170,6 +170,8 @@ split_name(char * str)
 	return c;
 }
 
+#define equ(x, y)	(((x) >= (y)) && ((x) <= (y)))
+
 __END_DECLS
 
 #endif

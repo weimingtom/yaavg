@@ -56,6 +56,8 @@ struct vec3 {
 	float x, y, z;
 };
 
+#define vec3_equ(a, b)	(equ((a)->x, (b)->x) && equ((a)->y, (b)->y) && equ((a)->z, (b)->z))
+
 struct mesh_rect {
 	struct rect_t irect;
 	struct rect_f_t frect;

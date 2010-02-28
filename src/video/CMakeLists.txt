@@ -51,6 +51,7 @@ ENDIF(HAVE_SDL)
 SET(tests
 	test_video_timer
 	test_video
+	test_video_exception
 	)
 
 

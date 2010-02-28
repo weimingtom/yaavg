@@ -80,6 +80,7 @@ struct exception_t {
 		uintptr_t xval;
 		enum exception_type video_exception;
 	} u;
+	uint32_t timestamp;
 	enum exception_level level;
 #ifdef YAAVG_DEBUG
 	const char * file;
@@ -200,6 +201,23 @@ ATTR(format(printf, 4, 5))
 #endif
 	;
 
+extern NORETURN ATTR_NORETURN void
+throw_video_exception(
+		enum video_exception video_lv,
+		uint32_t stamp,
+#ifdef YAAVG_DEBUG
+		const char * file,
+		const char * func,
+		int line,
+#endif
+		const char * fmt, ...)
+#ifdef YAAVG_DEBUG
+ATTR(format(printf, 6, 7))
+#else
+ATTR(format(printf, 3, 4))
+#endif
+;
+
 #ifdef YAAVG_DEBUG
 # define __dbg_info __FILE__, __FUNCTION__, __LINE__,
 #else
@@ -214,6 +232,10 @@ ATTR(format(printf, 4, 5))
 
 #define THROW_FATAL(t, fmt...) throw_exception(t, 0, EXP_LV_FATAL, __dbg_info fmt)
 #define THROW_VAL_FATAL(t, v, fmt...) throw_exception(t, (uintptr_t)(v), EXP_LV_FATAL, __dbg_info fmt)
+
+
+#define THROW_VIDEO_EXP(lv, stamp, fmt...)	\
+		throw_video_exception(lv, stamp, __dbg_info fmt)
 
 
 #define NOTHROW(fn, ...) do {	\

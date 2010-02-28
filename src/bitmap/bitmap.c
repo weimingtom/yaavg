@@ -98,7 +98,7 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 	assert(data_sz > 0);
 
 	struct bitmap_t * r = NULL;
-	if (p == NULL)
+	if ((p == NULL) || (p->align == 0))
 		r = alloc_bitmap(&head, head.id_sz, 1);
 	else
 		r = alloc_bitmap(&head, head.id_sz, p->align);

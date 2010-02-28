@@ -158,13 +158,8 @@ print_exception(volatile struct exception_t * __exp)
 }
 
 NORETURN ATTR_NORETURN 
-#ifdef YAAVG_DEBUG
-ATTR(format(printf, 7, 8))
-#else
-ATTR(format(printf, 4, 5))
-#endif
-void
-throw_exception(enum exception_type type,
+static void
+__throw_exception(enum exception_type type,
 		uintptr_t val,
 		enum exception_level level,
 #ifdef YAAVG_DEBUG
@@ -172,16 +167,13 @@ throw_exception(enum exception_type type,
 		const char * func,
 		int line,
 #endif
-		const char * fmt, ...)
+		const char * fmt, va_list ap)
 {
-	va_list ap;
 	struct exception_t exp;
 
 	exp.type = type;
 
-	va_start(ap, fmt);
 	vsnprintf(exp.msg, sizeof(exp.msg), fmt, ap);
-	va_end(ap);
 
 	exp.u.ptr = (void*)val;
 	exp.type = type;
@@ -206,6 +198,89 @@ throw_exception(enum exception_type type,
 	/* do the jump! */
 	EXCEPTIONS_SIGLONGJMP(curr_catcher_p->buf, type);
 }
+
+NORETURN ATTR_NORETURN 
+#ifdef YAAVG_DEBUG
+ATTR(format(printf, 7, 8))
+#else
+ATTR(format(printf, 4, 5))
+#endif
+void
+throw_exception(enum exception_type type,
+		uintptr_t val,
+		enum exception_level level,
+#ifdef YAAVG_DEBUG
+		const char * file,
+		const char * func,
+		int line,
+#endif
+		const char * fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+#ifdef YAAVG_DEBUG
+	__throw_exception(type, val, level,
+			file, func, line, fmt, ap);
+#else
+	__throw_exception(type, val, level,
+			fmt, ap);
+#endif
+	va_end(ap);
+}
+
+NORETURN ATTR_NORETURN 
+#ifdef YAAVG_DEBUG
+ATTR(format(printf, 6, 7))
+#else
+ATTR(format(printf, 3, 4))
+#endif
+void
+throw_video_exception(
+		enum video_exception video_lv,
+		uint32_t stamp,
+#ifdef YAAVG_DEBUG
+		const char * file,
+		const char * func,
+		int line,
+#endif
+		const char * fmt, ...)
+{
+	static bool_t old_timestamp_set = FALSE;
+	static uint32_t old_timestamp = 0;
+	static enum video_exception old_video_lv = VIDEXP_NOEXP;
+
+	if (!old_timestamp_set) {
+		old_timestamp_set = TRUE;
+		old_timestamp = stamp;
+	}
+
+	if (stamp - old_timestamp > 1000) {
+		old_video_lv = video_lv;
+	} else {
+		old_video_lv ++; 
+	}
+	old_timestamp = stamp;
+	enum exception_level explv = EXP_LV_LOWEST;
+	if (old_video_lv == VIDEXP_REINIT)
+		explv = EXP_LV_TAINTED;
+	else if (old_video_lv >= VIDEXP_FATAL)
+		explv = EXP_LV_FATAL;
+
+	va_list ap;
+	va_start(ap, fmt);
+#ifdef YAAVG_DEBUG
+	__throw_exception(EXP_VIDEO_EXCEPTION,
+			old_video_lv, explv,
+			file, func, line, fmt, ap);
+#else
+	__throw_exception(EXP_VIDEO_EXCEPTION,
+			old_video_lv, explv,
+			fmt, ap);
+#endif
+	va_end(ap);
+}
+
+
 
 // vim:ts=4:sw=4
 
