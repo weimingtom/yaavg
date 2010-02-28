@@ -48,17 +48,6 @@ struct txarray_cache_entry_t {
 	/* GL_TEXTURE_RECTANGLE
 	 * GL_TEXTURE_2D */
 	GLenum target;
-	/* GL_COMPRESSED_RGBA
-	 * GL_RGBA
-	 * GL_COMPRESSED_RGB
-	 * GL_RGB
-	 * */
-	GLenum internalformat;
-	/* 
-	 * GL_RGBA
-	 * GL_RGB
-	 */
-	GLenum format;
 
 	GLenum min_filter;
 	GLenum mag_filter;
@@ -162,6 +151,7 @@ adjust_texture(struct vec3 * pvecs,
 	GLenum target = tx_entry->target;
 	for (int i = 0; i < nr_texs; i++) {
 		gl(BindTexture, target, tx_entry->tex_objs[i]);
+		gl(Enable, target);
 		gl(TexParameteri, target, GL_TEXTURE_MIN_FILTER, min_filter);
 		gl(TexParameteri, target, GL_TEXTURE_MAG_FILTER, mag_filter);
 		gl(TexParameteri, target, GL_TEXTURE_WRAP_S, wrap_s);
@@ -182,6 +172,7 @@ load_texture(struct bitmap_t * b, GLuint tex,
 		assert(target == GL_TEXTURE_2D);
 
 	gl(BindTexture, target, tex);
+	gl(Enable, target);
 
 	/* load data */
 	/* don't use PBO, we put data into server mem */
@@ -317,6 +308,10 @@ __prepare_texture(struct vec3 * pvecs,
 
 		tx_entry->tx_method = tx_method;
 		tx_entry->target = target;
+		tx_entry->min_filter = min_filter;
+		tx_entry->mag_filter = mag_filter;
+		tx_entry->wrap_s = wrap_s;
+		tx_entry->wrap_t = wrap_t;
 
 		/* paritally build the cache entry before load bitmaps */
 		struct cache_entry_t * ce = &tx_entry->ce;
@@ -387,6 +382,8 @@ __prepare_texture(struct vec3 * pvecs,
 
 		/* compute the coord */
 		WARNING(OPENGL, "coord is not computed\n");
+		memcpy(tx_entry->pvecs, pvecs, sizeof(*pvecs) * 4);
+		memcpy(tx_entry->tvecs, tvecs, sizeof(*tvecs) * 4);
 
 		/* insert */
 		cache_insert(&txarray_cache, &tx_entry->ce);
@@ -445,7 +442,44 @@ void
 draw_texture(struct vec3 * tvecs,
 		const char * tex_name)
 {
-	
+
+	struct cache_entry_t * ce = NULL;
+	struct txarray_cache_entry_t * tx_entry = NULL;
+	ce = cache_get_entry(&txarray_cache, tex_name);
+	/* ??? */
+	assert(ce != NULL);
+	tx_entry = ce->data;
+
+	gl(BindTexture, tx_entry->target, tx_entry->tex_objs[0]);
+	/* don't use POLYGON */
+	gl(Begin, GL_POLYGON);
+	if (tx_entry->target != GL_TEXTURE_RECTANGLE) {
+		gl(TexCoord2d, 0, 0);
+		gl(Vertex2d, -1, 1);
+
+		gl(TexCoord2d, 0, 1);
+		gl(Vertex2d, -1, -1);
+
+		gl(TexCoord2d, 1, 1);
+		gl(Vertex2d, 1, -1);
+
+		gl(TexCoord2d, 1, 0);
+		gl(Vertex2d, 1, 1);
+	} else {
+
+		gl(TexCoord2d, 0, 0);
+		gl(Vertex2d, -1, 1);
+
+		gl(TexCoord2d, 0, 800);
+		gl(Vertex2d, -1, -1);
+
+		gl(TexCoord2d, 600, 800);
+		gl(Vertex2d, 1, -1);
+
+		gl(TexCoord2d, 600, 0);
+		gl(Vertex2d, 1, 1);
+	}
+	gl(End);
 }
 
 // vim:ts=4:sw=4

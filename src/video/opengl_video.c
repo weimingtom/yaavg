@@ -137,10 +137,10 @@ gl_cleanup(void)
 {
 	DEBUG(OPENGL, "closing opengl video\n");
 
+	opengl_texture_cache_cleanup();
 	cleanup_opengl_features();
 	drv_cleanup();
 
-	opengl_texture_cache_cleanup();
 
 	return;
 }

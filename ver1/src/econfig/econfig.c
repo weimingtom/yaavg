@@ -34,7 +34,7 @@ static struct conf_entry entries[] = {
 //	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/home/wn/src/Mesa-7.0.1/lib/libGL.so")},
 //	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/usr/X11R7/lib/libGL.so")},
 	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/home/wn/work/Mesa-7.5.2/install/lib/libGL.so")},
-//	{"video.opengl.gllibrary", TypeString, vcast((const char*)NULL)},
+	{"video.opengl.gllibrary", TypeString, vcast((const char*)NULL)},
 //	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/usr/X11R7/lib/libGL.so")},
 //	{"video.opengl.gllibrary", TypeString, vcast((const char*)"/usr/local/lib/libGL.so")},
 //	{"video.opengl.gl3context", TypeBool, vcast(FALSE)},

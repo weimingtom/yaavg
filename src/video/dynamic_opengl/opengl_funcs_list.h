@@ -54,4 +54,5 @@ DEF(TexImage2D)
 DEF(TexSubImage2D)
 DEF(GetTexLevelParameteriv)
 DEF(BindBuffer)
-
+DEF2(BindBuffer, BindBufferARB)
+DEF(TexCoord2d)
