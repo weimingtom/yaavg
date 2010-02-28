@@ -220,7 +220,7 @@ split_bitmap(struct bitmap_t * b, int sz_lim_w, int sz_lim_h, int align)
 		assert(r != NULL);
 		r->original_bitmap = b;
 		r->head = *b;
-		r->tiles = NULL;
+		r->tiles = b;
 
 		/* init the mesh */
 

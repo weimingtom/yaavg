@@ -5,10 +5,12 @@
 #ifndef __OPENGL_H
 #define __OPENGL_H
 
+
+#define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
+#include <GL/glext.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
-#include <GL/glext.h>
 #include <assert.h>
 
 #include "dynamic_opengl.h"

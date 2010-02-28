@@ -180,12 +180,12 @@ gl_test_screen(const char * b)
 		[2] = { 1.0, 1.0, 0.0},
 		[3] = { 1.0, 0.0, 0.0},
 	};
-	
+
 	if (!prepare_texture(pvecs, tvecs,
 			GL_LINEAR,
 			GL_LINEAR,
-			GL_REPEAT,
-			GL_REPEAT,
+			GL_CLAMP_TO_EDGE,
+			GL_CLAMP_TO_EDGE,
 			b))
 		THROW_FATAL(EXP_UNCATCHABLE, "prepare %s failed\n", b);
 	draw_texture(tvecs, b);

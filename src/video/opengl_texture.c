@@ -6,6 +6,7 @@
 #include <common/debug.h>
 #include <common/exception.h>
 #include <common/cache.h>
+#include <common/bithacks.h>
 #include <yconf/yconf.h>
 #include <video/opengl_texture.h>
 #include <video/generic_opengl.h>
@@ -20,6 +21,7 @@ enum drawing_method {
 };
 
 enum texture_method {
+	TM_NULL,
 	TM_RECT,
 	TM_NPOT,
 	TM_NORMAL,
@@ -40,7 +42,7 @@ struct txarray_cache_entry_t {
 	struct vec3 pvecs[4];
 	struct vec3 tvecs[4];
 
-	GLint * tex_objs;
+	GLuint * tex_objs;
 
 	enum texture_method tx_method;
 	/* GL_TEXTURE_RECTANGLE
@@ -117,7 +119,8 @@ destroy_txarray_cache_entry(struct txarray_cache_entry_t * tx)
 {
 	assert(tx != NULL);
 	int nr_tiles = tx->mesh->nr_w * tx->mesh->nr_h;
-	gl(DeleteTextures, nr_tiles, tx->tex_objs);
+	gl(DeleteTextures, nr_tiles, (GLuint*)(tx->tex_objs));
+	TRACE(OPENGL, "delete %d tex objs\n", nr_tiles);
 	xfree(tx);
 }
 
@@ -146,11 +149,80 @@ adjust_texture(struct vec3 * pvecs,
 		}
 	}
 
+#define CMP(x)	(tx_entry->x == x)
+	if (CMP(min_filter) && CMP(mag_filter) && CMP(wrap_s) && (wrap_t))
+		return TRUE;
+#undef CMP
 	tx_entry->min_filter = min_filter;
 	tx_entry->mag_filter = mag_filter;
 	tx_entry->wrap_s = wrap_s;
 	tx_entry->wrap_t = wrap_t;
+	/* reset all textures */
+	int nr_texs = tx_entry->mesh->nr_w * tx_entry->mesh->nr_h;
+	GLenum target = tx_entry->target;
+	for (int i = 0; i < nr_texs; i++) {
+		gl(BindTexture, target, tx_entry->tex_objs[i]);
+		gl(TexParameteri, target, GL_TEXTURE_MIN_FILTER, min_filter);
+		gl(TexParameteri, target, GL_TEXTURE_MAG_FILTER, mag_filter);
+		gl(TexParameteri, target, GL_TEXTURE_WRAP_S, wrap_s);
+		gl(TexParameteri, target, GL_TEXTURE_WRAP_T, wrap_t);
+	}
+	gl(BindTexture, target, 0);
 	return TRUE;
+}
+
+static void
+load_texture(struct bitmap_t * b, GLuint tex,
+		enum texture_method tx_method, GLenum target)
+{
+	assert(tex != 0);
+	if (tx_method == TM_RECT)
+		assert(target == GL_TEXTURE_RECTANGLE);
+	else
+		assert(target == GL_TEXTURE_2D);
+
+	gl(BindTexture, target, tex);
+
+	/* load data */
+	/* don't use PBO, we put data into server mem */
+	GLint internal_format;
+	internal_format = GL_texture_COMPRESSION ?
+		GL_COMPRESSED_RGBA : GL_RGBA;
+	GLenum format;
+	switch (b->format) {
+		case BITMAP_RGB:
+			format = GL_RGB;
+			break;
+		case BITMAP_RGBA:
+			format = GL_RGBA;
+			break;
+		case BITMAP_BGR:
+			format = GL_BGR;
+			break;
+		case BITMAP_BGRA:
+			format = GL_BGRA;
+		default:
+			assert(0);
+	}
+
+	bool_t need_padding = FALSE;
+	if (tx_method == TM_NORMAL)
+		if (!((is_power_of_2(b->w)) && (is_power_of_2(b->h))))
+			need_padding = TRUE;
+
+	if (!need_padding) {
+		gl(TexImage2D, target, 0, internal_format,	b->w,
+				b->h, 0, format, GL_UNSIGNED_BYTE, b->pixels);
+	} else {
+		int tex_w = pow2roundup(b->w);
+		int tex_h = pow2roundup(b->h);
+		int tex_sz = max(tex_w, tex_h);
+		gl(TexImage2D, target, 0, internal_format, tex_sz,
+				tex_sz, 0, format, GL_UNSIGNED_BYTE, NULL);
+		gl(TexSubImage2D, target, 0, internal_format, b->w,
+				b->h, 0, format, GL_UNSIGNED_BYTE, b->pixels);
+	}
+	GL_POP_THROW();
 }
 
 static bool_t
@@ -162,6 +234,8 @@ __prepare_texture(struct vec3 * pvecs,
 		GLenum wrap_t,
 		const char * tex_name)
 {
+	/* pop previous error */
+	GL_POP_ERROR();
 	define_exp(exp);
 	catch_var(struct bitmap_t *, big_bitmap, NULL);
 	catch_var(struct bitmap_array_t *, bitmap_array, NULL);
@@ -194,16 +268,16 @@ __prepare_texture(struct vec3 * pvecs,
 		int ce_total_sz = sizeof(*tx_entry) +
 			big_bitmap->id_sz +
 			rect_mesh_total_sz +
-			sizeof(GLint) * nr_tex_objs;
+			sizeof(GLuint) * nr_tex_objs;
 		set_catched_var(tx_entry, xcalloc(ce_total_sz, 1));
 		assert(tx_entry != NULL);
 
-		tx_entry->bitmap_array_name = tx_entry->__data;
+		tx_entry->bitmap_array_name = (void*)tx_entry->__data;
 		tx_entry->mesh =  (void*)tx_entry->bitmap_array_name +
 			big_bitmap->id_sz;
-		strcpy(tx_entry->bitmap_array_name, big_bitmap->id);
-		tx_entry->tex_objs = (void*)((tx_entry->mesh) +
-				rect_mesh_total_sz);
+		strcpy((char*)tx_entry->bitmap_array_name, big_bitmap->id);
+		tx_entry->tex_objs = (void*)(tx_entry->mesh) +
+				rect_mesh_total_sz;
 
 		/* build an rect mesh */
 		struct rect_mesh_t * mesh = tx_entry->mesh;
@@ -213,16 +287,34 @@ __prepare_texture(struct vec3 * pvecs,
 		fill_mesh_by_array(bitmap_array, mesh);
 
 		/* for each mesh, create its texture */
-		/* choose a target */
-		enum texture_method tx_method = TM_NORMAL;
+		/* choose a tx_method */
+		enum texture_method tx_method = TM_NULL;
+		if (mesh->nr_w * mesh->nr_h == 1) {
+			/* we have only one tile, first choice is RECT,
+			 * then NPOT, then NORMAL */
+			if (GL_texture_RECT) {
+				if ((mag_filter != GL_NEAREST) &&
+						(mag_filter != GL_LINEAR) &&
+						(min_filter != GL_NEAREST) &&
+						(min_filter != GL_LINEAR) &&
+						(wrap_s == GL_CLAMP_TO_EDGE) &&
+						(wrap_t == GL_CLAMP_TO_EDGE))
+				tx_method = TM_RECT;
+			}
+			if (tx_method == TM_NULL) {
+				if (GL_texture_NPOT)
+					tx_method = TM_NPOT;
+				else
+					tx_method = TM_NORMAL;
+			}
+		} else {
+			tx_method = TM_NORMAL;
+		}
+
 		GLenum target = GL_TEXTURE_2D;
-		if (GL_texture_NPOT)
-			tx_method = TM_NPOT;
-		if (GL_texture_RECT)
-			tx_method = TM_RECT;
-		target = GL_TEXTURE_2D;
-		if (tx_method = TM_RECT)
-			target = GL_texture_RECT;
+		if (tx_method == TM_RECT)
+			target = GL_TEXTURE_RECTANGLE;
+
 		tx_entry->tx_method = tx_method;
 		tx_entry->target = target;
 
@@ -232,17 +324,73 @@ __prepare_texture(struct vec3 * pvecs,
 		ce->data = tx_entry;
 		WARNING(OPENGL, "ce->sz is unknown now\n");
 		ce->destroy_arg = tx_entry;
-		ce->destroy = destroy_txarray_cache_entry;
+		ce->destroy = (cache_destroy_t)destroy_txarray_cache_entry;
 		ce->cache = NULL;
 		ce->pprivate = NULL;
 
 		/* begin to load bitmaps */
-		WARNING(OPENGL, "we are adding video exception\n");
+		/* generate textures */
+		gl(GenTextures, nr_tex_objs, tx_entry->tex_objs);
+		TRACE(OPENGL, "generate %d tex objs\n", nr_tex_objs);
+		GL_POP_THROW();
 
-		/* free big bitmap; free bitmap array */
+		/* always use texture 0 */
+		if (gl_name(ActiveTexture))
+			gl(ActiveTexture, GL_TEXTURE0);
+		/* bind pixel unpack buffer */
+		/* if not, TexImage2D will use PBO */
+		if (gl_name(BindBuffer))
+			gl(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
+
+		int hw_size = 0;
+		/* load textures */
+		for (int j = 0; j <  mesh->nr_h; j++) {
+			for (int i = 0; i < mesh->nr_w; i++) {
+				int nr = j * mesh->nr_w + i;
+				GLuint texobj = tx_entry->tex_objs[nr];
+				struct bitmap_t * b = &(bitmap_array->tiles[nr]);
+				mesh_tile_xy(mesh, i, j)->number = texobj;
+				load_texture(b, texobj, tx_method, target);
+				/* texture is still binding, set its params */
+				gl(TexParameteri, target, GL_TEXTURE_MIN_FILTER, min_filter);
+				gl(TexParameteri, target, GL_TEXTURE_MAG_FILTER, mag_filter);
+				gl(TexParameteri, target, GL_TEXTURE_WRAP_S, wrap_s);
+				gl(TexParameteri, target, GL_TEXTURE_WRAP_T, wrap_t);
+
+				/* check the size */
+				int uncompress_size = b->w * b->h * b->bpp;
+				if (GL_texture_COMPRESSION) {
+					GLint c, s;
+					gl(GetTexLevelParameteriv,
+							target, 0, GL_TEXTURE_COMPRESSED, &c);
+					if (c) {
+						gl(GetTexLevelParameteriv,
+								target, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &s);
+						TRACE(OPENGL, "compressed texture sz is %d\n", s);
+					} else {
+						s = uncompress_size;
+						TRACE(OPENGL, "uncompressed texture sz is %d\n", s);
+					}
+					hw_size += s;
+				} else {
+					hw_size += uncompress_size;
+				}
+				GL_POP_THROW();
+			}
+		}
+
+		/* finish the ce */
+		ce->sz = hw_size;
+
+		/* after all, cancle current texture */
+		gl(BindTexture, target, 0);
+
 		/* compute the coord */
+		WARNING(OPENGL, "coord is not computed\n");
+
 		/* insert */
-		/* free */
+		cache_insert(&txarray_cache, &tx_entry->ce);
+
 	} FINALLY {
 		get_catched_var(big_bitmap);
 		get_catched_var(bitmap_array);
@@ -261,9 +409,8 @@ __prepare_texture(struct vec3 * pvecs,
 		}
 	} CATCH(exp) {
 		get_catched_var(tx_entry);
-		if (tx_entry != NULL) {
+		if (tx_entry != NULL)
 			destroy_txarray_cache_entry(tx_entry);
-		}
 		RETHROW(exp);
 	}
 	return TRUE;

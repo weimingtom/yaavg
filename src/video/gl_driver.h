@@ -9,8 +9,6 @@
 #include <config.h>
 #include <common/functionor.h>
 #include <events/phy_events.h>
-#include <GL/gl.h>
-#include <GL/glext.h>
 #include <video/dynamic_opengl/opengl_funcs.h>
 #include <assert.h>
 

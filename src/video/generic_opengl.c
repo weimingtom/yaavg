@@ -41,7 +41,7 @@ bool_t GL_pixel_buffer_object = FALSE;
 bool_t GL_vertex_array_object = FALSE;
 int GL_max_vertex_attribs = 0;
 
-static const char *
+const char *
 glerrno_to_desc(GLenum errno)
 {
 	struct kvp {

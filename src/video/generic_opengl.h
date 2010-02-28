@@ -8,8 +8,8 @@
 #include <config.h>
 #include <common/exception.h>
 #include <common/dict.h>
-#include <GL/gl.h>
-#include <GL/glext.h>
+#include <utils/timer.h>
+#include <video/dynamic_opengl/opengl_funcs.h>
 
 extern GLenum
 gl_pop_error_debug(const char * file, const char * func, int line);
@@ -28,10 +28,12 @@ cleanup_opengl_features(void);
 #else
 # define GL_POP_ERROR() gl_pop_error_nodebug()
 #endif
-
+extern const char * glerrno_to_desc(GLenum errno);
 # define GL_POP_THROW() do {GLenum ___err = GL_POP_ERROR();	\
 	if (___err != GL_NO_ERROR)								\
-		THROW(EXP_);\
+		THROW_VIDEO_EXP(VIDEXP_RERENDER, timer_get_current(), \
+				"opengl error: %s",\
+				glerrno_to_desc(___err));\
 } while(0)
 
 /* strdict, defined in opengl_video.c */
