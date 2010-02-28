@@ -210,8 +210,8 @@ load_texture(struct bitmap_t * b, GLuint tex,
 		int tex_sz = max(tex_w, tex_h);
 		gl(TexImage2D, target, 0, internal_format, tex_sz,
 				tex_sz, 0, format, GL_UNSIGNED_BYTE, NULL);
-		gl(TexSubImage2D, target, 0, internal_format, b->w,
-				b->h, 0, format, GL_UNSIGNED_BYTE, b->pixels);
+		gl(TexSubImage2D, target, 0, 0, 0,
+				b->w, b->h, format, GL_UNSIGNED_BYTE, b->pixels);
 	}
 	GL_POP_THROW();
 }
@@ -251,10 +251,9 @@ __prepare_texture(struct vec3 * pvecs,
 		assert(bitmap_array != NULL);
 
 		/* create the cache entry */
-		WARNING(OPENGL, "destroy tx_entry has not ready\n");
-		WARNING(OPENGL, "need to remove textures from hw mem\n");
 		int nr_tex_objs = bitmap_array->nr_w * bitmap_array->nr_h;
-		int rect_mesh_total_sz = get_rect_mesh_total_sz(bitmap_array->nr_w,
+		int rect_mesh_total_sz = get_rect_mesh_total_sz(
+				bitmap_array->nr_w,
 				bitmap_array->nr_h);
 		int ce_total_sz = sizeof(*tx_entry) +
 			big_bitmap->id_sz +
@@ -317,7 +316,7 @@ __prepare_texture(struct vec3 * pvecs,
 		struct cache_entry_t * ce = &tx_entry->ce;
 		ce->id = tx_entry->bitmap_array_name;
 		ce->data = tx_entry;
-		WARNING(OPENGL, "ce->sz is unknown now\n");
+		/*  ce->sz is unknown now */
 		ce->destroy_arg = tx_entry;
 		ce->destroy = (cache_destroy_t)destroy_txarray_cache_entry;
 		ce->cache = NULL;
@@ -387,7 +386,6 @@ __prepare_texture(struct vec3 * pvecs,
 
 		/* insert */
 		cache_insert(&txarray_cache, &tx_entry->ce);
-
 	} FINALLY {
 		get_catched_var(big_bitmap);
 		get_catched_var(bitmap_array);
