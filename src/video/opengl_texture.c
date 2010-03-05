@@ -283,13 +283,27 @@ __prepare_texture(struct vec3 * pvecs,
 			/* we have only one tile, first choice is RECT,
 			 * then NPOT, then NORMAL */
 			if (GL_texture_RECT) {
-				if ((mag_filter != GL_NEAREST) &&
-						(mag_filter != GL_LINEAR) &&
-						(min_filter != GL_NEAREST) &&
-						(min_filter != GL_LINEAR) &&
-						(wrap_s == GL_CLAMP_TO_EDGE) &&
-						(wrap_t == GL_CLAMP_TO_EDGE))
-				tx_method = TM_RECT;
+				/* 
+				 * Spec 3.1, 3.8.5:
+				 *
+				 * When target is TEXTURE_RECTANGLE, certain texture parameter values
+				 * may not be specified. In this case, the error INVALID_ENUM is generated
+				 * if the TEXTURE_WRAP_S, TEXTURE_WRAP T, or TEXTURE_WRAP_R parameter is
+				 * set to REPEAT or MIRRORED_REPEAT. The error INVALID_ENUM is generated
+				 * if TEXTURE_MIN_FILTER is set to a value other than NEAREST or LINEAR
+				 * (no mipmap filtering is permitted). The error INVALID_ENUM is generated if
+				 * TEXTURE_BASE_LEVEL is set to any value other than zero.
+				 * */
+
+				/* contition too long. we use so much lines only for beautiful */
+				if ((wrap_s == GL_REPEAT) || (wrap_s == GL_MIRRORED_REPEAT))
+					tx_method = TM_NULL;
+				else if ((wrap_t == GL_REPEAT) || (wrap_t == GL_MIRRORED_REPEAT))
+					tx_method = TM_NULL;
+				else if ((min_filter != GL_NEAREST) && (min_filter != GL_LINEAR))
+					tx_method = TM_NULL;
+				else
+					tx_method = TM_RECT;
 			}
 			if (tx_method == TM_NULL) {
 				if (GL_texture_NPOT)
@@ -302,8 +316,9 @@ __prepare_texture(struct vec3 * pvecs,
 		}
 
 		GLenum target = GL_TEXTURE_2D;
-		if (tx_method == TM_RECT)
+		if (tx_method == TM_RECT) {
 			target = GL_TEXTURE_RECTANGLE;
+		}
 
 		tx_entry->tx_method = tx_method;
 		tx_entry->target = target;
@@ -468,13 +483,13 @@ draw_texture(struct vec3 * tvecs,
 		gl(TexCoord2d, 0, 0);
 		gl(Vertex2d, -1, 1);
 
-		gl(TexCoord2d, 0, 800);
+		gl(TexCoord2d, 0, 600);
 		gl(Vertex2d, -1, -1);
 
-		gl(TexCoord2d, 600, 800);
+		gl(TexCoord2d, 800, 600);
 		gl(Vertex2d, 1, -1);
 
-		gl(TexCoord2d, 600, 0);
+		gl(TexCoord2d, 800, 0);
 		gl(Vertex2d, 1, 1);
 	}
 	gl(End);
