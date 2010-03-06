@@ -41,6 +41,9 @@ struct txarray_cache_entry_t {
 
 	struct vec3 pvecs[4];
 	struct vec3 tvecs[4];
+	/* matrix which transfer texture coord to physical
+	 * coord */
+	mat4x4 t_to_p;
 
 	GLuint * tex_objs;
 
@@ -458,6 +461,11 @@ static void
 __draw_texture(struct vec3 * tvecs,
 		struct txarray_cache_entry_t * tx_entry)
 {
+	if (tvecs == NULL)
+		tvecs = default_tvecs;
+	/*  */
+
+#if 0
 	gl(BindTexture, tx_entry->target, tx_entry->tex_objs[0]);
 	/* don't use POLYGON */
 	gl(Begin, GL_POLYGON);
@@ -488,13 +496,13 @@ __draw_texture(struct vec3 * tvecs,
 		gl(Vertex2d, 1, 1);
 	}
 	gl(End);
+#endif
 }
 
 void
 draw_texture(struct vec3 * tvecs,
 		const char * tex_name)
 {
-
 	struct cache_entry_t * ce = NULL;
 	struct txarray_cache_entry_t * tx_entry = NULL;
 	ce = cache_get_entry(&txarray_cache, tex_name);

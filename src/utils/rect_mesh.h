@@ -150,12 +150,30 @@ print_rect_mesh(struct rect_mesh_t * m);
 extern void
 print_rect_mesh_tile(struct rect_mesh_tile_t * t);
 
-extern struct rect_mesh_t *
-clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip);
+struct clip_rect_mesh_info {
+	struct rect_mesh_t * ori;
+	struct rect_t clip;
+	int nr_w, nr_h;
+	int tx1, tx2, ty1, ty3;
+	int x1, y1, x2, y3;
+};
+
+/* operation of clip_rect_mesh is divided into
+ * 2 phases. caller can alloc result mesh using alloca. */
+extern void
+do_clip_rect_mesh(struct rect_mesh_t * dest, struct clip_rect_mesh_info * info);
+
+extern struct clip_rect_mesh_info
+prepare_clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip);
+
+extern struct clip_rect_mesh_info
+prepare_clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip);
 
 extern struct rect_mesh_t *
 clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip);
 
+extern struct rect_mesh_t *
+clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip);
 #endif
 
 // vim:ts=4:sw=4

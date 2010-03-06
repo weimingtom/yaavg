@@ -136,12 +136,9 @@ print_rect_mesh(struct rect_mesh_t * m)
 	}
 }
 
-static struct rect_mesh_t *
-__clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip)
+static struct clip_rect_mesh_info
+__prepare_clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip)
 {
-	assert(ori != NULL);
-	assert(rect_in(mesh_irect(ori), clip));
-
 	/* get 3 points: upper-left, upper-right and bottom-right */
 	int x1, y1, x2, y2, x3, y3;
 	x1 = clip.x;
@@ -174,49 +171,32 @@ __clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip)
 	assert(nr_w > 0);
 	assert(nr_h > 0);
 
-	struct rect_mesh_t * ret = 
-		alloc_rect_mesh(nr_w, nr_h);
-	assert(ret != NULL);
-	mesh_irect(ret) = clip;
-
-	struct rect_f_t big_frect;
-	big_frect.x = ix_to_fx(&(ori->big_rect), clip.x);
-	big_frect.y = iy_to_fy(&(ori->big_rect), clip.y);
-	big_frect.w = ilen_to_flen(&(ori->big_rect), clip.w, w);
-	big_frect.h = ilen_to_flen(&(ori->big_rect), clip.h, h);
-	mesh_frect(ret) = big_frect;
-
-	for (int j = ty1; j <= ty3; j++) {
-		for (int i = tx1; i <= tx2; i++) {
-			struct rect_mesh_tile_t * ori_tile =
-				mesh_tile_xy(ori, i, j);
-			assert(ori_tile != NULL);
-
-			struct rect_mesh_tile_t * new_tile =
-				mesh_tile_xy(ret, i - tx1, j - ty1);
-			assert(new_tile != NULL);
-
-			new_tile->number = ori_tile->number;
-
-#define oirect tile_irect(ori_tile)
-#define nirect tile_irect(new_tile)
-			nirect.x = (i == tx1) ? (x1) : (oirect.x);
-			nirect.y = (j == ty1) ? (y1) : (oirect.y);
-			nirect.w = (i == tx2) ? (x2 - nirect.x + 1) : (rect_xbound(oirect) - nirect.x); 
-			nirect.h = (j == ty3) ? (y3 - nirect.y + 1) : (rect_ybound(oirect) - nirect.y);
-			tile_frect(new_tile).x = ix_to_fx(&(ori_tile->rect), nirect.x);
-			tile_frect(new_tile).y = iy_to_fy(&(ori_tile->rect), nirect.y);
-			tile_frect(new_tile).w = ilen_to_flen(&(ori_tile->rect), nirect.w, w);
-			tile_frect(new_tile).h = ilen_to_flen(&(ori_tile->rect), nirect.h, h);
-#undef oirect
-#undef iirect
-		}
-	}
-	return ret;
+	struct clip_rect_mesh_info info;
+	info.ori = ori;
+	info.clip = clip;
+	info.nr_w = nr_w;
+	info.nr_h = nr_h;
+	info.tx1 = tx1;
+	info.tx2 = tx2;
+	info.ty1 = ty1;
+	info.ty3 = ty3;
+	info.x1 = x1;
+	info.x2 = x2;
+	info.y1 = y1;
+	info.y3 = y3;
+	return info;
 }
 
-struct rect_mesh_t *
-clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip)
+struct clip_rect_mesh_info
+prepare_clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip)
+{
+	assert(ori != NULL);
+	assert(rect_in(mesh_irect(ori), clip));
+	return __prepare_clip_rect_mesh(ori, clip);
+}
+
+struct clip_rect_mesh_info
+prepare_clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip)
 {
 	assert(ori != NULL);
 	assert(rect_in(mesh_frect(ori), clip));
@@ -226,16 +206,95 @@ clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip)
 	iclip.y = fy_to_iy(&(ori->big_rect), clip.y);
 	iclip.w = flen_to_ilen(&(ori->big_rect), clip.w, w);
 	iclip.h = flen_to_ilen(&(ori->big_rect), clip.h, h);
-	return __clip_rect_mesh(ori, iclip);
+	return __prepare_clip_rect_mesh(ori, iclip);
+}
+
+static void
+__do_clip_rect_mesh(struct rect_mesh_t * dest, struct clip_rect_mesh_info * info)
+{
+	struct rect_mesh_t * ori = info->ori;
+	struct rect_t clip = info->clip;
+	int tx1, tx2, ty1, ty3;
+	int x1, y1, x2, y3;
+	tx1 = info->tx1;
+	tx2 = info->tx2;
+	ty1 = info->ty1;
+	ty3 = info->ty3;
+	x1 = info->x1;
+	y1 = info->y1;
+	x2 = info->x2;
+	y3 = info->y3;
+
+	mesh_irect(dest) = clip;
+
+	struct rect_f_t big_frect;
+	big_frect.x = ix_to_fx(&(ori->big_rect), clip.x);
+	big_frect.y = iy_to_fy(&(ori->big_rect), clip.y);
+	big_frect.w = ilen_to_flen(&(ori->big_rect), clip.w, w);
+	big_frect.h = ilen_to_flen(&(ori->big_rect), clip.h, h);
+	mesh_frect(dest) = big_frect;
+
+	for (int j = ty1; j <= ty3; j++) {
+		for (int i = tx1; i <= tx2; i++) {
+			struct rect_mesh_tile_t * ori_tile =
+				mesh_tile_xy(ori, i, j);
+			assert(ori_tile != NULL);
+
+			struct rect_mesh_tile_t * new_tile =
+				mesh_tile_xy(dest, i - tx1, j - ty1);
+			assert(new_tile != NULL);
+
+			new_tile->number = ori_tile->number;
+
+#define oirect tile_irect(ori_tile)
+#define nirect tile_irect(new_tile)
+			nirect.x = ((i == tx1) ? (x1) : (oirect.x));
+			nirect.y = ((j == ty1) ? (y1) : (oirect.y));
+			nirect.w = ((i == tx2) ? (x2 - nirect.x + 1) : (rect_xbound(oirect) - nirect.x)); 
+			nirect.h = ((j == ty3) ? (y3 - nirect.y + 1) : (rect_ybound(oirect) - nirect.y));
+			tile_frect(new_tile).x = ix_to_fx(&(ori_tile->rect), nirect.x);
+			tile_frect(new_tile).y = iy_to_fy(&(ori_tile->rect), nirect.y);
+			tile_frect(new_tile).w = ilen_to_flen(&(ori_tile->rect), nirect.w, w);
+			tile_frect(new_tile).h = ilen_to_flen(&(ori_tile->rect), nirect.h, h);
+#undef oirect
+#undef iirect
+		}
+	}
+	return;
+}
+
+void
+do_clip_rect_mesh(struct rect_mesh_t * dest,
+		struct clip_rect_mesh_info * info)
+{
+	assert(dest != NULL);
+	assert(info != NULL);
+	assert(info->ori != NULL);
+	__do_clip_rect_mesh(dest, info);
 }
 
 struct rect_mesh_t *
 clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip)
 {
-	assert(ori != NULL);
-	assert(rect_in(mesh_irect(ori), clip));
-	return __clip_rect_mesh(ori, clip);
+	struct clip_rect_mesh_info info = prepare_clip_rect_mesh(ori, clip);
+	struct rect_mesh_t * ret = 
+		alloc_rect_mesh(info.nr_w, info.nr_h);
+	assert(ret != NULL);
+	do_clip_rect_mesh(ret, &info);
+	return ret;
 }
+
+struct rect_mesh_t *
+clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip)
+{
+	struct clip_rect_mesh_info info = prepare_clip_rect_mesh_f(ori, clip);
+	struct rect_mesh_t * ret = 
+		alloc_rect_mesh(info.nr_w, info.nr_h);
+	assert(ret != NULL);
+	do_clip_rect_mesh(ret, &info);
+	return ret;
+}
+
 
 // vim:ts=4:sw=4
 

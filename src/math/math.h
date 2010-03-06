@@ -24,6 +24,15 @@ extern bool_t __cpu_has_sse2;
 /* used in init_cleanup_list */
 extern void __math_init();
 
+#define interp(l1, r1, c1, l2, r2) ({	\
+		float ___l1 = (float)(l1);\
+		float ___r1 = (float)(r1);\
+		float ___c1 = (float)(c1);\
+		float ___l2 = (float)(l2);\
+		float ___r2 = (float)(r2);\
+		(___c1 - ___l1) / (___r1 - ___l1) * (___r2 - ___l2) + ___l2;\
+		})
+
 #endif
 
 
