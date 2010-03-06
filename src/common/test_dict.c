@@ -64,8 +64,9 @@ int main()
 
 		struct dict_entry_t * ep = entries;
 		while (ep->key != NULL) {
-			dict_insert(dict, ep);
 			struct dict_entry_t te;
+			te = dict_insert(dict, ep);
+			assert(GET_DICT_DATA_FLAGS(te.data) & DICT_DATA_FL_VANISHED);
 			te = dict_get(dict, ep->key, 0);
 			VERBOSE(SYSTEM, "check data of key %s: %s\n",
 					(char*)ep->key, (char*)te.data.str);

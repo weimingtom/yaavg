@@ -645,7 +645,6 @@ init_xp3_package(const char * pkg_fn)
 		ce->pprivate = NULL;
 
 		/* check permanent_map_dict th find whether to permanent_map */
-
 		if (permanent_map_dict != NULL) {
 			dict_data_t data = strdict_get(permanent_map_dict,
 						p_xp3_package->io->id);
@@ -1253,14 +1252,15 @@ xp3_permanentmap(const char * fn)
 {
 	WARNING(IO, "issuing permanentmap command, this is not recommended!!!\n");
 	/* insert the fn into permanent_map_dict */
-	dict_data_t data;
+	dict_data_t data, old_data;
 	data.bol = TRUE;
 	if (permanent_map_dict == NULL) {
 		permanent_map_dict = strdict_create(
 				0, STRDICT_FL_DUPKEY);
 	}
-	strdict_insert(permanent_map_dict,
+	old_data = strdict_insert(permanent_map_dict,
 			fn, data);
+	assert(DICT_DATA_NULL(old_data));
 	return NULL;
 }
 

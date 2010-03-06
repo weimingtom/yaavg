@@ -125,8 +125,11 @@ dict_get(struct dict_t * dict, void * key,
  * e = dict_insert(dict, &e);
  * ....
  * */
-extern struct dict_entry_t THROWS(EXP_DICT_FULL)
+extern __WUR struct dict_entry_t THROWS(EXP_DICT_FULL)
 dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
+
+#define DICT_ENTRY_NODATA(e)	(GET_DICT_DATA_FLAGS((e).data) & DICT_DATA_FL_VANISHED)
+#define DICT_DATA_NULL(d)	(GET_DICT_DATA_FLAGS(d) & DICT_DATA_FL_VANISHED)
 
 /* 
  * if the key is in the dict, dict_replace will replace the old data
@@ -192,7 +195,7 @@ strdict_destroy(struct dict_t * dict);
 extern dict_data_t
 strdict_get(struct dict_t * dict, const char * key);
 
-extern dict_data_t THROWS(EXP_DICT_FULL)
+extern __WUR dict_data_t THROWS(EXP_DICT_FULL)
 strdict_insert(struct dict_t * dict,
 		const char * key, dict_data_t data);
 

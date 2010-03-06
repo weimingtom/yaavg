@@ -73,7 +73,9 @@ int main()
 		while (pkvp->key != NULL) {
 			dict_data_t x;
 			x.str = pkvp->value;
-			strdict_insert(strdict, pkvp->key, x);
+			dict_data_t dt;
+			dt = strdict_insert(strdict, pkvp->key, x);
+			assert(DICT_DATA_NULL(dt));
 			pkvp ++;
 		}
 

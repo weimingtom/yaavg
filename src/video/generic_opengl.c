@@ -111,7 +111,9 @@ build_extensions(void)
 	while (*p != '\0') {
 		if (*p == ' ') {
 			*p = '\0';
-			strdict_insert(GL_extensions_dict, pp, data);
+			dict_data_t dt;
+			dt = strdict_insert(GL_extensions_dict, pp, data);
+			assert(DICT_DATA_NULL(dt));
 			TRACE(OPENGL, "extension %s\n", pp);
 			pp = p + 1;
 		}

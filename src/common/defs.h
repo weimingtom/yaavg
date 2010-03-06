@@ -52,6 +52,8 @@ typedef int bool_t;
 # define DEBUG_DEF ATTR_UNUSED
 #endif
 
+#define __WUR	ATTR(warn_unused_result)
+
 /* The ability to declare that a function never returns is useful, but
    not really required to compile GDB successfully, so the NORETURN and
    ATTR_NORETURN macros normally expand into nothing.  */

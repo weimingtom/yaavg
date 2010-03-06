@@ -223,7 +223,8 @@ __prepare_texture(struct vec3 * pvecs,
 		GLenum mag_filter,
 		GLenum wrap_s,
 		GLenum wrap_t,
-		const char * tex_name)
+		const char * tex_name,
+		struct txarray_cache_entry_t ** p_tx_entry)
 {
 	/* pop previous error */
 	GL_POP_ERROR();
@@ -423,6 +424,8 @@ __prepare_texture(struct vec3 * pvecs,
 			destroy_txarray_cache_entry(tx_entry);
 		RETHROW(exp);
 	}
+	if (p_tx_entry != NULL)
+		*p_tx_entry = tx_entry;
 	return TRUE;
 	
 }
@@ -448,21 +451,13 @@ prepare_texture(struct vec3 * pvecs,
 
 	return __prepare_texture(pvecs, tvecs,
 			min_filter, mag_filter, wrap_s, wrap_t,
-			tex_name);
+			tex_name, NULL);
 }
 
-void
-draw_texture(struct vec3 * tvecs,
-		const char * tex_name)
+static void
+__draw_texture(struct vec3 * tvecs,
+		struct txarray_cache_entry_t * tx_entry)
 {
-
-	struct cache_entry_t * ce = NULL;
-	struct txarray_cache_entry_t * tx_entry = NULL;
-	ce = cache_get_entry(&txarray_cache, tex_name);
-	/* ??? */
-	assert(ce != NULL);
-	tx_entry = ce->data;
-
 	gl(BindTexture, tx_entry->target, tx_entry->tex_objs[0]);
 	/* don't use POLYGON */
 	gl(Begin, GL_POLYGON);
@@ -493,6 +488,21 @@ draw_texture(struct vec3 * tvecs,
 		gl(Vertex2d, 1, 1);
 	}
 	gl(End);
+}
+
+void
+draw_texture(struct vec3 * tvecs,
+		const char * tex_name)
+{
+
+	struct cache_entry_t * ce = NULL;
+	struct txarray_cache_entry_t * tx_entry = NULL;
+	ce = cache_get_entry(&txarray_cache, tex_name);
+	/* ??? */
+	assert(ce != NULL);
+	tx_entry = ce->data;
+	__draw_texture(tvecs, tx_entry);
+
 }
 
 // vim:ts=4:sw=4

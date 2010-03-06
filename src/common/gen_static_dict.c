@@ -49,14 +49,16 @@ main(int argc, char * argv[])
 		assert(argv[i] != NULL);
 		char * arg = strdup(argv[i]);
 		char * peq = strchr(arg, '=');
-		if (peq == NULL)
-			strdict_insert(d, argv[i], (dict_data_t)(void*)NULL);
-		else {
+		dict_data_t dt;
+		if (peq == NULL) {
+			dt = strdict_insert(d, argv[i], (dict_data_t)(void*)NULL);
+		} else {
 			*peq = '\0';
 			char * key = arg;
 			char * value = peq + 1;
-			strdict_insert(d, key, (dict_data_t)(void*)value);
+			dt = strdict_insert(d, key, (dict_data_t)(void*)value);
 		}
+		assert(DICT_DATA_NULL(dt));
 	}
 
 	if (argv[3 + nr] == NULL) {

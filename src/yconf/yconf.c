@@ -31,7 +31,6 @@ struct kvp {
 #define ENTRY_FLT(a, b)	{a, TypeFloat, (dict_data_t)(float)b}
 #define ENTRY_BOL(a, b)	{a, TypeFloat, (dict_data_t)(bool_t)b}
 static struct kvp kvps[] = {
-ENTRY_STR("video.engine", "dummy"),
 ENTRY_BOL("disableSDL", FALSE),
 ENTRY_INT("timer.mspf.fallback", 100),
 //ENTRY_INT("timer.fps", 0),
@@ -77,7 +76,7 @@ ENTRY_BOL("video.opengl.enableVBO", TRUE),
 ENTRY_BOL("video.opengl.enablePBO", TRUE),
 ENTRY_INT("sys.io.xp3.idxcachesz", 0xa00000),
 ENTRY_INT("sys.io.xp3.filecachesz", 0xa00000),
-ENTRY_STR("sys.io.xp3.filter", "NONE"),
+//ENTRY_STR("sys.io.xp3.filter", "NONE"),
 ENTRY_STR("sys.io.xp3.filter", "FATE/Stay Night"),
 ENTRY_INT("sys.events.keyrepeatdelay", -1),
 ENTRY_INT("sys.events.keyrepeatinterval", -1),
@@ -105,8 +104,11 @@ __yconf_init(void)
 	}
 
 	struct kvp * p = &kvps[0];
+	dict_data_t dt;
 	while (p->key != NULL) {
-		strdict_insert(conf_dict, p->key, p->value);
+		dt = strdict_insert(conf_dict, p->key, p->value);
+		if (!DICT_DATA_NULL(dt))
+			WARNING(YCONF, "key %s defined twice\n", p->key);
 		p ++;
 	}
 }
@@ -125,7 +127,9 @@ __yconf_init(void)
 #define DEFINE_SET_FUNC(t1, t2)	\
 void conf_set_##t2(const char * key, t1 v) { \
 	assert(key != NULL);					\
-	strdict_insert(conf_dict, key, (dict_data_t)v);\
+	dict_data_t dt;							\
+	dt = strdict_insert(conf_dict, key, (dict_data_t)v);\
+	assert(DICT_DATA_NULL(dt));			\
 	return;								\
 }
 
