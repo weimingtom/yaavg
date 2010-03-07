@@ -156,6 +156,13 @@ sdlv_test_screen(const char * bitmap_name)
 	return;
 }
 
+static struct bitmap_t *
+sdlv_screenshot(void)
+{
+#warning not implemented
+	return NULL;
+}
+
 static void
 sdlv_swapbuffer(void)
 {
@@ -172,6 +179,7 @@ struct video_functionor_t sdl_video_functionor = {
 	.poll_events = generic_sdl_poll_events,
 	.toggle_fullscreen = generic_sdl_toggle_fullscreen,
 	.test_screen = sdlv_test_screen,
+	.screenshot = sdlv_screenshot,
 };
 
 #else
