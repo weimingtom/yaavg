@@ -204,7 +204,8 @@ adjust_texture(struct vec3 * pvecs,
 	}
 
 #define CMP(x)	(tx_entry->x == x)
-	if (CMP(min_filter) && CMP(mag_filter) && CMP(wrap_s) && (wrap_t))
+	if (CMP(min_filter) && CMP(mag_filter)
+			&& CMP(wrap_s) && (wrap_t))
 		return TRUE;
 #undef CMP
 	tx_entry->min_filter = min_filter;
@@ -285,7 +286,7 @@ load_texture(struct bitmap_t * b, GLuint tex,
 	GL_POP_THROW();
 }
 
-static bool_t
+static void
 __prepare_texture(struct vec3 * pvecs,
 		struct vec3 * tvecs,
 		GLenum min_filter,
@@ -530,7 +531,7 @@ __prepare_texture(struct vec3 * pvecs,
 		/* finish the ce */
 		ce->sz = hw_size;
 
-		/* after all, cancle current texture */
+		/* after all, cancel current texture */
 		gl(BindTexture, target, 0);
 
 		/* insert */
@@ -559,11 +560,11 @@ __prepare_texture(struct vec3 * pvecs,
 	}
 	if (p_tx_entry != NULL)
 		*p_tx_entry = tx_entry;
-	return TRUE;
+	return;
 	
 }
 
-bool_t
+void
 prepare_texture(struct vec3 * pvecs,
 		struct vec3 * tvecs,
 		GLenum min_filter,
@@ -575,7 +576,7 @@ prepare_texture(struct vec3 * pvecs,
 	assert(tex_name != NULL);
 	if (adjust_texture(pvecs, tvecs, min_filter,
 				mag_filter, wrap_s, wrap_t, tex_name))
-		return TRUE;
+		return;
 
 	if (pvecs == NULL)
 		pvecs = default_pvecs;
@@ -615,18 +616,33 @@ __draw_rect_texture(float * tv,
 	gl(DrawArrays, GL_POLYGON, 0, 4);
 }
 
+static const struct rect_f_t default_clip_rect = {
+	.x = 0.0,
+	.y = 0.0,
+	.w = 1.0,
+	.h = 1.0,
+};
 
 static void
-__draw_txarray(struct vec3 * tvecs,
+__draw_txarray(const struct rect_f_t * clip_rect,
 		struct txarray_cache_entry_t * tx_entry)
 {
-	if (tvecs == NULL)
-		tvecs = default_tvecs;
 
+	struct rect_mesh_t * mesh = NULL;
+	if (clip_rect == NULL)
+		clip_rect = &default_clip_rect;
+	if (rects_same(clip_rect, &default_clip_rect)) {
+		mesh = tx_entry->mesh;
+	} else {
+		struct rect_mesh_t * big_mesh = tx_entry->mesh;
+		mesh = alloca_clip_rect_mesh(big_mesh, clip_rect);
+		assert(mesh != NULL);
+	}
+
+	/* use tvecs to clip the whole texture */
 	gl(EnableClientState, GL_VERTEX_ARRAY);
 	gl(EnableClientState, GL_TEXTURE_COORD_ARRAY);
 
-	struct rect_mesh_t * mesh = tx_entry->mesh;
 	GLenum target = tx_entry->target;
 	GLenum min_filter = tx_entry->min_filter;
 	GLenum mag_filter = tx_entry->mag_filter;
@@ -645,16 +661,18 @@ __draw_txarray(struct vec3 * tvecs,
 
 			float tv[8];
 			memset(tv, '\0', sizeof(tv));
-			tv[0] = 0.0;
-			tv[1] = 0.0;
-			tv[2] = 0.0;
-			tv[3] = tile->rect.frect.h;
-			tv[4] = tile->rect.frect.w;
-			tv[5] = tile->rect.frect.h;
-			tv[6] = tile->rect.frect.w;
-			tv[7] = 0.0;
+			tv[0] = tile->rect.frect.x;
+			tv[1] = tile->rect.frect.y;
+			tv[2] = tile->rect.frect.x;
+			tv[3] = tile->rect.frect.y + tile->rect.frect.h;
+			tv[4] = tile->rect.frect.x + tile->rect.frect.w;
+			tv[5] = tile->rect.frect.y + tile->rect.frect.h;
+			tv[6] = tile->rect.frect.x + tile->rect.frect.w;
+			tv[7] = tile->rect.frect.y;
 			if (target == GL_TEXTURE_RECTANGLE) {
-				__draw_rect_texture(tv, tile->rect.pv, tile->rect.irect.w, tile->rect.irect.h);
+				__draw_rect_texture(tv, tile->rect.pv,
+						tx_entry->mesh->big_rect.irect.w,
+						tx_entry->mesh->big_rect.irect.h);
 			} else {
 				__draw_texture(tv, tile->rect.pv);
 			}
@@ -665,10 +683,11 @@ __draw_txarray(struct vec3 * tvecs,
 
 	gl(DisableClientState, GL_VERTEX_ARRAY);
 	gl(DisableClientState, GL_TEXTURE_COORD_ARRAY);
+	gl(BindTexture, target, 0);
 }
 
 void
-draw_texture(struct vec3 * tvecs,
+draw_texture(struct rect_f_t * clip_rect,
 		const char * tex_name)
 {
 	struct cache_entry_t * ce = NULL;
@@ -677,7 +696,7 @@ draw_texture(struct vec3 * tvecs,
 	/* ??? */
 	assert(ce != NULL);
 	tx_entry = ce->data;
-	__draw_txarray(tvecs, tx_entry);
+	__draw_txarray(clip_rect, tx_entry);
 }
 
 // vim:ts=4:sw=4

@@ -125,7 +125,7 @@ do_test2(void)
 		.w = 0.5,
 		.h = 0.5,
 	};
-	struct rect_mesh_t * c_mesh = clip_rect_mesh_f(mesh, clip);
+	struct rect_mesh_t * c_mesh = clip_rect_mesh_f(mesh, &clip);
 	print_rect_mesh(c_mesh);
 	destroy_rect_mesh(c_mesh);
 	destroy_rect_mesh(mesh);

@@ -25,7 +25,7 @@ opengl_texture_cache_cleanup(void);
  * if one of them is NULL, default vecs is used.
  *
  * */
-extern bool_t
+extern void
 prepare_texture(struct vec3 * pvecs, struct vec3 * tvecs,
 		GLenum min_filter,
 		GLenum mag_filter,
@@ -40,7 +40,7 @@ prepare_texture(struct vec3 * pvecs, struct vec3 * tvecs,
  * if tvecs is NULL, default vecs is used.
  * */
 extern void
-draw_texture(struct vec3 * tvecs,
+draw_texture(struct rect_f_t * clip_rect,
 		const char * tex_name);
 
 #endif

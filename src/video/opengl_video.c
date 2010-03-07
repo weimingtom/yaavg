@@ -145,7 +145,6 @@ gl_cleanup(void)
 	return;
 }
 
-
 static void
 gl_test_screen(const char * b)
 {
@@ -181,14 +180,19 @@ gl_test_screen(const char * b)
 		[3] = { 1.0, 0.0, 0.0},
 	};
 
-	if (!prepare_texture(pvecs, tvecs,
+	prepare_texture(pvecs, tvecs,
 			GL_LINEAR,
 			GL_LINEAR,
 			GL_CLAMP_TO_EDGE,
 			GL_CLAMP_TO_EDGE,
-			b))
-		THROW_FATAL(EXP_UNCATCHABLE, "prepare %s failed\n", b);
-	draw_texture(tvecs, b);
+			b);
+	struct rect_f_t clip_rect = {
+		.x = 0.1,
+		.y = 0.1,
+		.w = 0.5,
+		.h = 0.5,
+	};
+	draw_texture(&clip_rect, b);
 
 	GL_POP_ERROR();
 }

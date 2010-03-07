@@ -172,16 +172,32 @@ extern void
 do_clip_rect_mesh(struct rect_mesh_t * dest, struct clip_rect_mesh_info * info);
 
 extern struct clip_rect_mesh_info
-prepare_clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip);
+prepare_clip_rect_mesh(struct rect_mesh_t * ori, const struct rect_t * clip);
 
 extern struct clip_rect_mesh_info
-prepare_clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip);
+prepare_clip_rect_mesh_f(struct rect_mesh_t * ori, const struct rect_f_t * clip);
 
 extern struct rect_mesh_t *
-clip_rect_mesh_f(struct rect_mesh_t * ori, struct rect_f_t clip);
+clip_rect_mesh_f(struct rect_mesh_t * ori, const struct rect_f_t * clip);
 
 extern struct rect_mesh_t *
-clip_rect_mesh(struct rect_mesh_t * ori, struct rect_t clip);
+clip_rect_mesh(struct rect_mesh_t * ori, const struct rect_t * clip);
+
+#define alloca_clip_rect_mesh(___ori, ___clip) ({	\
+		struct clip_rect_mesh_info ___clip_info = \
+			prepare_clip_rect_mesh_f((___ori), (___clip));\
+		struct rect_mesh_t * ___ret_mesh = alloca(\
+			get_rect_mesh_total_sz(___clip_info.nr_w, \
+				___clip_info.nr_h));		\
+		assert(___ret_mesh != NULL);		\
+		___ret_mesh->nr_w = ___clip_info.nr_w;\
+		___ret_mesh->nr_h = ___clip_info.nr_h;\
+		___ret_mesh->destroy = NULL;	\
+		\
+		do_clip_rect_mesh(___ret_mesh, &___clip_info);\
+		___ret_mesh;\
+		})
+
 #endif
 
 // vim:ts=4:sw=4

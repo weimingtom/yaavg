@@ -30,10 +30,11 @@ struct rect_d_t { double x, y, w, h; };
 #define bound(x, l, u)		max(min(x, u), l)
 
 #define rects_same(r1, r2) \
-	(((r1).x == (r2).x) && \
-	 ((r1).y == (r2).y) && \
-	 ((r1).w == (r2).w) && \
-	 ((r1).h == (r2).h))
+	(((r1) == (r2)) || ( \
+	 (equ((r1)->x, (r2)->x)) && \
+	 (equ((r1)->y, (r2)->y)) && \
+	 (equ((r1)->w, (r2)->w)) && \
+	 (equ((r1)->h, (r2)->h))))
 
 #define rects_intersect(r1, r2) ({	\
 	typeof(r1)	___r;				\

@@ -63,8 +63,8 @@ check_set_viewport(void)
 		THROW(EXP_CORRUPTED_CONF, "viewport: " RECT_FMT,
 				RECT_ARG(viewport));
 
-	struct rect_t inter =  rects_intersect(screen, viewport);
-	if (!(rects_same(inter, viewport)))
+	struct rect_t inter = rects_intersect(screen, viewport);
+	if (!(rects_same(&inter, &viewport)))
 		THROW(EXP_CORRUPTED_CONF, "resolution: " RECT_FMT ", viewport: " RECT_FMT,
 				RECT_ARG(screen), RECT_ARG(viewport));
 	CUR_VID->viewport = inter;
