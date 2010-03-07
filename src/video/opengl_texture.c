@@ -151,7 +151,7 @@ compute_transfer_matrix(mat4x4 * M, struct vec3 * pvecs, struct vec3 * tvecs)
 }
 
 static void
-tcoord_to_pcoord(float x, float y, struct vec3 * pcoord, mat4x4 * M)
+tcoord_to_pcoord(struct vec3 * pcoord, float x, float y, mat4x4 * M)
 {
 	vec4 tc, pc;
 	tc.x = x;
@@ -162,6 +162,9 @@ tcoord_to_pcoord(float x, float y, struct vec3 * pcoord, mat4x4 * M)
 	pcoord->x = pc.x;
 	pcoord->y = pc.y;
 	pcoord->z = pc.z;
+
+	TRACE(OPENGL, "tcoord (%f, %f) to pcoord (%f, %f, %f)\n",
+			x, y, pcoord->x, pcoord->y, pcoord->z);
 }
 
 
@@ -272,9 +275,8 @@ load_texture(struct bitmap_t * b, GLuint tex,
 	} else {
 		int tex_w = pow2roundup(b->w);
 		int tex_h = pow2roundup(b->h);
-		int tex_sz = max(tex_w, tex_h);
-		gl(TexImage2D, target, 0, internal_format, tex_sz,
-				tex_sz, 0, format, GL_UNSIGNED_BYTE, NULL);
+		gl(TexImage2D, target, 0, internal_format, tex_w,
+				tex_h, 0, format, GL_UNSIGNED_BYTE, NULL);
 		gl(TexSubImage2D, target, 0, 0, 0,
 				b->w, b->h, format, GL_UNSIGNED_BYTE, b->pixels);
 		if (pw) *pw = (float)(b->w) / (float)(tex_w);
@@ -472,32 +474,51 @@ __prepare_texture(struct vec3 * pvecs,
 				}
 				GL_POP_THROW();
 
+				/* compute physical coords */
+				float tw = (float)(b->w) / (float)(big_bitmap->w);
+				float th = (float)(b->h) / (float)(big_bitmap->h);
 				if (j == 0) {
-					tcoord_to_pcoord(curr_x_f,
-							curr_y_f,
-							&mesh_tile->rect.pv[0], &t_to_p);
-					tcoord_to_pcoord(curr_x_f + (float)(b->w) / (float)(big_bitmap->w),
-							curr_y_f,
-							&mesh_tile->rect.pv[3], &t_to_p);
+					if (i == 0) {
+						tcoord_to_pcoord(&mesh_tile->rect.pv[0],
+								curr_x_f, curr_y_f, &t_to_p);
+						tcoord_to_pcoord(&mesh_tile->rect.pv[1],
+								curr_x_f, curr_y_f + th, &t_to_p);
+						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+								curr_x_f + tw, curr_y_f + th, &t_to_p);
+						tcoord_to_pcoord(&mesh_tile->rect.pv[3],
+								curr_x_f + tw, curr_y_f, &t_to_p);
+					} else {
+						struct rect_mesh_tile_t * left_mesh_tile =
+							mesh_tile_xy(mesh, i - 1, j);
+						mesh_tile->rect.pv[0] = left_mesh_tile->rect.pv[3];
+						mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
+						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+								curr_x_f + tw, curr_y_f + th, &t_to_p);
+						tcoord_to_pcoord(&mesh_tile->rect.pv[3],
+								curr_x_f + tw, curr_y_f, &t_to_p);
+					}
 				} else {
-					struct rect_mesh_tile_t * up_mesh_tile = mesh_tile_xy(mesh, i, j - 1);
-					mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
-					mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
+					if (i == 0) {
+						struct rect_mesh_tile_t * up_mesh_tile =
+							mesh_tile_xy(mesh, i, j - 1);
+						mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
+						mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
+						tcoord_to_pcoord(&mesh_tile->rect.pv[1],
+								curr_x_f, curr_y_f + th, &t_to_p);
+						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+								curr_x_f + tw, curr_y_f + th, &t_to_p);
+					} else {
+						struct rect_mesh_tile_t * up_mesh_tile =
+							mesh_tile_xy(mesh, i, j - 1);
+						struct rect_mesh_tile_t * left_mesh_tile =
+							mesh_tile_xy(mesh, i - 1, j);
+						mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
+						mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
+						mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
+						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+								curr_x_f + tw, curr_y_f + th, &t_to_p);
+					}
 				}
-
-				if (i == 0) {
-					tcoord_to_pcoord(curr_x_f,
-							curr_y_f + (float)(b->h) / (float)(big_bitmap->h),
-							&mesh_tile->rect.pv[1], &t_to_p);
-				} else {
-					struct rect_mesh_tile_t * left_mesh_tile = mesh_tile_xy(mesh, i - 1, j);
-					mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
-				}
-
-				tcoord_to_pcoord(curr_x_f + (float)(b->w) / (float)(big_bitmap->w),
-						curr_y_f + (float)(b->h) / (float)(big_bitmap->h),
-						&mesh_tile->rect.pv[2], &t_to_p);
-
 				curr_x += b->w;
 				curr_x_f = (float)(curr_x) / (float)(big_bitmap->w);
 
@@ -627,18 +648,16 @@ __draw_txarray(struct vec3 * tvecs,
 			tv[0] = 0.0;
 			tv[1] = 0.0;
 			tv[2] = 0.0;
-			tv[3] = 1.0;
-			tv[4] = 1.0;
-			tv[5] = 1.0;
-			tv[6] = 1.0;
+			tv[3] = tile->rect.frect.h;
+			tv[4] = tile->rect.frect.w;
+			tv[5] = tile->rect.frect.h;
+			tv[6] = tile->rect.frect.w;
 			tv[7] = 0.0;
-//if ((i == 3) && (j == 0)) {
 			if (target == GL_TEXTURE_RECTANGLE) {
 				__draw_rect_texture(tv, tile->rect.pv, tile->rect.irect.w, tile->rect.irect.h);
 			} else {
 				__draw_texture(tv, tile->rect.pv);
 			}
-//}
 			GL_POP_ERROR();
 			
 		}
