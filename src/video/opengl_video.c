@@ -175,24 +175,13 @@ gl_test_screen(const char * b)
 
 	static struct vec3 tvecs[4] = {
 		[0] = { 0.0, 0.0, 0.0},
-		[1] = { 0.0, 1.0, 0.0},
-		[2] = { 1.0, 1.0, 0.0},
-		[3] = { 1.0, 0.0, 0.0},
+		[1] = { 0.0, 1, 0.0},
+		[2] = { 1,  1, 0.0},
+		[3] = { 1, 0.0, 0.0},
 	};
-
-	prepare_texture(pvecs, tvecs,
-			GL_LINEAR,
-			GL_LINEAR,
-			GL_CLAMP_TO_EDGE,
-			GL_CLAMP_TO_EDGE,
-			b);
-	struct rect_f_t clip_rect = {
-		.x = 0.1,
-		.y = 0.1,
-		.w = 0.5,
-		.h = 0.5,
-	};
-	draw_texture(&clip_rect, b);
+	draw_texture(b, pvecs, tvecs,
+			GL_LINEAR, GL_LINEAR,
+			GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
 
 	GL_POP_ERROR();
 }

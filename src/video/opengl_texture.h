@@ -33,16 +33,22 @@ prepare_texture(struct vec3 * pvecs, struct vec3 * tvecs,
 		GLenum wrap_t,
 		const char * tex_name);
 
-/* draw_texture clip a rect from the full texture by providing
+/* do_draw_texture clip a rect from the full texture by providing
  * 4 texture coords. the physical coords is computed by a matrix
  * built in prepare_texture.
  *
  * if tvecs is NULL, default vecs is used.
  * */
 extern void
-draw_texture(struct rect_f_t * clip_rect,
+do_draw_texture(struct rect_f_t * clip_rect,
 		const char * tex_name);
-
+extern void
+draw_texture(const char * tex_name,
+		struct vec3 * pvecs, struct vec3 * tvecs,
+		GLenum min_filter,
+		GLenum mag_filter,
+		GLenum wrap_s,
+		GLenum wrap_t);
 #endif
 
 // vim:ts=4:sw=4

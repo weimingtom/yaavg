@@ -167,6 +167,56 @@ tcoord_to_pcoord(struct vec3 * pcoord, float x, float y, mat4x4 * M)
 			x, y, pcoord->x, pcoord->y, pcoord->z);
 }
 
+static void
+compute_tile_pvecs(struct rect_mesh_t * mesh,
+		int i, int j,
+		struct vec3 * tvecs,
+		mat4x4 * t_to_p)
+{
+	struct rect_mesh_tile_t * mesh_tile = mesh_tile_xy(mesh, i, j);
+	if (j == 0) {
+		if (i == 0) {
+			tcoord_to_pcoord(&mesh_tile->rect.pv[0],
+					tvecs[0].x, tvecs[0].y, t_to_p);
+			tcoord_to_pcoord(&mesh_tile->rect.pv[1],
+					tvecs[1].x, tvecs[1].y, t_to_p);
+			tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+					tvecs[2].x, tvecs[2].y, t_to_p);
+			tcoord_to_pcoord(&mesh_tile->rect.pv[3],
+					tvecs[3].x, tvecs[3].y, t_to_p);
+		} else {
+			struct rect_mesh_tile_t * left_mesh_tile =
+				mesh_tile_xy(mesh, i - 1, j);
+			mesh_tile->rect.pv[0] = left_mesh_tile->rect.pv[3];
+			mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
+			tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+					tvecs[2].x, tvecs[2].y, t_to_p);
+			tcoord_to_pcoord(&mesh_tile->rect.pv[3],
+					tvecs[3].x, tvecs[3].y, t_to_p);
+		}
+	} else {
+		if (i == 0) {
+			struct rect_mesh_tile_t * up_mesh_tile =
+				mesh_tile_xy(mesh, i, j - 1);
+			mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
+			mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
+			tcoord_to_pcoord(&mesh_tile->rect.pv[1],
+					tvecs[1].x, tvecs[1].y, t_to_p);
+			tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+					tvecs[2].x, tvecs[2].y, t_to_p);
+		} else {
+			struct rect_mesh_tile_t * up_mesh_tile =
+				mesh_tile_xy(mesh, i, j - 1);
+			struct rect_mesh_tile_t * left_mesh_tile =
+				mesh_tile_xy(mesh, i - 1, j);
+			mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
+			mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
+			mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
+			tcoord_to_pcoord(&mesh_tile->rect.pv[2],
+					tvecs[2].x, tvecs[2].y, t_to_p);
+		}
+	}
+}
 
 static void
 destroy_txarray_cache_entry(struct txarray_cache_entry_t * tx)
@@ -194,12 +244,46 @@ adjust_texture(struct vec3 * pvecs,
 		return FALSE;
 
 	tx_entry = ce->data;
+	struct rect_mesh_t * mesh = tx_entry->mesh;
 	if ((pvecs != NULL) && (tvecs != NULL)) {
-		for (int i = 0; i < 4; i++) {
+		int i;
+		for (i = 0; i < 4; i++) {
 			if (!vec3_equ(tvecs + i, tx_entry->tvecs + i))
-				return FALSE;
+				break;
 			if (!vec3_equ(pvecs + i, tx_entry->pvecs + i))
-				return FALSE;
+				break;
+		}
+		if (i < 4) {
+			/* recompute tvecs and pvecs */
+			memcpy(tx_entry->tvecs, tvecs, sizeof(*tvecs) * 4);
+			memcpy(tx_entry->pvecs, pvecs, sizeof(*pvecs) * 4);
+			mat4x4 t_to_p;
+			compute_transfer_matrix(&t_to_p, pvecs, tvecs);
+			float curr_x_f;
+			float curr_y_f;
+			int curr_x = 0;
+			int curr_y = 0;
+			for (int j = 0; j < mesh->nr_h; j ++) {
+				curr_x_f = 0.0;
+				curr_x = 0;
+				struct rect_mesh_tile_t * tile;
+				for (int i = 0; i < mesh->nr_w; i++) {
+					tile = mesh_tile_xy(mesh, i, j);
+					float tw = (float)(tile->rect.irect.w) / (float)(mesh->big_rect.irect.w);
+					float th = (float)(tile->rect.irect.h) / (float)(mesh->big_rect.irect.h);
+					struct vec3 tvec[4] = {
+						[0] = {curr_x_f, curr_y_f, 0},
+						[1] = {curr_x_f, curr_y_f + th, 0},
+						[2] = {curr_x_f + tw, curr_y_f + th, 0},
+						[3] = {curr_x_f + tw, curr_y_f, 0},
+					};
+					compute_tile_pvecs(mesh, i, j, tvec, &t_to_p);
+					curr_x += tile->rect.irect.w;
+					curr_x_f = (float)(curr_x) / (float)(mesh->big_rect.irect.w);
+				}
+				curr_y += tile->rect.irect.h;
+				curr_y_f = (float)(curr_y) / (float)(mesh->big_rect.irect.h);
+			}
 		}
 	}
 
@@ -213,7 +297,7 @@ adjust_texture(struct vec3 * pvecs,
 	tx_entry->wrap_s = wrap_s;
 	tx_entry->wrap_t = wrap_t;
 	/* reset all textures */
-	int nr_texs = tx_entry->mesh->nr_w * tx_entry->mesh->nr_h;
+	int nr_texs = mesh->nr_w * mesh->nr_h;
 	GLenum target = tx_entry->target;
 	for (int i = 0; i < nr_texs; i++) {
 		gl(BindTexture, target, tx_entry->tex_objs[i]);
@@ -349,11 +433,13 @@ __prepare_texture(struct vec3 * pvecs,
 
 		/* for each mesh, create its texture */
 		/* choose a tx_method */
-		enum texture_method tx_method = TM_NULL;
+		enum texture_method tx_method = TM_NORMAL;
 		if (mesh->nr_w * mesh->nr_h == 1) {
-			/* we have only one tile, first choice is RECT,
-			 * then NPOT, then NORMAL */
-			if (GL_texture_RECT) {
+			/* we have only one tile, first choice is NPOT,
+			 * then RECT, then NORMAL */
+			if (GL_texture_NPOT) {
+				tx_method = TM_NPOT;
+			} else if (GL_texture_RECT) {
 				/* 
 				 * Spec 3.1, 3.8.5:
 				 *
@@ -368,28 +454,17 @@ __prepare_texture(struct vec3 * pvecs,
 
 				/* contition too long. we use so much lines only for beautiful */
 				if ((wrap_s == GL_REPEAT) || (wrap_s == GL_MIRRORED_REPEAT))
-					tx_method = TM_NULL;
+					tx_method = TM_NORMAL;
 				else if ((wrap_t == GL_REPEAT) || (wrap_t == GL_MIRRORED_REPEAT))
-					tx_method = TM_NULL;
+					tx_method = TM_NORMAL;
 				else if ((min_filter != GL_NEAREST) && (min_filter != GL_LINEAR))
-					tx_method = TM_NULL;
+					tx_method = TM_NORMAL;
 				else
 					tx_method = TM_RECT;
 			}
-			if (tx_method == TM_NULL) {
-				if (GL_texture_NPOT)
-					tx_method = TM_NPOT;
-				else
-					tx_method = TM_NORMAL;
-			}
-		} else {
-			tx_method = TM_NORMAL;
 		}
 
-		GLenum target = GL_TEXTURE_2D;
-		if (tx_method == TM_RECT) {
-			target = GL_TEXTURE_RECTANGLE;
-		}
+		GLenum target = ((tx_method == TM_RECT) ? GL_TEXTURE_RECTANGLE : GL_TEXTURE_2D);
 
 		tx_entry->tx_method = tx_method;
 		tx_entry->target = target;
@@ -432,8 +507,8 @@ __prepare_texture(struct vec3 * pvecs,
 		int hw_size = 0;
 		float curr_x_f;
 		float curr_y_f;
-		int curr_x;
-		int curr_y;
+		int curr_x = 0;
+		int curr_y = 0;
 		/* compute each tile's phy vecs */
 		for (int j = 0; j <  mesh->nr_h; j++) {
 			struct bitmap_t * b;
@@ -478,51 +553,15 @@ __prepare_texture(struct vec3 * pvecs,
 				/* compute physical coords */
 				float tw = (float)(b->w) / (float)(big_bitmap->w);
 				float th = (float)(b->h) / (float)(big_bitmap->h);
-				if (j == 0) {
-					if (i == 0) {
-						tcoord_to_pcoord(&mesh_tile->rect.pv[0],
-								curr_x_f, curr_y_f, &t_to_p);
-						tcoord_to_pcoord(&mesh_tile->rect.pv[1],
-								curr_x_f, curr_y_f + th, &t_to_p);
-						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
-								curr_x_f + tw, curr_y_f + th, &t_to_p);
-						tcoord_to_pcoord(&mesh_tile->rect.pv[3],
-								curr_x_f + tw, curr_y_f, &t_to_p);
-					} else {
-						struct rect_mesh_tile_t * left_mesh_tile =
-							mesh_tile_xy(mesh, i - 1, j);
-						mesh_tile->rect.pv[0] = left_mesh_tile->rect.pv[3];
-						mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
-						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
-								curr_x_f + tw, curr_y_f + th, &t_to_p);
-						tcoord_to_pcoord(&mesh_tile->rect.pv[3],
-								curr_x_f + tw, curr_y_f, &t_to_p);
-					}
-				} else {
-					if (i == 0) {
-						struct rect_mesh_tile_t * up_mesh_tile =
-							mesh_tile_xy(mesh, i, j - 1);
-						mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
-						mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
-						tcoord_to_pcoord(&mesh_tile->rect.pv[1],
-								curr_x_f, curr_y_f + th, &t_to_p);
-						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
-								curr_x_f + tw, curr_y_f + th, &t_to_p);
-					} else {
-						struct rect_mesh_tile_t * up_mesh_tile =
-							mesh_tile_xy(mesh, i, j - 1);
-						struct rect_mesh_tile_t * left_mesh_tile =
-							mesh_tile_xy(mesh, i - 1, j);
-						mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
-						mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
-						mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
-						tcoord_to_pcoord(&mesh_tile->rect.pv[2],
-								curr_x_f + tw, curr_y_f + th, &t_to_p);
-					}
-				}
+				struct vec3 tv[4] = {
+					[0] = {curr_x_f, curr_y_f, 0},
+					[1] = {curr_x_f, curr_y_f + th, 0},
+					[2] = {curr_x_f + tw, curr_y_f + th, 0},
+					[3] = {curr_x_f + tw, curr_y_f, 0},
+				};
+				compute_tile_pvecs(mesh, i, j, tv, &t_to_p);
 				curr_x += b->w;
 				curr_x_f = (float)(curr_x) / (float)(big_bitmap->w);
-
 			}
 			curr_y += b->h;
 			curr_y_f = (float)(curr_y) / (float)(big_bitmap->h);
@@ -599,20 +638,10 @@ __draw_texture(float * tv, struct vec3 * pvecs)
 }
 
 static void
-__draw_rect_texture(float * tv,
-		struct vec3 * pvecs, int w, int h)
+__draw_rect_texture(int * tv, struct vec3 * pvecs)
 {
+	gl(TexCoordPointer, 2, GL_INT, 2 * sizeof(int), tv);
 	gl(VertexPointer, 3, GL_FLOAT, sizeof(*pvecs), pvecs);
-	int texcoord[8];
-	texcoord[0] = tv[0] * w;
-	texcoord[1] = tv[1] * h;
-	texcoord[2] = tv[2] * w;
-	texcoord[3] = tv[3] * h;
-	texcoord[4] = tv[4] * w;
-	texcoord[5] = tv[5] * h;
-	texcoord[6] = tv[6] * w;
-	texcoord[7] = tv[7] * h;
-	gl(TexCoordPointer, 2, GL_INT, 2 * sizeof(int), texcoord);
 	gl(DrawArrays, GL_POLYGON, 0, 4);
 }
 
@@ -624,7 +653,7 @@ static const struct rect_f_t default_clip_rect = {
 };
 
 static void
-__draw_txarray(const struct rect_f_t * clip_rect,
+__do_draw_txarray(const struct rect_f_t * clip_rect,
 		struct txarray_cache_entry_t * tx_entry)
 {
 
@@ -659,21 +688,28 @@ __draw_txarray(const struct rect_f_t * clip_rect,
 			gl(TexParameteri, target, GL_TEXTURE_WRAP_S, wrap_s);
 			gl(TexParameteri, target, GL_TEXTURE_WRAP_T, wrap_t);
 
-			float tv[8];
-			memset(tv, '\0', sizeof(tv));
-			tv[0] = tile->rect.frect.x;
-			tv[1] = tile->rect.frect.y;
-			tv[2] = tile->rect.frect.x;
-			tv[3] = tile->rect.frect.y + tile->rect.frect.h;
-			tv[4] = tile->rect.frect.x + tile->rect.frect.w;
-			tv[5] = tile->rect.frect.y + tile->rect.frect.h;
-			tv[6] = tile->rect.frect.x + tile->rect.frect.w;
-			tv[7] = tile->rect.frect.y;
 			if (target == GL_TEXTURE_RECTANGLE) {
-				__draw_rect_texture(tv, tile->rect.pv,
-						tx_entry->mesh->big_rect.irect.w,
-						tx_entry->mesh->big_rect.irect.h);
+				int tv[8];
+				tv[0] = tile->rect.irect.x;
+				tv[1] = tile->rect.irect.y;
+				tv[2] = tile->rect.irect.x;
+				tv[3] = tile->rect.irect.y + tile->rect.irect.h;
+				tv[4] = tile->rect.irect.x + tile->rect.irect.w;
+				tv[5] = tile->rect.irect.y + tile->rect.irect.h;
+				tv[6] = tile->rect.irect.x + tile->rect.irect.w;
+				tv[7] = tile->rect.irect.y;
+				__draw_rect_texture(tv, tile->rect.pv);
 			} else {
+				float tv[8];
+				memset(tv, '\0', sizeof(tv));
+				tv[0] = tile->rect.frect.x;
+				tv[1] = tile->rect.frect.y;
+				tv[2] = tile->rect.frect.x;
+				tv[3] = tile->rect.frect.y + tile->rect.frect.h;
+				tv[4] = tile->rect.frect.x + tile->rect.frect.w;
+				tv[5] = tile->rect.frect.y + tile->rect.frect.h;
+				tv[6] = tile->rect.frect.x + tile->rect.frect.w;
+				tv[7] = tile->rect.frect.y;
 				__draw_texture(tv, tile->rect.pv);
 			}
 			GL_POP_ERROR();
@@ -687,16 +723,39 @@ __draw_txarray(const struct rect_f_t * clip_rect,
 }
 
 void
-draw_texture(struct rect_f_t * clip_rect,
+do_draw_texture(struct rect_f_t * clip_rect,
 		const char * tex_name)
 {
 	struct cache_entry_t * ce = NULL;
 	struct txarray_cache_entry_t * tx_entry = NULL;
 	ce = cache_get_entry(&txarray_cache, tex_name);
-	/* ??? */
 	assert(ce != NULL);
 	tx_entry = ce->data;
-	__draw_txarray(clip_rect, tx_entry);
+	__do_draw_txarray(clip_rect, tx_entry);
+}
+
+void
+draw_texture(const char * tex_name,
+		struct vec3 * pvecs, struct vec3 * tvecs,
+		GLenum min_filter,
+		GLenum mag_filter,
+		GLenum wrap_s,
+		GLenum wrap_t)
+{
+	assert(tex_name != NULL);
+	if (pvecs == NULL)
+		pvecs = default_pvecs;
+	if (tvecs == NULL)
+		tvecs = default_tvecs;
+	prepare_texture(pvecs, tvecs, min_filter,
+			mag_filter, wrap_s, wrap_t, tex_name);
+	struct rect_f_t clip_rect = {
+		.x = tvecs[0].x,
+		.y = tvecs[0].y,
+		.w = tvecs[3].x - tvecs[0].x,
+		.h = tvecs[1].y - tvecs[0].y,
+	};
+	do_draw_texture(&clip_rect, tex_name);
 }
 
 // vim:ts=4:sw=4
