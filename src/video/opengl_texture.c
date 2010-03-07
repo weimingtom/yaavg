@@ -7,6 +7,7 @@
 #include <common/exception.h>
 #include <common/cache.h>
 #include <common/bithacks.h>
+#include <utils/rect_mesh.h>
 #include <yconf/yconf.h>
 #include <video/opengl_texture.h>
 #include <video/generic_opengl.h>
@@ -41,9 +42,6 @@ struct txarray_cache_entry_t {
 
 	struct vec3 pvecs[4];
 	struct vec3 tvecs[4];
-	/* matrix which transfer texture coord to physical
-	 * coord */
-	mat4x4 t_to_p;
 
 	GLuint * tex_objs;
 
@@ -107,6 +105,67 @@ static struct vec3 default_tvecs[4] = {
 };
 
 static void
+compute_transfer_matrix(mat4x4 * M, struct vec3 * pvecs, struct vec3 * tvecs)
+{
+	/* T: texture coords */
+	/* P: physical coords */
+	/* M: result matrix */
+	/* M * T = P */
+	/* M = P * T^(-1) */
+	mat4x4 T, P;
+	_matrix_load_identity(&T);
+	_matrix_load_identity(&P);
+	T.m[0][0] = tvecs[0].x;
+	T.m[0][1] = tvecs[0].y;
+	T.m[0][2] = 1.0;
+	T.m[0][3] = 0.0;
+
+	T.m[1][0] = tvecs[1].x;
+	T.m[1][1] = tvecs[1].y;
+	T.m[1][2] = 1.0;
+	T.m[1][3] = 0.0;
+
+	T.m[2][0] = tvecs[2].x;
+	T.m[2][1] = tvecs[2].y;
+	T.m[2][2] = 1.0;
+	T.m[2][3] = 0.0;
+
+	P.m[0][0] = pvecs[0].x;
+	P.m[0][1] = pvecs[0].y;
+	P.m[0][2] = pvecs[0].z;
+	P.m[0][3] = 0.0;
+
+	P.m[1][0] = pvecs[1].x;
+	P.m[1][1] = pvecs[1].y;
+	P.m[1][2] = pvecs[1].z;
+	P.m[1][3] = 0.0;
+
+	P.m[2][0] = pvecs[2].x;
+	P.m[2][1] = pvecs[2].y;
+	P.m[2][2] = pvecs[2].z;
+	P.m[2][3] = 0.0;
+
+	invert_matrix(&T, &T);
+	mulmm(M, &P, &T);
+	return;
+}
+
+static void
+tcoord_to_pcoord(float x, float y, struct vec3 * pcoord, mat4x4 * M)
+{
+	vec4 tc, pc;
+	tc.x = x;
+	tc.y = y;
+	tc.z = 1.0;
+	tc.w = 0.0;
+	mulmv(&pc, M, &tc);
+	pcoord->x = pc.x;
+	pcoord->y = pc.y;
+	pcoord->z = pc.z;
+}
+
+
+static void
 destroy_txarray_cache_entry(struct txarray_cache_entry_t * tx)
 {
 	assert(tx != NULL);
@@ -166,7 +225,8 @@ adjust_texture(struct vec3 * pvecs,
 
 static void
 load_texture(struct bitmap_t * b, GLuint tex,
-		enum texture_method tx_method, GLenum target)
+		enum texture_method tx_method, GLenum target,
+		float * pw, float * ph)
 {
 	assert(tex != 0);
 	if (tx_method == TM_RECT)
@@ -207,6 +267,8 @@ load_texture(struct bitmap_t * b, GLuint tex,
 	if (!need_padding) {
 		gl(TexImage2D, target, 0, internal_format,	b->w,
 				b->h, 0, format, GL_UNSIGNED_BYTE, b->pixels);
+		if (pw) *pw = 1.0;
+		if (ph)	*ph = 1.0;
 	} else {
 		int tex_w = pow2roundup(b->w);
 		int tex_h = pow2roundup(b->h);
@@ -215,6 +277,8 @@ load_texture(struct bitmap_t * b, GLuint tex,
 				tex_sz, 0, format, GL_UNSIGNED_BYTE, NULL);
 		gl(TexSubImage2D, target, 0, 0, 0,
 				b->w, b->h, format, GL_UNSIGNED_BYTE, b->pixels);
+		if (pw) *pw = (float)(b->w) / (float)(tex_w);
+		if (ph)	*ph = (float)(b->h) / (float)(tex_h);
 	}
 	GL_POP_THROW();
 }
@@ -341,6 +405,12 @@ __prepare_texture(struct vec3 * pvecs,
 		ce->cache = NULL;
 		ce->pprivate = NULL;
 
+		/* compute the coord */
+		memcpy(tx_entry->pvecs, pvecs, sizeof(*pvecs) * 4);
+		memcpy(tx_entry->tvecs, tvecs, sizeof(*tvecs) * 4);
+		mat4x4 t_to_p;
+		compute_transfer_matrix(&t_to_p, pvecs, tvecs);
+
 		/* begin to load bitmaps */
 		/* generate textures */
 		gl(GenTextures, nr_tex_objs, tx_entry->tex_objs);
@@ -355,15 +425,27 @@ __prepare_texture(struct vec3 * pvecs,
 		if (gl_name(BindBuffer))
 			gl(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
 
-		int hw_size = 0;
 		/* load textures */
+		int hw_size = 0;
+		float curr_x_f;
+		float curr_y_f;
+		int curr_x;
+		int curr_y;
+		/* compute each tile's phy vecs */
 		for (int j = 0; j <  mesh->nr_h; j++) {
+			struct bitmap_t * b;
+			curr_x_f = 0.0;
+			curr_x = 0;
 			for (int i = 0; i < mesh->nr_w; i++) {
 				int nr = j * mesh->nr_w + i;
 				GLuint texobj = tx_entry->tex_objs[nr];
-				struct bitmap_t * b = &(bitmap_array->tiles[nr]);
-				mesh_tile_xy(mesh, i, j)->number = texobj;
-				load_texture(b, texobj, tx_method, target);
+				b = &(bitmap_array->tiles[nr]);
+				struct rect_mesh_tile_t * mesh_tile = mesh_tile_xy(mesh, i, j);
+				mesh_tile->number = texobj;
+				load_texture(b, texobj, tx_method, target,
+						&(mesh_tile->rect.frect.w),
+						&(mesh_tile->rect.frect.h));
+
 				/* texture is still binding, set its params */
 				gl(TexParameteri, target, GL_TEXTURE_MIN_FILTER, min_filter);
 				gl(TexParameteri, target, GL_TEXTURE_MAG_FILTER, mag_filter);
@@ -389,7 +471,39 @@ __prepare_texture(struct vec3 * pvecs,
 					hw_size += uncompress_size;
 				}
 				GL_POP_THROW();
+
+				if (j == 0) {
+					tcoord_to_pcoord(curr_x_f,
+							curr_y_f,
+							&mesh_tile->rect.pv[0], &t_to_p);
+					tcoord_to_pcoord(curr_x_f + (float)(b->w) / (float)(big_bitmap->w),
+							curr_y_f,
+							&mesh_tile->rect.pv[3], &t_to_p);
+				} else {
+					struct rect_mesh_tile_t * up_mesh_tile = mesh_tile_xy(mesh, i, j - 1);
+					mesh_tile->rect.pv[0] = up_mesh_tile->rect.pv[1];
+					mesh_tile->rect.pv[3] = up_mesh_tile->rect.pv[2];
+				}
+
+				if (i == 0) {
+					tcoord_to_pcoord(curr_x_f,
+							curr_y_f + (float)(b->h) / (float)(big_bitmap->h),
+							&mesh_tile->rect.pv[1], &t_to_p);
+				} else {
+					struct rect_mesh_tile_t * left_mesh_tile = mesh_tile_xy(mesh, i - 1, j);
+					mesh_tile->rect.pv[1] = left_mesh_tile->rect.pv[2];
+				}
+
+				tcoord_to_pcoord(curr_x_f + (float)(b->w) / (float)(big_bitmap->w),
+						curr_y_f + (float)(b->h) / (float)(big_bitmap->h),
+						&mesh_tile->rect.pv[2], &t_to_p);
+
+				curr_x += b->w;
+				curr_x_f = (float)(curr_x) / (float)(big_bitmap->w);
+
 			}
+			curr_y += b->h;
+			curr_y_f = (float)(curr_y) / (float)(big_bitmap->h);
 		}
 
 		/* finish the ce */
@@ -397,11 +511,6 @@ __prepare_texture(struct vec3 * pvecs,
 
 		/* after all, cancle current texture */
 		gl(BindTexture, target, 0);
-
-		/* compute the coord */
-		WARNING(OPENGL, "coord is not computed\n");
-		memcpy(tx_entry->pvecs, pvecs, sizeof(*pvecs) * 4);
-		memcpy(tx_entry->tvecs, tvecs, sizeof(*tvecs) * 4);
 
 		/* insert */
 		cache_insert(&txarray_cache, &tx_entry->ce);
@@ -457,46 +566,86 @@ prepare_texture(struct vec3 * pvecs,
 			tex_name, NULL);
 }
 
+/* texture should be binded, texture params should be set */
+/* GL_VERTEX_ARRAY and GL_TEXTURE_COORD_ARRAY should have been enabled */
 static void
-__draw_texture(struct vec3 * tvecs,
+__draw_texture(float * tv, struct vec3 * pvecs)
+{
+	gl(TexCoordPointer, 2, GL_FLOAT, 2 * sizeof(float), tv);
+	gl(VertexPointer, 3, GL_FLOAT, sizeof(*pvecs), pvecs);
+	gl(DrawArrays, GL_POLYGON, 0, 4);
+}
+
+static void
+__draw_rect_texture(float * tv,
+		struct vec3 * pvecs, int w, int h)
+{
+	gl(VertexPointer, 3, GL_FLOAT, sizeof(*pvecs), pvecs);
+	int texcoord[8];
+	texcoord[0] = tv[0] * w;
+	texcoord[1] = tv[1] * h;
+	texcoord[2] = tv[2] * w;
+	texcoord[3] = tv[3] * h;
+	texcoord[4] = tv[4] * w;
+	texcoord[5] = tv[5] * h;
+	texcoord[6] = tv[6] * w;
+	texcoord[7] = tv[7] * h;
+	gl(TexCoordPointer, 2, GL_INT, 2 * sizeof(int), texcoord);
+	gl(DrawArrays, GL_POLYGON, 0, 4);
+}
+
+
+static void
+__draw_txarray(struct vec3 * tvecs,
 		struct txarray_cache_entry_t * tx_entry)
 {
 	if (tvecs == NULL)
 		tvecs = default_tvecs;
-	/*  */
 
-#if 0
-	gl(BindTexture, tx_entry->target, tx_entry->tex_objs[0]);
-	/* don't use POLYGON */
-	gl(Begin, GL_POLYGON);
-	if (tx_entry->target != GL_TEXTURE_RECTANGLE) {
-		gl(TexCoord2d, 0, 0);
-		gl(Vertex2d, -1, 1);
+	gl(EnableClientState, GL_VERTEX_ARRAY);
+	gl(EnableClientState, GL_TEXTURE_COORD_ARRAY);
 
-		gl(TexCoord2d, 0, 1);
-		gl(Vertex2d, -1, -1);
+	struct rect_mesh_t * mesh = tx_entry->mesh;
+	GLenum target = tx_entry->target;
+	GLenum min_filter = tx_entry->min_filter;
+	GLenum mag_filter = tx_entry->mag_filter;
+	GLenum wrap_s = tx_entry->wrap_s;
+	GLenum wrap_t = tx_entry->wrap_t;
+	for (int j = 0; j < mesh->nr_h; j++) {
+		for (int i = 0; i < mesh->nr_w; i++) {
+			struct rect_mesh_tile_t * tile = mesh_tile_xy(mesh, i, j);
 
-		gl(TexCoord2d, 1, 1);
-		gl(Vertex2d, 1, -1);
+			gl(BindTexture, target, tile->number);
+			gl(Enable, target);
+			gl(TexParameteri, target, GL_TEXTURE_MIN_FILTER, min_filter);
+			gl(TexParameteri, target, GL_TEXTURE_MAG_FILTER, mag_filter);
+			gl(TexParameteri, target, GL_TEXTURE_WRAP_S, wrap_s);
+			gl(TexParameteri, target, GL_TEXTURE_WRAP_T, wrap_t);
 
-		gl(TexCoord2d, 1, 0);
-		gl(Vertex2d, 1, 1);
-	} else {
-
-		gl(TexCoord2d, 0, 0);
-		gl(Vertex2d, -1, 1);
-
-		gl(TexCoord2d, 0, 600);
-		gl(Vertex2d, -1, -1);
-
-		gl(TexCoord2d, 800, 600);
-		gl(Vertex2d, 1, -1);
-
-		gl(TexCoord2d, 800, 0);
-		gl(Vertex2d, 1, 1);
+			float tv[8];
+			memset(tv, '\0', sizeof(tv));
+			tv[0] = 0.0;
+			tv[1] = 0.0;
+			tv[2] = 0.0;
+			tv[3] = 1.0;
+			tv[4] = 1.0;
+			tv[5] = 1.0;
+			tv[6] = 1.0;
+			tv[7] = 0.0;
+//if ((i == 3) && (j == 0)) {
+			if (target == GL_TEXTURE_RECTANGLE) {
+				__draw_rect_texture(tv, tile->rect.pv, tile->rect.irect.w, tile->rect.irect.h);
+			} else {
+				__draw_texture(tv, tile->rect.pv);
+			}
+//}
+			GL_POP_ERROR();
+			
+		}
 	}
-	gl(End);
-#endif
+
+	gl(DisableClientState, GL_VERTEX_ARRAY);
+	gl(DisableClientState, GL_TEXTURE_COORD_ARRAY);
 }
 
 void
@@ -509,8 +658,7 @@ draw_texture(struct vec3 * tvecs,
 	/* ??? */
 	assert(ce != NULL);
 	tx_entry = ce->data;
-	__draw_texture(tvecs, tx_entry);
-
+	__draw_txarray(tvecs, tx_entry);
 }
 
 // vim:ts=4:sw=4

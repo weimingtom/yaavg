@@ -23,7 +23,7 @@ typedef union __mat4x4 {
 } mat4x4 ATTR(aligned (128));
 
 extern void
-load_identity(mat4x4 * d);
+_matrix_load_identity(mat4x4 * d);
 
 extern void
 mulmv(vec4 * d, mat4x4 * m, vec4 * v);

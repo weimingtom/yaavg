@@ -25,11 +25,17 @@ static mat4x4 E ATTR(aligned(16)) = {
 	},
 };
 
-void
+static inline void
 load_identity(mat4x4 * d)
 {
 	memcpy(d, &E, sizeof(mat4x4));
 	return;
+}
+
+extern void
+_matrix_load_identity(mat4x4 * d)
+{
+	load_identity(d);
 }
 
 #define LBRA	<%

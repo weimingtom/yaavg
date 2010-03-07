@@ -55,6 +55,6 @@ SET(tests
 	)
 
 
-build_tests("${tests}" "yconf;utils;video;resource;common")
+build_tests("${tests}" "yconf;utils;video;resource;common;math")
 
 # vim:ts=4:sw=4

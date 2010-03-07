@@ -17,6 +17,12 @@ typedef float __m128 __attribute__ ((__vector_size__ (16), __may_alias__));
 typedef union __vec4 {
 	__m128 __m;
 	float v[4];
+	struct {
+		float x;
+		float y;
+		float z;
+		float w;
+	};
 } vec4;
 
 __END_DECLS

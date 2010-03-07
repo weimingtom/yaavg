@@ -53,11 +53,19 @@
  */
 
 struct vec3 {
-	float x, y, z;
+	float x;
+	float y;
+	float z;
 };
 
 #define vec3_equ(a, b)	(equ((a)->x, (b)->x) && equ((a)->y, (b)->y) && equ((a)->z, (b)->z))
 
+/* 
+ * NOTICE: irect and frect may not uniform. think:
+ * a line of 800 pixels is divided into 4 lines: 256, 256, 256, 32
+ * the width in frect are both 1.0, but the real length of the last tile is shorter.
+ * therefore, when clipping rect_mesh, internally use irect.
+ */
 struct mesh_rect {
 	struct rect_t irect;
 	struct rect_f_t frect;

@@ -367,12 +367,8 @@ fill_mesh_by_array(struct bitmap_array_t * array, struct rect_mesh_t * mesh)
 			trival_init_mesh_rect(&(curr_tile->rect),
 					curr_bitmap->w,
 					curr_bitmap->h);
-			if (curr_bitmap->w != array->sz_lim_w)
-				curr_tile->rect.frect.w =
-					(float)(curr_bitmap->w) / (float)(array->sz_lim_w);
-			if (curr_bitmap->h != array->sz_lim_h)
-				curr_tile->rect.frect.h =
-					(float)(curr_bitmap->h) / (float)(array->sz_lim_h);
+			/* curr_tile->rect.frect should be adjust when doing
+			 * texture rendering */
 			curr_bitmap ++;
 			curr_tile ++;
 		}
