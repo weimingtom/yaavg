@@ -166,8 +166,8 @@ gl_test_screen(const char * b)
 	};
 	draw_texture(b, pvecs, tvecs,
 			GL_LINEAR, GL_LINEAR,
-			GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
-	GL_POP_ERROR();
+			GL_CLAMP_TO_EDGE,
+			GL_CLAMP_TO_EDGE);
 
 	gl(Color4f, 1.0, 0.0, 0.0, 0.0);
 	static GLfloat axis[] = {

@@ -630,7 +630,7 @@ prepare_texture(struct vec3 * pvecs,
 /* texture should be binded, texture params should be set */
 /* GL_VERTEX_ARRAY and GL_TEXTURE_COORD_ARRAY should have been enabled */
 static void
-__draw_texture(float * tv, struct vec3 * pvecs)
+__draw_texture_tile(float * tv, struct vec3 * pvecs)
 {
 	gl(TexCoordPointer, 2, GL_FLOAT, 2 * sizeof(float), tv);
 	gl(VertexPointer, 3, GL_FLOAT, sizeof(*pvecs), pvecs);
@@ -638,7 +638,7 @@ __draw_texture(float * tv, struct vec3 * pvecs)
 }
 
 static void
-__draw_rect_texture(int * tv, struct vec3 * pvecs)
+__draw_rect_texture_tile(int * tv, struct vec3 * pvecs)
 {
 	gl(TexCoordPointer, 2, GL_INT, 2 * sizeof(int), tv);
 	gl(VertexPointer, 3, GL_FLOAT, sizeof(*pvecs), pvecs);
@@ -698,7 +698,7 @@ __do_draw_txarray(const struct rect_f_t * clip_rect,
 				tv[5] = tile->rect.irect.y + tile->rect.irect.h;
 				tv[6] = tile->rect.irect.x + tile->rect.irect.w;
 				tv[7] = tile->rect.irect.y;
-				__draw_rect_texture(tv, tile->rect.pv);
+				__draw_rect_texture_tile(tv, tile->rect.pv);
 			} else {
 				float tv[8];
 				memset(tv, '\0', sizeof(tv));
@@ -710,7 +710,7 @@ __do_draw_txarray(const struct rect_f_t * clip_rect,
 				tv[5] = tile->rect.frect.y + tile->rect.frect.h;
 				tv[6] = tile->rect.frect.x + tile->rect.frect.w;
 				tv[7] = tile->rect.frect.y;
-				__draw_texture(tv, tile->rect.pv);
+				__draw_texture_tile(tv, tile->rect.pv);
 			}
 			GL_POP_ERROR();
 			
