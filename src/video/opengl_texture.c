@@ -511,7 +511,7 @@ __prepare_texture(struct vec3 * pvecs,
 		int curr_y = 0;
 		/* compute each tile's phy vecs */
 		for (int j = 0; j <  mesh->nr_h; j++) {
-			struct bitmap_t * b = NULL;
+			struct bitmap_t * b = &(bitmap_array->tiles[0]);
 			curr_x_f = 0.0;
 			curr_x = 0;
 			for (int i = 0; i < mesh->nr_w; i++) {
