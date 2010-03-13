@@ -58,7 +58,7 @@ dummy_load(struct io_t * io ATTR(unused), const char * id)
 
 	strcpy((void*)(b->__data), id);
 
-	h->revert = FALSE;
+	h->invert_y_axis = FALSE;
 	h->id = (void*)(b->__data);
 	h->id_sz = strlen(h->id) + 1;
 

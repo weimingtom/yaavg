@@ -20,6 +20,7 @@
 
 #if defined HAVE_SDL
 #include <SDL/SDL.h>
+#include <utils/generic_sdl.h>
 
 /* needn't use volatile shadow because we set it after everything
  * is okay. */
@@ -156,11 +157,34 @@ sdlv_test_screen(const char * bitmap_name)
 	return;
 }
 
+static void
+dummy_destroy_bitmap(struct bitmap_t * ptr ATTR(unused))
+{
+	/* do nothing */
+}
+
 static struct bitmap_t *
 sdlv_screenshot(void)
 {
 #warning not implemented
-	return NULL;
+	static struct bitmap_t ss_head;
+	memset(&ss_head, '\0', sizeof(ss_head));
+	static const char ss_name[] = "<sdl-mainscreen>";
+	/* dirty trick */
+	struct SDL_PixelFormat * f = main_screen->format;
+	bool_t fixed = FALSE;
+	if ((f->BytesPerPixel == 4) && (f->Amask == 0)) {
+		fixed = TRUE;
+		f->Amask = 0xff000000;
+		ss_head.invert_alpha = TRUE;
+	}
+		
+	fill_bitmap_by_sdlsurface(&ss_head, main_screen,
+			ss_name, sizeof(ss_name));
+	if (fixed)
+		f->Amask = 0;
+	ss_head.destroy = dummy_destroy_bitmap;
+	return &ss_head;
 }
 
 static void

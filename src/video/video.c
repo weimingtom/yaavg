@@ -3,11 +3,18 @@
  * by WN @ Nov. 29, 2009
  */
 
+#include <config.h>
 #include <common/debug.h>
 #include <common/exception.h>
 #include <video/video.h>
 #include <yconf/yconf.h>
 #include <utils/rect.h>
+
+#include <io/io.h>
+#include <utils/timer.h>
+#include <bitmap/bitmap_to_png.h>
+
+#include <time.h>
 
 extern struct functionor_t dummy_video_functionor;
 
@@ -113,6 +120,70 @@ video_cleanup(void)
 {
 	VERBOSE(VIDEO, "video cleanuping\n");
 	vid_cleanup();
+}
+
+void
+video_screenshot(void)
+{
+	DEBUG(VIDEO, "taking screenshot\n");
+
+	/* generate the name of the screenshot file */
+	
+	define_exp(exp);
+	catch_var(struct io_t *, writer, NULL);
+	catch_var(struct bitmap_t *, b, NULL);
+	TRY(exp) {
+		set_catched_var(b, vid_screenshot());
+		if (b == NULL) {
+			WARNING(VIDEO, "vid \"%s\" doesn't support screenshot, or raise an error\n",
+					CUR_VID->name);
+			break;
+		}
+
+		const char * dir = conf_get_string("video.screenshotdir", "/tmp");
+		DEBUG(VIDEO, "screenshot dir is %s\n", dir);
+#ifndef HAVE_LOCALTIME_R
+		int len = strlen(dir) + 20;
+		char * fn = alloca(len);
+		assert(fn != NULL);
+		snprintf(fn, len, "%s/yaavg-%u.png",
+				dir, timer_get_current());
+#else
+		struct tm tm, *ptm;
+		time_t stime;
+		stime = time(NULL);
+		if (stime == (time_t)(-1)) {
+			WARNING(VIDEO, "Get current time failed\n");
+			stime = 0;
+		}
+
+		ptm = localtime_r(&stime, &tm);
+		assert(ptm == &tm);
+
+		char * _fn = alloca(64);
+		assert(_fn != NULL);
+		memset(_fn, '\0', 64);
+		strftime(_fn, 64, "yaavg-%Y%m%d%H%M%S.png", ptm);
+		int len = strlen(dir) + strlen(_fn) + 3;
+		char * fn = alloca(len);
+		assert(fn != NULL);
+		snprintf(fn, len, "%s/%s", dir, _fn);
+#endif
+		DEBUG(VIDEO, "screenshot filename: %s\n", fn);
+		set_catched_var(writer, io_open_write("FILE", fn));
+		bitmap_to_png(b, writer);
+	} FINALLY {
+		get_catched_var(writer);
+		get_catched_var(b);
+		if (writer != NULL)
+			io_close(writer);
+		if (b != NULL)
+			free_bitmap(b);
+	} CATCH(exp) {
+		print_exception(&exp);
+		WARNING(VIDEO, "screenshot failed\n");
+		EAT_SMALL_EXP(exp);
+	}
 }
 
 

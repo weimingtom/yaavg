@@ -24,5 +24,6 @@
 #cmakedefine HAVE_XRANDR	1
 #cmakedefine HAVE_XF86VMODE	1
 #cmakedefine USE_OPENGL3	1
+#cmakedefine HAVE_LOCALTIME_R	1
 #endif
 

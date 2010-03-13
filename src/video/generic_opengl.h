@@ -63,6 +63,7 @@ extern bool_t GL_vertex_array_object;
 extern int GL_max_vertex_attribs;
 
 #define UNPACK_ALIGNMENT	(1)
+#define PACK_ALIGNMENT		(1)
 
 #endif
 

@@ -217,7 +217,7 @@ png_load(struct io_t * io, const char * id)
 		png_read_image(read_ptr, png_res->rows);
 
 		/* fill the resource and bitmap */
-		h->revert = FALSE;
+		h->invert_y_axis = FALSE;
 		h->id = png_res->id;
 		h->id_sz = id_sz;
 		h->format = format;

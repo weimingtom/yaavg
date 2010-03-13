@@ -274,7 +274,7 @@ tlg_load(struct io_t * io, const char * id)
 		struct bitmap_t * h = &b->head;
 		struct resource_t * r = &b->resource;
 
-		h->revert = FALSE;
+		h->invert_y_axis = FALSE;
 		strcpy(retval->id, id);
 		h->id = retval->id;
 		h->id_sz = id_sz;

@@ -128,7 +128,8 @@ render(void)
 		while (!is_exit) {
 			delta_time = timer_enter_frame();
 
-			vid_test_screen("0*XP3:ss_保有背景真アサシン.tlg|FILE:/home/wn/Windows/Fate/image.xp3");
+			vid_test_screen("0*XP3:ps079.jpg|FILE:/home/wn/Windows/Fate/Realta Nua IMAGE.xp3");
+//			vid_test_screen("0*XP3:ss_保有背景真アサシン.tlg|FILE:/home/wn/Windows/Fate/image.xp3");
 
 			timer_finish_frame();
 
@@ -140,12 +141,18 @@ render(void)
 				if (evt.type == EVENT_PHY_QUIT)
 					is_exit = TRUE;
 				if (evt.type == EVENT_PHY_KEY_DOWN) {
+					/* q */
 					if (evt.u.key.scancode == 0x18)
 						is_exit = TRUE;
+					/* esc */
 					if (evt.u.key.scancode == 0x09)
 						is_exit = TRUE;
+					/* t */
 					if (evt.u.key.scancode == 0x1c)
 						vid_toggle_fullscreen();
+					/* s */
+					if (evt.u.key.scancode == 0x27)
+						video_screenshot();
 				}
 			}
 		}

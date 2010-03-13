@@ -73,9 +73,14 @@ enum bitmap_format {
 struct bitmap_t {
 	/* public */
 	/* 
-	 * some bitmap, such as AIR's PDT, is reverted. see bitmap_to_png.c
+	 * some bitmap, such as AIR's PDT, has inverted yaxis. see bitmap_to_png.c
 	 * */
-	bool_t revert;
+	bool_t invert_y_axis;
+	/* this is only used in sdl screenshot,
+	 * for bitmap_to_png to invert alpha channel,
+	 * don't use it in other place!! */
+	bool_t invert_alpha;
+	/* some sdl internal image us 32 bits pixel, but no real alpha. */
 	const char * id;
 	/* this is important for deserializing */
 	int id_sz;
@@ -107,7 +112,7 @@ struct bitmap_deserlize_param {
 	/* align each line with 1, 4, 8 or 16 */
 	int align;
 	/* force to build a non-revert bitmap */
-	bool_t fix_revert;
+	bool_t revert_y_axis;
 };
 
 struct bitmap_t *

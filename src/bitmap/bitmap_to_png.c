@@ -148,7 +148,7 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 		set_catched_var(rows, xmalloc(b->h * sizeof(uint8_t*)));
 		assert(rows != NULL);
 		uint8_t ** prow = rows;
-		if (b->revert) {
+		if (b->invert_y_axis) {
 			for (int n = b->h - 1; n >= 0; n--) {
 				* prow = b->pixels + n * row_size;
 				prow ++;
@@ -159,6 +159,10 @@ bitmap_to_png(struct bitmap_t * b, struct io_t * io)
 				prow ++;
 			}
 		}
+
+		/* for sdl screenshot */
+		if (b->invert_alpha)
+			png_set_invert_alpha(write_ptr);
 
 		png_set_rows(write_ptr, write_info_ptr, rows);
 		if ((b->format == BITMAP_BGR) || (b->format == BITMAP_BGRA))

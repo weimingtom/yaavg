@@ -389,7 +389,7 @@ __prepare_texture(struct vec3 * pvecs,
 	TRY(exp) {
 		static struct bitmap_deserlize_param des_parm = {
 			.align = UNPACK_ALIGNMENT,
-			.fix_revert = TRUE,
+			.revert_y_axis = TRUE,
 		};
 
 		/* first, fetch the big bitmap */
@@ -505,13 +505,13 @@ __prepare_texture(struct vec3 * pvecs,
 
 		/* load textures */
 		int hw_size = 0;
-		float curr_x_f;
-		float curr_y_f;
+		float curr_x_f = 0;
+		float curr_y_f = 0;
 		int curr_x = 0;
 		int curr_y = 0;
 		/* compute each tile's phy vecs */
 		for (int j = 0; j <  mesh->nr_h; j++) {
-			struct bitmap_t * b;
+			struct bitmap_t * b = NULL;
 			curr_x_f = 0.0;
 			curr_x = 0;
 			for (int i = 0; i < mesh->nr_w; i++) {

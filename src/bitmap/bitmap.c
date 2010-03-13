@@ -105,9 +105,9 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 
 	assert(r != NULL);
 
-	bool_t fix_revert = FALSE;
-	if ((head.revert) && (p->fix_revert))
-		fix_revert = TRUE;
+	bool_t revert_y_axis = FALSE;
+	if ((head.invert_y_axis) && (p->revert_y_axis))
+		revert_y_axis = TRUE;
 
 	/* read id */
 	io_read(io, (char*)r->id, head.id_sz, 1);
@@ -116,7 +116,7 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 			head.pitch, r->pitch);
 
 	/* read pixels */
-	if ((head.pitch == r->pitch) && (!fix_revert)) {
+	if ((head.pitch == r->pitch) && (!revert_y_axis)) {
 		if (io->functionor->vmsplice_read) {
 			struct iovec vec;
 			vec.iov_base = r->pixels;
@@ -134,7 +134,7 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 			 * the alloc_bitmap will alloc some more bytes if old pitch
 			 * is larger, so below code never cause memory corruption
 			 * */
-			void * ptr = fix_revert ?
+			void * ptr = revert_y_axis ?
 					(r->pixels + r->pitch * i) :
 					(r->pixels + r->pitch * (r->h - 1 - i));
 			if (io->functionor->vmsplice_read) {
@@ -148,8 +148,8 @@ bitmap_deserialize(struct io_t * io, struct bitmap_deserlize_param * p)
 			}
 		}
 	}
-	if (fix_revert)
-		r->revert = FALSE;
+	if (revert_y_axis)
+		r->invert_y_axis = FALSE;
 	/* write the sync */
 	sync = END_DESERIALIZE_SYNC;
 	io_write(io, &sync, sizeof(sync), 1);

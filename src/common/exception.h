@@ -238,20 +238,24 @@ ATTR(format(printf, 3, 4))
 		throw_video_exception(lv, stamp, __dbg_info fmt)
 
 
+#define EAT_SMALL_EXP(e) do {		\
+		switch (e.level) { 			\
+			case EXP_LV_LOWEST:		\
+			case EXP_LV_TAINTED:	\
+				break;				\
+			default:				\
+				print_exception(&e);\
+				RETHROW(e);			\
+		}							\
+} while(0)
+
 #define NOTHROW(fn, ...) do {	\
 	define_exp(___exp);	\
 	TRY(___exp) {					\
 		fn(__VA_ARGS__);		\
 	} NO_FINALLY				\
-	CATCH(___exp) {						\
-		switch(___exp.level) {		\
-			case EXP_LV_LOWEST:	\
-			case EXP_LV_TAINTED:\
-				break;			\
-			default:			\
-				print_exception(&___exp);	\
-				RETHROW(___exp);	\
-		}						\
+	CATCH(___exp) {				\
+		EAT_SMALL_EXP(___exp);	\
 	}							\
 } while(0)
 
@@ -264,15 +268,7 @@ ATTR(format(printf, 3, 4))
 	} NO_FINALLY				\
 	CATCH(___exp) {						\
 		___r = defret;			\
-		switch(___exp.level) {	\
-			case EXP_LV_LOWEST:	\
-			case EXP_LV_TAINTED:\
-				break;			\
-			default:			\
-				print_exception(&___exp);	\
-				RETHROW(___exp);\
-								\
-		}						\
+		EAT_SMALL_EXP(___exp);	\
 	}							\
 	___r;						\
 })

@@ -9,6 +9,7 @@
 #include <common/dict.h>
 #include <common/bithacks.h>
 #include <common/cache.h>
+#include <common/mm.h>
 #include <yconf/yconf.h>
 #include <video/video.h>
 #include <video/gl_driver.h>
@@ -149,23 +150,7 @@ static void
 gl_test_screen(const char * b)
 {
 	gl(Clear, GL_COLOR_BUFFER_BIT);
-
-	gl(Color4f, 1.0, 1.0, 1.0, 1.0);
-
-	static GLfloat axis[] = {
-		-1.0, 0,
-		1.0, 0,
-		0, -1.0,
-		0, 1.0,
-		0, 0,
-		0.1, 0.5,
-	};
-
-	gl(EnableClientState, GL_VERTEX_ARRAY);
-	gl(VertexPointer, 2, GL_FLOAT, 0, axis);
-	gl(DrawArrays, GL_LINES, 0, sizeof(axis) / sizeof(GLfloat));
-	gl(DisableClientState, GL_VERTEX_ARRAY);
-
+	gl(Color4f, 1.0, 1.0, 1.0, 0.0);
 	static struct vec3 pvecs[4] = {
 		[0] = {-1.0,  1.0, 0.0},
 		[1] = {-1.0, -1.0, 0.0},
@@ -182,8 +167,65 @@ gl_test_screen(const char * b)
 	draw_texture(b, pvecs, tvecs,
 			GL_LINEAR, GL_LINEAR,
 			GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
-
 	GL_POP_ERROR();
+
+	gl(Color4f, 1.0, 0.0, 0.0, 0.0);
+	static GLfloat axis[] = {
+		-1.0, 0,
+		1.0, 0,
+		0, -1.0,
+		0, 1.0,
+		0, 0,
+		0.1, 0.5,
+	};
+
+	gl(EnableClientState, GL_VERTEX_ARRAY);
+	gl(VertexPointer, 2, GL_FLOAT, 0, axis);
+	gl(DrawArrays, GL_LINES, 0, sizeof(axis) / sizeof(GLfloat));
+	gl(DisableClientState, GL_VERTEX_ARRAY);
+}
+
+static void
+destroy_ss_bitmap(struct bitmap_t * ptr)
+{
+	xfree(ptr->pixels);
+}
+
+static struct bitmap_t *
+gl_screenshot(void)
+{
+	static struct bitmap_t ss;
+	memset(&ss, '\0', sizeof(ss));
+	int bpp = CUR_VID->width * 3;
+	bpp = ALIGN_UP(bpp, PACK_ALIGNMENT);
+	int pixel_sz = bpp * CUR_VID->height;
+
+	/* fill ss */
+	/* y axis is invert when read from framebuffer */
+	ss.invert_y_axis = TRUE;
+	ss.invert_alpha = FALSE;
+	static const char ss_name[] = "<opengl-framebuffer>";
+	ss.id = ss_name;
+	ss.id_sz = sizeof(ss_name);
+	ss.format = BITMAP_RGB;
+	ss.bpp = 3;
+	ss.x = ss.y = 0;
+	ss.w = CUR_VID->width;
+	ss.h = CUR_VID->height;
+	ss.pitch = bpp;
+	ss.align = PACK_ALIGNMENT;
+	ss.total_sz = pixel_sz;
+	ss.pixels = xmalloc(pixel_sz);
+	assert(ss.pixels != NULL);
+	ss.destroy = destroy_ss_bitmap;
+
+	/* read pixel */
+	if (gl_name(BindBuffer))
+		gl(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
+	gl(ReadPixels, ss.x, ss.y, ss.w, ss.h, GL_RGB,
+			GL_UNSIGNED_BYTE, ss.pixels);
+	GL_POP_ERROR();
+	return &ss;
 }
 
 struct video_functionor_t opengl_video_functionor = {
@@ -193,6 +235,7 @@ struct video_functionor_t opengl_video_functionor = {
 	.init = gl_init,
 	.cleanup = gl_cleanup,
 	.test_screen = gl_test_screen,
+	.screenshot = gl_screenshot,
 	/* redirect to driver's poll_events */
 	.poll_events = NULL,
 	.toggle_fullscreen = NULL,

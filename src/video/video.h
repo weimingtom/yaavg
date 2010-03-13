@@ -75,6 +75,7 @@ struct video_functionor_t {
 #define vid_poll_events(e)		VID_FUNC(poll_events, 0, e)
 #define vid_test_screen(b)		VID_VOIDFUNC(test_screen, b)
 #define vid_toggle_fullscreen() VID_VOIDFUNC(toggle_fullscreen)
+#define vid_screenshot() VID_FUNC(screenshot, NULL)
 
 
 inline static void 
@@ -100,6 +101,9 @@ video_init(void);
 
 extern void
 video_cleanup(void);
+
+void
+video_screenshot(void);
 
 #endif
 
