@@ -6,8 +6,10 @@
 #include <video/gl_driver.h>
 
 extern struct functionor_t sdl_gl_driver_functionor;
+extern struct functionor_t glx_gl_driver_functionor;
 
 static struct functionor_t * functionors[] = {
+	&glx_gl_driver_functionor,
 	&sdl_gl_driver_functionor,
 	NULL,
 };

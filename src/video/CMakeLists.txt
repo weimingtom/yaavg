@@ -41,7 +41,7 @@ ENDIF (HAVE_X11)
 ENDIF (HAVE_OPENGL)
 
 ADD_LIBRARY(video STATIC ${SRC} ${OPENGL3_SRC} ${OPENGL_SRC} ${SDL_SRC})
-TARGET_LINK_LIBRARIES(video dynamic_opengl common utils events yconf)
+TARGET_LINK_LIBRARIES(video dynamic_opengl common utils events yconf "-ldl")
 
 IF (HAVE_SDL)
 	TARGET_LINK_LIBRARIES(video ${SDL_LIBRARY})

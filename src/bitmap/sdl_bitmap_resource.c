@@ -178,7 +178,7 @@ sdl_load(struct io_t * io, const char * id)
 	/* trace the information of img */
 	DEBUG(BITMAP, "format of %s:\n", id);
 	DEBUG(BITMAP, "\tsize: %dx%d\n", img->w, img->h);
-	struct SDL_PixelFormat * f = img->format;
+#define f	(img->format)
 	DEBUG(BITMAP, "\tbits pre pixel: %d\n", f->BitsPerPixel);
 	DEBUG(BITMAP, "\tbytes pre pixel: %d\n", f->BytesPerPixel);
 	DEBUG(BITMAP, "\t(R, G, B, A)loss=(%d, %d, %d, %d)\n",
@@ -205,6 +205,7 @@ sdl_load(struct io_t * io, const char * id)
 			((uint8_t*)(img->pixels))[1],
 			((uint8_t*)(img->pixels))[2],
 			((uint8_t*)(img->pixels))[3]);
+#undef f
 
 	catch_var(struct bitmap_resource_t *, b, NULL);
 	define_exp(exp);

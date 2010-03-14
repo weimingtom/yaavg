@@ -756,6 +756,7 @@ draw_texture(const char * tex_name,
 		.h = tvecs[1].y - tvecs[0].y,
 	};
 	do_draw_texture(&clip_rect, tex_name);
+	GL_POP_THROW();
 }
 
 // vim:ts=4:sw=4

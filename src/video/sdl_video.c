@@ -166,7 +166,6 @@ dummy_destroy_bitmap(struct bitmap_t * ptr ATTR(unused))
 static struct bitmap_t *
 sdlv_screenshot(void)
 {
-#warning not implemented
 	static struct bitmap_t ss_head;
 	memset(&ss_head, '\0', sizeof(ss_head));
 	static const char ss_name[] = "<sdl-mainscreen>";
@@ -176,6 +175,8 @@ sdlv_screenshot(void)
 	if ((f->BytesPerPixel == 4) && (f->Amask == 0)) {
 		fixed = TRUE;
 		f->Amask = 0xff000000;
+		/* invert_alpha is only used in SDL surface to 
+		 * bitmap_t transformation */
 		ss_head.invert_alpha = TRUE;
 	}
 		
