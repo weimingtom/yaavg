@@ -319,7 +319,7 @@ file_build_io_from_stdfile(FILE * fp, bool_t is_write)
 	assert(fp != NULL);
 	WARNING(IO, "You are building a struct io_t directly from FILE *, it is not recommanded\n");
 	WARNING(IO, "It is your responsibility to guarantee the FILE * is at proper state\n");
-	WARNING(IO, "buinding file io from std file %p, is_write=%d\n", fp, is_write);
+	WARNING(IO, "building file io from std file %p, is_write=%d\n", fp, is_write);
 
 	struct file_io_t * r = xcalloc(1, sizeof(*r));
 	assert(r != NULL);
