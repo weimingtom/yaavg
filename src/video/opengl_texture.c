@@ -67,7 +67,8 @@ opengl_texture_cache_init(void)
 		int texture_hwsz = conf_get_int("video.opengl.texture.totalhwsize",
 				64 * (1 << 20));
 		if (texture_hwsz < 16 * (1 << 20)) {
-			WARNING(OPENGL, "video.opengl.texture.totalhwsize is 0x%x, too small, reset to 16MB\n",
+			WARNING(OPENGL, "video.opengl.texture.totalhwsize is 0x%x, "
+					"too small, reset to 16MB\n",
 					texture_hwsz);
 			texture_hwsz = 16 * (1 << 20);
 		}
@@ -433,38 +434,42 @@ __prepare_texture(struct vec3 * pvecs,
 
 		/* for each mesh, create its texture */
 		/* choose a tx_method */
-		enum texture_method tx_method = TM_NORMAL;
-		if (mesh->nr_w * mesh->nr_h == 1) {
-			/* we have only one tile, first choice is NPOT,
-			 * then RECT, then NORMAL */
-			if (GL_texture_NPOT) {
-				tx_method = TM_NPOT;
-			} else if (GL_texture_RECT) {
+		enum texture_method tx_method = TM_NORMAL; if (mesh->nr_w * mesh->nr_h
+				== 1) {
+			/* we have only one tile, first choice is NPOT, then RECT, then
+			 * NORMAL */
+			if (GL_texture_NPOT) { tx_method = TM_NPOT; } else if
+				(GL_texture_RECT) {
 				/* 
 				 * Spec 3.1, 3.8.5:
 				 *
-				 * When target is TEXTURE_RECTANGLE, certain texture parameter values
-				 * may not be specified. In this case, the error INVALID_ENUM is generated
-				 * if the TEXTURE_WRAP_S, TEXTURE_WRAP T, or TEXTURE_WRAP_R parameter is
-				 * set to REPEAT or MIRRORED_REPEAT. The error INVALID_ENUM is generated
-				 * if TEXTURE_MIN_FILTER is set to a value other than NEAREST or LINEAR
-				 * (no mipmap filtering is permitted). The error INVALID_ENUM is generated if
-				 * TEXTURE_BASE_LEVEL is set to any value other than zero.
-				 * */
+				 * When target is TEXTURE_RECTANGLE, certain texture parameter
+				 * values may not be specified. In this case, the error
+				 * INVALID_ENUM is generated if the TEXTURE_WRAP_S,
+				 * TEXTURE_WRAP T, or TEXTURE_WRAP_R parameter is set to REPEAT
+				 * or MIRRORED_REPEAT. The error INVALID_ENUM is generated if
+				 * TEXTURE_MIN_FILTER is set to a value other than NEAREST or
+				 * LINEAR (no mipmap filtering is permitted). The error
+				 * INVALID_ENUM is generated if TEXTURE_BASE_LEVEL is set to
+				 * any value other than zero.  */
 
-				/* contition too long. we use so much lines only for beautiful */
+				/* contition too long. we use so much lines only
+				 * for beautiful */
 				if ((wrap_s == GL_REPEAT) || (wrap_s == GL_MIRRORED_REPEAT))
 					tx_method = TM_NORMAL;
-				else if ((wrap_t == GL_REPEAT) || (wrap_t == GL_MIRRORED_REPEAT))
+				else if ((wrap_t == GL_REPEAT) ||
+						(wrap_t == GL_MIRRORED_REPEAT))
 					tx_method = TM_NORMAL;
-				else if ((min_filter != GL_NEAREST) && (min_filter != GL_LINEAR))
+				else if ((min_filter != GL_NEAREST) &&
+						(min_filter != GL_LINEAR))
 					tx_method = TM_NORMAL;
 				else
 					tx_method = TM_RECT;
 			}
 		}
 
-		GLenum target = ((tx_method == TM_RECT) ? GL_TEXTURE_RECTANGLE : GL_TEXTURE_2D);
+		GLenum target = ((tx_method == TM_RECT) ?
+				GL_TEXTURE_RECTANGLE : GL_TEXTURE_2D);
 
 		tx_entry->tx_method = tx_method;
 		tx_entry->target = target;
@@ -538,7 +543,8 @@ __prepare_texture(struct vec3 * pvecs,
 							target, 0, GL_TEXTURE_COMPRESSED, &c);
 					if (c) {
 						gl(GetTexLevelParameteriv,
-								target, 0, GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &s);
+								target, 0,
+								GL_TEXTURE_COMPRESSED_IMAGE_SIZE, &s);
 						TRACE(OPENGL, "compressed texture sz is %d\n", s);
 					} else {
 						s = uncompress_size;

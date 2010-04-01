@@ -30,7 +30,7 @@ enum __debug_level {
 #undef __DEBUG_H_INCLUDE_DEBUG_COMPONENTS_H
 
 
-#define __NOP	do {}while(0)
+#define __NOP	do {} while(0)
 
 extern void
 dbg_init(const char * file);
@@ -64,25 +64,28 @@ ATTR(format(printf, 2, 3));
 extern void NORETURN ATTR_NORETURN
 dbg_fatal(void);
 
+#define ___POS___	__FILE__, __FUNCTION__, __LINE__
+
 #ifdef YAAVG_DEBUG
 
+
 #define SILENT(...)     __NOP
-#define TRACE(c, ...)	dbg_output(DBG_LV_TRACE, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define DEBUG(c, ...)	dbg_output(DBG_LV_DEBUG, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define VERBOSE(c, ...)	dbg_output(DBG_LV_VERBOSE, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define WARNING(c, ...)	dbg_output(DBG_LV_WARNING, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
-#define ERROR(c, ...)	dbg_output(DBG_LV_ERROR, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define TRACE(c, ...)	dbg_output(DBG_LV_TRACE, (c), ___POS___, __VA_ARGS__)
+#define DEBUG(c, ...)	dbg_output(DBG_LV_DEBUG, (c), ___POS___, __VA_ARGS__)
+#define VERBOSE(c, ...)	dbg_output(DBG_LV_VERBOSE, (c), ___POS___, __VA_ARGS__)
+#define WARNING(c, ...)	dbg_output(DBG_LV_WARNING, (c), ___POS___, __VA_ARGS__)
+#define ERROR(c, ...)	dbg_output(DBG_LV_ERROR, (c), ___POS___, __VA_ARGS__)
 #define FATAL(c, ...)	do {	\
-	dbg_output(DBG_LV_FATAL, (c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__); \
+	dbg_output(DBG_LV_FATAL, (c), ___POS___, __VA_ARGS__); \
 	dbg_fatal();	\
 }while(0)
-#define FATAL_MSG(c, ...)	dbg_output(DBG_LV_FATAL, (c), __FILE__, __FUNCTION__, \
-		__LINE__, __VA_ARGS__)
-#define FORCE(c, ...)	dbg_output(DBG_LV_FORCE,	\
-		(c), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define FATAL_MSG(c, ...) dbg_output(DBG_LV_FATAL, (c), ___POS___, __VA_ARGS__)
+#define FORCE(c, ...) dbg_output(DBG_LV_FORCE,	\
+		(c), ___POS___, __VA_ARGS__)
 
 /* memory leak detection */
-#define __dbg_info_param	const char * file ATTR_UNUSED, const char * func, int line
+#define __dbg_info_param	const char * file ATTR_UNUSED, \
+	const char * func, int line
 extern void *
 __wrap_malloc(size_t size, __dbg_info_param);
 extern void *
@@ -104,46 +107,46 @@ __wrap_fclose(FILE * stream, __dbg_info_param);
 # ifdef malloc
 #  undef malloc
 # endif
-# define malloc(s)	__wrap_malloc((s), __FILE__, __FUNCTION__, __LINE__)
+# define malloc(s)	__wrap_malloc((s), ___POS___)
 
 # ifdef memalign
 #  undef memalign
 # endif
-# define memalign(b, s)	__wrap_memalign((b), (s), __FILE__, __FUNCTION__, __LINE__)
+# define memalign(b, s)	__wrap_memalign((b), (s), ___POS___)
 
 
 # ifdef calloc
 #  undef calloc
 # endif
-# define calloc(c, s)	__wrap_calloc((c), (s), __FILE__, __FUNCTION__, __LINE__)
+# define calloc(c, s)	__wrap_calloc((c), (s), ___POS___)
 
 
 # ifdef free
 #  undef free
 # endif
-# define free(ptr)		__wrap_free((ptr), __FILE__, __FUNCTION__, __LINE__)
+# define free(ptr)		__wrap_free((ptr), ___POS___)
 
 # ifdef strdup
 #  undef strdup
 # endif
-# define strdup(s)	__wrap_strdup((s), __FILE__, __FUNCTION__, __LINE__)
+# define strdup(s)	__wrap_strdup((s), ___POS___)
 
 
 # ifdef realloc
 #  undef realloc
 # endif
-# define realloc(p, n)	__wrap_realloc((p), (n), __FILE__, __FUNCTION__, __LINE__)
+# define realloc(p, n)	__wrap_realloc((p), (n), ___POS___)
 
 
 # ifdef fopen
 #  undef fopen
 # endif
-# define fopen(fn, t)	__wrap_fopen((fn), (t), __FILE__, __FUNCTION__, __LINE__)
+# define fopen(fn, t)	__wrap_fopen((fn), (t), ___POS___)
 
 # ifdef fclose
 #  undef fclose
 # endif
-# define fclose(fp)	__wrap_fclose((fp), __FILE__, __FUNCTION__, __LINE__)
+# define fclose(fp)	__wrap_fclose((fp), ___POS___)
 #endif
 
 #else
