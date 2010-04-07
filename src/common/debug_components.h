@@ -3,73 +3,29 @@
  * It should be included in debug.h, and never used directly.
  */
 
-#ifndef __DEBUG_H_INCLUDE_DEBUG_COMPONENTS_H
+#ifndef __DEBUG_INCLUDE_DEBUG_COMPONENTS_H
 # error Never include <common/debug_components.h> directly, use <common/debug.h> instead.
 #endif
 
-#ifndef __DEBUG_COMPONENTS_H
-#define __DEBUG_COMPONENTS_H
-enum __debug_component {
-	SYSTEM	= 0,
-	MEMORY,
-	FILE_STREAM,
-	DICT,
-	YCONF,
-	VIDEO,
-	OPENGL,
-	GLX,
-	EVENT,
-	TIMER,
-	CACHE,
-	BITMAP,
-	IO,
-	RESOURCE,
-	OTHER,
-	NR_DEBUG_COMPONENTS,
-};
+def_dbg_component(SYSTEM, 	"SYS", VERBOSE)
+def_dbg_component(MEMORY, 	"MEM", VERBOSE)
+def_dbg_component(FILE_STREAM, 	"FIL", VERBOSE)
+def_dbg_component(DICT, 	"DIC", VERBOSE)
+def_dbg_component(YCONF, 	"COF", VERBOSE)
+def_dbg_component(VIDEO, 	"VID", DEBUG)
+def_dbg_component(OPENGL, 	"GL ", TRACE)
+def_dbg_component(GLX, 		"GLX", TRACE)
+def_dbg_component(EVENT,	"EVT", TRACE)
+def_dbg_component(TIMER,	"TMR", DEBUG)
+def_dbg_component(CACHE,	"CHE", VERBOSE)
+def_dbg_component(BITMAP,	"BTM", DEBUG)
+def_dbg_component(IO,		"I/O", VERBOSE)
+def_dbg_component(RESOURCE,	"RES", VERBOSE)
+def_dbg_component(OTHER,	"OTR", VERBOSE)
 
-#ifdef __DEBUG_C
-#ifdef YAAVG_DEBUG
-/* name of component */
-static const char *
-__debug_component_names[NR_DEBUG_COMPONENTS] = {
-	[SYSTEM]	= "SYS",
-	[MEMORY]	= "MEM",
-	[FILE_STREAM]	= "FIL",
-	[DICT]		= "DIC",
-	[YCONF]		= "COF",
-	[VIDEO]		= "VID",
-	[OPENGL]	= "GL ",
-	[GLX]		= "GLX",
-	[EVENT]		= "EVT",
-	[TIMER]		= "TMR",
-	[CACHE]		= "CHE",
-	[BITMAP]	= "BTM",
-	[IO]		= "I/O",
-	[RESOURCE]	= "RES",
-	[OTHER]		= "OTH",
-};
 
-static const enum __debug_level
-__debug_component_levels[NR_DEBUG_COMPONENTS] = {
-	[SYSTEM]	= DBG_LV_TRACE,
-	[MEMORY]	= DBG_LV_VERBOSE,
-	[FILE_STREAM]	= DBG_LV_VERBOSE,
-	[DICT]		= DBG_LV_TRACE,
-	[YCONF]		= DBG_LV_VERBOSE,
-	[VIDEO]		= DBG_LV_DEBUG,
-	[OPENGL]	= DBG_LV_TRACE,
-	[GLX]		= DBG_LV_TRACE,
-	[EVENT]		= DBG_LV_TRACE,
-	[TIMER]		= DBG_LV_DEBUG,
-	[CACHE]		= DBG_LV_VERBOSE,
-	[BITMAP]	= DBG_LV_DEBUG,
-	[IO]		= DBG_LV_VERBOSE,
-	[RESOURCE]	= DBG_LV_VERBOSE,
-	[OTHER]		= DBG_LV_VERBOSE,
-};
-#endif
-#endif
-
+#ifndef DEBUG_OUTPUT_FILE
+/* NULL means stderr */
+# define DEBUG_OUTPUT_FILE	(NULL)
 #endif
 

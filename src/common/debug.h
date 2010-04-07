@@ -25,10 +25,19 @@ enum __debug_level {
 	NR_DEBUG_LEVELS,
 };
 
-#define __DEBUG_H_INCLUDE_DEBUG_COMPONENTS_H
+#define __DEBUG_INCLUDE_DEBUG_COMPONENTS_H
+#define def_dbg_component(___comp, ___name, ___level)	___comp,
+enum __debug_component {
 #include <common/debug_components.h>
-#undef __DEBUG_H_INCLUDE_DEBUG_COMPONENTS_H
+	NR_DEBUG_COMPONENTS,
+};
+#undef def_dbg_component
+#undef __DEBUG_INCLUDE_DEBUG_COMPONENTS_H
 
+#ifndef DEBUG_OUTPUT_FILE
+/* NULL means stderr */
+# define DEBUG_OUTPUT_FILE	(NULL)
+#endif
 
 #define __NOP	do {} while(0)
 

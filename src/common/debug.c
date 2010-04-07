@@ -39,6 +39,25 @@ static const char * __debug_level_names[NR_DEBUG_LEVELS] = {
 	[DBG_LV_FATAL]		= "FAL",
 	[DBG_LV_FORCE]		= "FOC",
 };
+
+#define __DEBUG_INCLUDE_DEBUG_COMPONENTS_H
+
+static const char *
+__debug_component_names[NR_DEBUG_COMPONENTS] = {
+#define def_dbg_component(___comp, ___name, ___level)	[___comp] = ___name,
+#include <common/debug_components.h>
+#undef def_dbg_component
+};
+
+static const enum __debug_level
+__debug_component_levels[NR_DEBUG_COMPONENTS] = {
+#define def_dbg_component(___comp, ___name, ___level) [___comp] = \
+	DBG_LV_##___level,
+#include <common/debug_components.h>
+#undef def_dbg_component
+};
+#undef __DEBUG_INCLUDE_DEBUG_COMPONENTS_H
+
 #endif
 
 #define get_level_name(l)	(__debug_level_names[l])
@@ -552,7 +571,7 @@ dbg_fatal(void)
 
 void __dbg_init(void)
 {
-	dbg_init(NULL);
+	dbg_init(DEBUG_OUTPUT_FILE);
 }
 
 void __dbg_cleanup(void)
