@@ -191,7 +191,8 @@ find_chunk(const void * data, const uint8_t * name,
 		ph->chunk_sz = le64toh(ph->chunk_sz);
 
 		if (ph->chunk_sz > 0x7fffffff)
-			THROW(EXP_BAD_RESOURCE, "chunk too large: chunk_sz=%Ld", ph->chunk_sz);
+			THROW(EXP_BAD_RESOURCE, "chunk too large: chunk_sz=%Ld",
+					ph->chunk_sz);
 		pos += sizeof(*ph);
 
 		if (memcmp(ph->name, name, 4) == 0)
@@ -293,8 +294,11 @@ extract_index(struct io_t * pkg_io, uint8_t * index_flag, int * pindex_sz,
 
 			DEBUG(IO, "r_compressed_size = %Ld\n", r_compressed_size);
 			DEBUG(IO, "r_index_size = %Ld\n", r_index_size);
-			if ((r_compressed_size > 0x7fffffff) || (r_index_size > 0x7fffffff))
-				THROW(EXP_BAD_RESOURCE, "r_compressed_size or r_index_size too large(%Lu, %Lu)",
+			if ((r_compressed_size > 0x7fffffff) ||
+					(r_index_size > 0x7fffffff))
+				THROW(EXP_BAD_RESOURCE,
+						"r_compressed_size or "
+						"r_index_size too large(%Lu, %Lu)",
 						r_compressed_size, r_index_size);
 
 			index_size = r_index_size;
@@ -320,7 +324,8 @@ extract_index(struct io_t * pkg_io, uint8_t * index_flag, int * pindex_sz,
 				THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d",
 						result);
 			if ((int)dest_len != index_size)
-				THROW(EXP_BAD_RESOURCE, "uncompress failed: dest_len=%lu, index_size=%d",
+				THROW(EXP_BAD_RESOURCE,
+						"uncompress failed: dest_len=%lu, index_size=%d",
 						dest_len, index_size);
 		}
 		break;
@@ -471,7 +476,8 @@ build_struct_item(const void * info_start,
 			tole64(s.start);
 			tole64(s.ori_sz);
 			tole64(s.arch_sz);
-			TRACE(IO, "segment %d: flags=0x%x, start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
+			TRACE(IO, "segment %d: flags=0x%x, "
+					"start=0x%Lx, ori_sz=0x%Lx, arch_sz=0x%Lx\n",
 					i, s.flags, s.start, s.ori_sz, s.arch_sz);
 
 			struct xp3_index_item_segment * pseg = &(pitem->segments[i]);
@@ -487,7 +493,8 @@ build_struct_item(const void * info_start,
 				pseg->is_compressed = FALSE;
 				if (s.ori_sz != s.arch_sz)
 					THROW(EXP_BAD_RESOURCE,
-							"uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
+							"uncompressed segment, "
+							"but arch_sz (%Ld) and ori_sz (%Ld) different",
 							s.arch_sz, s.ori_sz);
 			} else {
 				THROW(EXP_BAD_RESOURCE,
@@ -504,7 +511,8 @@ build_struct_item(const void * info_start,
 
 		/* check the size of the item */
 		if ((!pitem->is_compressed) && (pitem->ori_sz != pitem->arch_sz))
-			THROW(EXP_BAD_RESOURCE, "item %s is uncompressed but ori_sz(%Ld) and arch_sz(%Ld) different",
+			THROW(EXP_BAD_RESOURCE, "item %s is uncompressed "
+					"but ori_sz(%Ld) and arch_sz(%Ld) different",
 					pitem->utf8_name, pitem->ori_sz, pitem->arch_sz);
 	} FINALLY {
 	} CATCH(exp) {
@@ -536,8 +544,9 @@ init_xp3_package(const char * pkg_fn)
 		int nr_items = 0;
 		do {
 			/* extract_index realloc index_data, need to be freed in caller */
-			set_catched_var(index_data, extract_index(pkg_io, &index_flag, &index_size,
-					index_data));
+			set_catched_var(index_data,
+					extract_index(pkg_io, &index_flag, &index_size,
+						index_data));
 
 #if 0
 			FILE* xxfp = fopen("/tmp/xxx", "wb");
@@ -570,7 +579,8 @@ init_xp3_package(const char * pkg_fn)
 							&segments_start,
 							&adlr_start,
 							index_end)) {
-					WARNING(IO, "doesn't find file chunk in this index, xp3 file is %s\n",
+					WARNING(IO, "doesn't find file chunk in this index, "
+							"xp3 file is %s\n",
 							pkg_fn);
 					break;
 				}
@@ -584,7 +594,8 @@ init_xp3_package(const char * pkg_fn)
 				/* finally we can insert index entry, using utf8_name as key */
 				if (index_dict == NULL) {
 					/* create it */
-					set_catched_var(index_dict, strdict_create(8, STRDICT_FL_MAINTAIN_REAL_SZ));
+					set_catched_var(index_dict,
+							strdict_create(8, STRDICT_FL_MAINTAIN_REAL_SZ));
 					assert(index_dict != NULL);
 				}
 				dict_data_t data, tmpdata;
@@ -598,7 +609,8 @@ init_xp3_package(const char * pkg_fn)
 				}
 
 				/* after we insert pitem, we must reset it to NULL to prevent
-				 * the exception handler xfree it twice (once in freeing the dict) */
+				 * the exception handler xfree it twice
+				 * (once in freeing the dict) */
 				set_catched_var(pitem, NULL);
 				pindex = fc_start + file_h.chunk_sz; 
 				nr_items ++;
@@ -651,7 +663,8 @@ init_xp3_package(const char * pkg_fn)
 			if ((!(GET_DICT_DATA_FLAGS(data) & DICT_DATA_FL_VANISHED)) &&
 				(data.bol))
 			{
-				WARNING(IO, "xp3 package file %s is permanent mapped into memory, this is not recommended\n",
+				WARNING(IO, "xp3 package file %s is permanent mapped, "
+						"this is not recommended\n",
 						p_xp3_package->io->id);
 				io_command(p_xp3_package->io,
 						"permanentmap", NULL);
@@ -743,7 +756,8 @@ init_xp3_file(const char * __id)
 				xp3->index_dict,
 				fn);
 		if (GET_DICT_DATA_FLAGS(dd) & DICT_DATA_FL_VANISHED)
-			THROW(EXP_RESOURCE_NOT_FOUND, "resource %s in xp3 package %s not found",
+			THROW(EXP_RESOURCE_NOT_FOUND, "resource %s in xp3 package %s "
+					"not found",
 					fn, pkg_fn);
 		struct xp3_index_item * item = dd.ptr;
 		assert(item != NULL);
@@ -752,7 +766,8 @@ init_xp3_file(const char * __id)
 		int total_sz;
 		if (item->is_compressed) {
 			TRACE(IO, "xp3 item %s is compressed\n", fn);
-			total_sz = sizeof(*file) + pkg_fn_sz + fn_sz  + id_sz + item->ori_sz + 7;
+			total_sz = sizeof(*file) + pkg_fn_sz + fn_sz
+				+ id_sz + item->ori_sz + 7;
 		} else {
 			/* if uncompressed, we only copy the segments description */
 			TRACE(IO, "xp3 item %s is uncompressed\n", fn);
@@ -794,12 +809,14 @@ init_xp3_file(const char * __id)
 			uint64_t total_arch_sz = 0;
 			for (int i = 0; i < item->nr_segments; i++) {
 				struct xp3_index_item_segment * seg = &item->segments[i];
-				TRACE(IO, "segment %d: ori_sz=%Ld, arch_sz=%Ld, start=0x%Lx, offset=0x%Lx\n",
+				TRACE(IO, "segment %d: ori_sz=%Ld, arch_sz=%Ld, "
+						"start=0x%Lx, offset=0x%Lx\n",
 						i, seg->ori_sz, seg->arch_sz, seg->start, seg->offset);
 
 				if (seg->is_compressed) {
 					TRACE(IO, "seg %d is compressed\n", i);
-					set_catched_var(tmp_storage, xrealloc(tmp_storage, seg->arch_sz));
+					set_catched_var(tmp_storage,
+							xrealloc(tmp_storage, seg->arch_sz));
 					assert(tmp_storage != NULL);
 					/* read tmp_storage */
 					io_seek(xp3->io, seg->start, SEEK_SET);
@@ -816,15 +833,18 @@ init_xp3_file(const char * __id)
 					DEBUG(IO, "unzip segment %d, result=%d, dest_len=%lu\n",
 							i, result, dest_len);
 					if ((result != Z_OK) || (dest_len != seg->ori_sz))
-						THROW(EXP_BAD_RESOURCE, "uncompress failed: result=%d, dest_len=%lu, expect %Ld",
+						THROW(EXP_BAD_RESOURCE, "uncompress failed: "
+								"result=%d, dest_len=%lu, expect %Ld",
 								result, dest_len, seg->ori_sz);
 				} else {
 					TRACE(IO, "seg %d is uncompressed\n", i);
 					if (seg->arch_sz != seg->ori_sz)
-						THROW(EXP_BAD_RESOURCE, "uncompressed segment, but arch_sz (%Ld) and ori_sz (%Ld) different",
+						THROW(EXP_BAD_RESOURCE, "uncompressed segment, "
+								"but arch_sz (%Ld) and ori_sz (%Ld) different",
 								seg->arch_sz, seg->ori_sz);
 					io_seek(xp3->io, seg->start, SEEK_SET);
-					io_read_force(xp3->io, file->u.data + seg->offset, seg->ori_sz);
+					io_read_force(xp3->io, file->u.data +
+							seg->offset, seg->ori_sz);
 				}
 
 
@@ -837,7 +857,8 @@ init_xp3_file(const char * __id)
 
 			if ((total_ori_sz != item->ori_sz) ||
 					(total_arch_sz != item->arch_sz))
-				THROW(EXP_BAD_RESOURCE, "arch file %s in xp3 package %s is corrupted: ori_sz: (%Ld, %Ld); "
+				THROW(EXP_BAD_RESOURCE, "arch file %s in xp3 package %s "
+						"is corrupted: ori_sz: (%Ld, %Ld); "
 						"arch_sz: (%Ld, %Ld)",
 						fn, pkg_fn,
 						total_ori_sz, item->ori_sz,
@@ -1208,7 +1229,8 @@ xp3_get_package_items(const char * fn)
 			xp3->pkg_fn, nr_fn, total_fn_sz);
 
 	if ((nr_fn <= 0) || (total_fn_sz <= 0)) {
-		THROW(EXP_BAD_RESOURCE, "xp3 package %s doesn't contain any file, or file name error: (%d, %d)\n",
+		THROW(EXP_BAD_RESOURCE, "xp3 package %s doesn't contain any file, "
+				"or file name error: (%d, %d)\n",
 				xp3->pkg_fn, nr_fn, total_fn_sz);
 		return NULL;
 	}
@@ -1266,13 +1288,16 @@ xp3_permanentmap(const char * fn)
 
 /* special method for XP3 */
 /* syntax of cmd:
- *	get_package_items:<xp3file> (return a table of string containing all file names in that xp3 package)
- *					(the return value of get_package_items **MUST** be freed manually)
- *	permanentmap:<xp3file> permanentmap should be called before the xp3 init. if not,
- *					it takes effect after package cache cleanup and package reinit
+ *	get_package_items:<xp3file>
+ *		(return a table of string containing all file names in that xp3
+ *		package)
+ *		(the return value of get_package_items **MUST** be freed manually)
+ *	permanentmap:<xp3file> permanentmap should be called before the xp3 init.
+ *	if not, it takes effect after package cache cleanup and package reinit
  */
 static void *
-xp3_command(struct io_t * io ATTR_UNUSED, const char * cmd, void * arg ATTR_UNUSED)
+xp3_command(struct io_t * io ATTR_UNUSED, const char * cmd,
+		void * arg ATTR_UNUSED)
 {
 	DEBUG(IO, "run command %s for xp3 io\n", cmd);
 	if (strncmp("permanentmap:", cmd,
@@ -1311,7 +1336,8 @@ xp3_seek(struct io_t * __io, int64_t offset,
 			break;
 	}
 	if ((pos < 0) || (pos > (int64_t)io->file_sz))
-		THROW(EXP_BAD_RESOURCE, "seek xp3 file %s (%Ld, %d) failed: out of range. max pos is %Ld",
+		THROW(EXP_BAD_RESOURCE, "seek xp3 file %s (%Ld, %d) failed: "
+				"out of range. max pos is %Ld",
 				io->id, offset, whence, io->file_sz);
 	io->pos = pos;
 	return;
