@@ -66,7 +66,10 @@ int main()
 		while (ep->key != NULL) {
 			struct dict_entry_t te;
 			te = dict_insert(dict, ep);
-			assert(GET_DICT_DATA_FLAGS(te.data) & DICT_DATA_FL_VANISHED);
+			if (!DICT_ENTRY_NODATA(&te)) {
+				VERBOSE(SYSTEM, "old data of %s: %s\n",
+						(char*)ep->key, (char*)te.data.str);
+			}
 			te = dict_get(dict, ep->key, 0);
 			VERBOSE(SYSTEM, "check data of key %s: %s\n",
 					(char*)ep->key, (char*)te.data.str);

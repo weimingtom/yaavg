@@ -140,7 +140,7 @@ check_extension(const char * conf_key, ...)
 		assert(strlen(f) < 64);
 		TRACE(OPENGL, "check for feature %s\n", f);
 		dict_data_t d = strdict_get(GL_extensions_dict, f);
-		if (!(GET_DICT_DATA_FLAGS(d) & DICT_DATA_FL_VANISHED)) {
+		if (!(DICT_DATA_NULL(d))) {
 			DEBUG(OPENGL, "find %s\n", f);
 			va_end(args);
 			return TRUE;

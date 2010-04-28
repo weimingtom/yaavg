@@ -116,7 +116,7 @@ __yconf_init(void)
 }
 
 #define getv(x)	dict_data_t x = strdict_get(conf_dict, key);	\
-	if (GET_DICT_DATA_FLAGS(x) & DICT_DATA_FL_VANISHED)	{		\
+	if (DICT_DATA_NULL(x))	{		\
 		TRACE(YCONF, "conf_dict doesn't contain key %s, return default value\n", key); \
 		return def; }
 

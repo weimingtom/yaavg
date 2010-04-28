@@ -443,7 +443,7 @@ __dict_remove(struct dict_t * dict, void * key, hashval_t hash)
 
 	retval = *ep;
 	dict_invalid_entry(dict, ep);
-	assert(!(GET_DICT_DATA_FLAGS(retval.data) & DICT_DATA_FL_VANISHED));
+	assert(!(DICT_DATA_NULL(retval.data)));
 
 	/* this is time for shrink */
 #if 0
@@ -501,7 +501,7 @@ dict_get(struct dict_t * dict, void * key,
 	}
 
 	retval = *ep;
-	assert(!(GET_DICT_DATA_FLAGS(retval.data) & DICT_DATA_FL_VANISHED));
+	assert(!(DICT_DATA_NULL(retval.data)));
 	return retval;
 }
 
@@ -527,7 +527,7 @@ dict_get_next(struct dict_t * dict, struct dict_entry_t * entry)
 
 	if (entry > epmax)
 		return NULL;
-	assert(!(GET_DICT_DATA_FLAGS(entry->data) & DICT_DATA_FL_VANISHED));
+	assert(!(DICT_ENTRY_NODATA(entry)));
 	return entry;
 }
 
@@ -643,7 +643,7 @@ strdict_remove(struct dict_t * dict,
 
 	oe = dict_remove(dict, (void*)key, 0);
 	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
-		if (!(GET_DICT_DATA_FLAGS(oe.data) & DICT_DATA_FL_VANISHED)) {
+		if (!(DICT_DATA_NULL(oe.data))) {
 			if (oe.data.ptr != NULL)
 				xfree_null(oe.data.ptr);
 		}
@@ -664,7 +664,7 @@ strdict_invalid_entry(struct dict_t * d, struct dict_entry_t * e)
 	if ((e->key != NULL) && (flags & STRDICT_FL_DUPKEY))
 		xfree_null(e->key);
 	if ((e->data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
-		if (!(GET_DICT_DATA_FLAGS(e->data) & DICT_DATA_FL_VANISHED))
+		if (!(DICT_ENTRY_NODATA(e)))
 			xfree_null(e->data.ptr);
 	}
 	dict_invalid_entry(d, e);

@@ -91,7 +91,7 @@ __cache_insert(struct cache_t * cache,
 			(dict_data_t)(void*)(entry));
 	entry->cache = cache;
 
-	if (!(GET_DICT_DATA_FLAGS(od) & DICT_DATA_FL_VANISHED)) {
+	if (!(DICT_DATA_NULL(od))) {
 		struct cache_entry_t * oe = (struct cache_entry_t *)od.ptr;
 
 		list_del(&oe->lru_list);
@@ -178,7 +178,7 @@ cache_remove_entry(struct cache_t * cache,
 	struct dict_t * dict = cache->dict;
 	
 	od = strdict_remove(dict, id);
-	if (!(GET_DICT_DATA_FLAGS(od) & DICT_DATA_FL_VANISHED)) {
+	if (!(DICT_DATA_NULL(od))) {
 		TRACE(CACHE, "entry \"%s\" is in cache\n", id);
 		struct cache_entry_t * entry = od.ptr;
 
@@ -208,7 +208,7 @@ cache_get_entry(struct cache_t * cache, const char * id)
 	dict_data_t d;
 	struct dict_t * dict = cache->dict;
 	d = strdict_get(dict, id);
-	if ((d.ptr == NULL) || (GET_DICT_DATA_FLAGS(d) & DICT_DATA_FL_VANISHED)) {
+	if ((d.ptr == NULL) || (DICT_DATA_NULL(d))) {
 		TRACE(CACHE, "cache \"%s\" doesn't contain \"%s\"\n",
 				cache->name, id);
 		return NULL;

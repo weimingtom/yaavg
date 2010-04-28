@@ -602,7 +602,7 @@ init_xp3_package(const char * pkg_fn)
 				data.ptr = pitem;
 				GET_DICT_DATA_REAL_SZ(data) = item_sz;
 				tmpdata = strdict_insert(index_dict, pitem->utf8_name, data);
-				if (!(GET_DICT_DATA_FLAGS(tmpdata) & DICT_DATA_FL_VANISHED)) {
+				if (!(DICT_DATA_NULL(tmpdata))) {
 					WARNING(IO, "xp3 file %s has duplicate index entry %s\n",
 							pkg_io->id, pitem->utf8_name);
 					xfree_null(tmpdata.ptr);
@@ -660,8 +660,7 @@ init_xp3_package(const char * pkg_fn)
 		if (permanent_map_dict != NULL) {
 			dict_data_t data = strdict_get(permanent_map_dict,
 						p_xp3_package->io->id);
-			if ((!(GET_DICT_DATA_FLAGS(data) & DICT_DATA_FL_VANISHED)) &&
-				(data.bol))
+			if ((!(DICT_DATA_NULL(data))) && (data.bol))
 			{
 				WARNING(IO, "xp3 package file %s is permanent mapped, "
 						"this is not recommended\n",

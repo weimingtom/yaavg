@@ -32,7 +32,6 @@ typedef union {
 #define GET_DICT_DATA_FLAGS(d)		((d).flags[sizeof(void*)])
 #define GET_DICT_DATA_REAL_SZ(d)	(*((uint32_t*)(&((d).flags[sizeof(void*) + 4]))))
 
-
 struct dict_entry_t {
 	void * key;
 	hashval_t hash;
@@ -128,13 +127,13 @@ dict_get(struct dict_t * dict, void * key,
 extern __WUR struct dict_entry_t THROWS(EXP_DICT_FULL)
 dict_insert(struct dict_t * dict, struct dict_entry_t * entry);
 
-#define DICT_ENTRY_NODATA(e)	(GET_DICT_DATA_FLAGS((e).data) & DICT_DATA_FL_VANISHED)
+#define DICT_ENTRY_NODATA(e)	(GET_DICT_DATA_FLAGS((e)->data) & DICT_DATA_FL_VANISHED)
 #define DICT_DATA_NULL(d)	(GET_DICT_DATA_FLAGS(d) & DICT_DATA_FL_VANISHED)
 
 /* 
  * if the key is in the dict, dict_replace will replace the old data
- * by the new one, if the key doesn't exist, nothing will happen.
- * if return true, the key exists, pold_data is filled.
+ * with the new one, if the key doesn't exist, nothing will happen.
+ * if returns true, the key exists, pold_data is filled.
  * if false, the key doesn't exist.
  * dict_replace is used to control the key. sometime, such as static
  * string dict, the original key is statically allocated. if we use
