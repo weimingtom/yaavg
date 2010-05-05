@@ -49,6 +49,7 @@ static struct dict_entry_t entries[] = {
 	{"key28", 0, {"data8"},},
 	{"key29", 0, {"data9"},},
 	{"key30", 0, {"data10"},},
+	{"key30", 0, {"dataxxx"},},
 	{"<dummy_key>", 0, {"data100"},},
 	{NULL, 0, {NULL},},
 };
@@ -58,26 +59,41 @@ int main()
 	dbg_init(NULL);
 
 	catch_var(struct dict_t *, dict, NULL);
+	catch_var(struct dict_t *, dict2, NULL);
 	define_exp(exp);
 	TRY(exp) {
 		set_catched_var(dict, dict_create(10, DICT_FL_STRKEY, NULL, 0));
+		set_catched_var(dict2, dict_create(10, DICT_FL_STRKEY, NULL, 0));
 
 		struct dict_entry_t * ep = entries;
 		while (ep->key != NULL) {
 			struct dict_entry_t te;
 			te = dict_insert(dict, ep);
-			if (!DICT_ENTRY_NODATA(&te)) {
+			if (!DICT_ENTRY_NODATA(&te))
 				VERBOSE(SYSTEM, "old data of %s: %s\n",
 						(char*)ep->key, (char*)te.data.str);
-			}
+			
+			te = dict_append(dict2, ep);
+			if (!DICT_ENTRY_NODATA(&te))
+				VERBOSE(SYSTEM, "old data in dict 2 of %s: %s\n",
+						(char*)ep->key, (char*)te.data.str);
+
+
 			te = dict_get(dict, ep->key, 0);
 			VERBOSE(SYSTEM, "check data of key %s: %s\n",
 					(char*)ep->key, (char*)te.data.str);
+
+			te = dict_get(dict2, ep->key, 0);
+			VERBOSE(SYSTEM, "check data of key of %s in dict2: %s\n",
+					(char*)ep->key, (char*)te.data.str);
+
 			ep ++;
 		}
 	} FINALLY {
 		get_catched_var(dict);
+		get_catched_var(dict2);
 		dict_destroy(dict, NULL, 0);
+		dict_destroy(dict2, NULL, 0);
 	}
 	CATCH(exp) {
 		switch (exp.type) {

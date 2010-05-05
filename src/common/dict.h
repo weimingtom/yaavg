@@ -157,6 +157,13 @@ dict_replace(struct dict_t * dict, void * key, hashval_t hash,
 extern struct dict_entry_t THROWS(EXP_DICT_FULL) dict_set(struct dict_t * dict,
 		struct dict_entry_t * entry);
 
+/* 
+ * dict_append: same as dict_insert, except that when the key already in the dict,
+ * won't insert it.
+ */
+extern struct dict_entry_t THROWS(EXP_DICT_FULL) dict_append(struct dict_t * dict,
+		struct dict_entry_t * entry);
+
 /* the return value is a copy of the original entry. the caller can destroy the
  * data. if there is no such key, the key and field of the return entry will be
  * set to NULL. if there is no such key before the set, the
@@ -196,6 +203,10 @@ strdict_get(struct dict_t * dict, const char * key);
 
 extern __WUR dict_data_t THROWS(EXP_DICT_FULL)
 strdict_insert(struct dict_t * dict,
+		const char * key, dict_data_t data);
+
+extern __WUR dict_data_t THROWS(EXP_DICT_FULL)
+strdict_append(struct dict_t * dict,
 		const char * key, dict_data_t data);
 
 extern bool_t

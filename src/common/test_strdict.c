@@ -52,6 +52,7 @@ DEFE("video.opengl.texture.maxsize", 0),
 DEFE("video.opengl.texture.enableCOMPRESSION", TRUE),
 DEFE("video.opengl.texture.enableNPOT", TRUE),
 DEFE("video.opengl.texture.enableRECT", TRUE),
+DEFE("video.opengl.texture.enableRECT", FALSE),
 DEFE("video.opengl.glx.confinemouse", FALSE),
 DEFE("video.opengl.glx.grabkeyboard", FALSE),
 {NULL, NULL},
@@ -75,22 +76,24 @@ int main()
 			x.str = pkvp->value;
 			dict_data_t dt;
 			dt = strdict_insert(strdict, pkvp->key, x);
-			assert(DICT_DATA_NULL(dt));
+			if (!DICT_DATA_NULL(dt))
+				WARNING(SYSTEM, "key %s has already been inserted\n",
+						pkvp->key);
 			pkvp ++;
 		}
 
 		/* iterate over the dict */
 		struct dict_entry_t * ep = dict_get_next(strdict, NULL);
 		while (ep != NULL) {
-			WARNING(SYSTEM, "key=%s, value=%s\n",
+			VERBOSE(SYSTEM, "key=%s, value=%s\n",
 					(char*)ep->key, (char*)ep->data.str);
 			ep = dict_get_next(strdict, ep);
 		}
 
-		WARNING(SYSTEM, "----------------------------------\n");
+		VERBOSE(SYSTEM, "----------------------------------\n");
 		pkvp = &kvps[0];
 		while (pkvp->key != NULL) {
-			WARNING(SYSTEM, "key=%s, value=%s\n",
+			VERBOSE(SYSTEM, "key=%s, value=%s\n",
 					pkvp->key, strdict_get(strdict, pkvp->key).str);
 			pkvp ++;
 		}

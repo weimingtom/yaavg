@@ -297,7 +297,7 @@ expand_dict(struct dict_t * dict)
 
 static struct dict_entry_t
 __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
-		bool_t can_expand)
+		bool_t can_expand, bool_t no_replace)
 {
 	struct dict_entry_t retval;
 	assert(dict != NULL);
@@ -366,12 +366,14 @@ __dict_insert(struct dict_t * dict, struct dict_entry_t * entry,
 	}
 
 	/* the key is already inside the dict */
+
 	retval = *ep;
-	
-	dict->real_data_sz -= GET_DICT_DATA_REAL_SZ(ep->data);
-	*ep = *entry;
-	dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
-	assert(retval.hash == entry->hash);
+	if (!no_replace) {
+		dict->real_data_sz -= GET_DICT_DATA_REAL_SZ(ep->data);
+		*ep = *entry;
+		dict->real_data_sz += GET_DICT_DATA_REAL_SZ(ep->data);
+		assert(retval.hash == entry->hash);
+	}
 	return retval;
 }
 
@@ -406,7 +408,7 @@ dict_insert(struct dict_t * dict, struct dict_entry_t * entry)
 {
 	assert(dict != NULL);
 	assert(entry != NULL);
-	return __dict_insert(dict, entry, TRUE);
+	return __dict_insert(dict, entry, TRUE, FALSE);
 }
 
 bool_t
@@ -423,7 +425,15 @@ dict_set(struct dict_t * dict, struct dict_entry_t * entry)
 {
 	assert(dict != NULL);
 	assert(entry != NULL);
-	return __dict_insert(dict, entry, FALSE);
+	return __dict_insert(dict, entry, FALSE, FALSE);
+}
+
+struct dict_entry_t
+dict_append(struct dict_t * dict, struct dict_entry_t * entry)
+{
+	assert(dict != NULL);
+	assert(entry != NULL);
+	return __dict_insert(dict, entry, TRUE, TRUE);
 }
 
 static struct dict_entry_t
@@ -592,15 +602,12 @@ strdict_get(struct dict_t * dict, const char * key)
 	return e.data;
 }
 
-dict_data_t
-strdict_insert(struct dict_t * dict,
-		const char * key, dict_data_t data)
+static dict_data_t
+__strdict_insert(struct dict_t * dict,
+		const char * key, dict_data_t data, bool_t append)
 {
 	struct dict_entry_t e, oe;
 	uintptr_t flags = dict->private;
-	
-	assert(key != NULL);
-	assert(dict != NULL);
 
 	GET_DICT_DATA_FLAGS(e.data) = 0;
 	if (flags & STRDICT_FL_DUPKEY)
@@ -612,15 +619,44 @@ strdict_insert(struct dict_t * dict,
 	else
 		e.data = data;
 
-	oe = dict_insert(dict, &e);
-	if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
+	if (append) {
+		oe = dict_append(dict, &e);
+		if (!DICT_ENTRY_NODATA(&oe)) {
+			if (flags & STRDICT_FL_DUPKEY)
+				xfree_null(e.key);
+			if (flags & STRDICT_FL_DUPDATA)
+				xfree_null(e.data.str);
+		}
+	} else {
+		oe = dict_insert(dict, &e);
+		if ((oe.data.str != NULL) && (flags & STRDICT_FL_DUPDATA)) {
 			xfree_null(oe.data.ptr);
-	}
-	if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY)) {
+		}
+		if ((oe.key != NULL) && (flags & STRDICT_FL_DUPKEY)) {
 			xfree_null(oe.key);
+		}
 	}
 	return oe.data;
 }
+
+dict_data_t
+strdict_insert(struct dict_t * dict,
+		const char * key, dict_data_t data)
+{
+	assert(key != NULL);
+	assert(dict != NULL);
+	return __strdict_insert(dict, key, data, FALSE);
+}
+
+dict_data_t
+strdict_append(struct dict_t * dict,
+		const char * key, dict_data_t data)
+{
+	assert(key != NULL);
+	assert(dict != NULL);
+	return __strdict_insert(dict, key, data, TRUE);
+}
+
 
 bool_t
 strdict_replace(struct dict_t * dict,
