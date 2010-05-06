@@ -143,8 +143,10 @@ __wrap_free(void * ptr,
 {
 	TRACE(MEMORY, "@q free(%p)@[%s:%d]\n", ptr,
 			func, line);
-	free(ptr);
-	free_counter ++;
+	if (ptr != NULL) {
+		free(ptr);
+		free_counter ++;
+	}
 	return;
 }
 
