@@ -153,8 +153,9 @@ print_exception(volatile struct exception_t * __exp)
 #endif
 	WARNING(SYSTEM, "\tmessage: %s\n", exp->msg);
 	WARNING(SYSTEM, "\twith value: %d(%p)\n", exp->u.val, exp->u.ptr);
-	WARNING(SYSTEM, "\twith errno: %d(%s)\n", errno, strerror(errno));
-	errno = 0;
+	WARNING(SYSTEM, "\twith errno: %d(%s)\n", exp->throw_time_errno,
+			strerror(exp->throw_time_errno));
+	WARNING(SYSTEM, "\twith errno(now): %d(%s)\n", errno, strerror(errno));
 }
 
 NORETURN ATTR_NORETURN 
@@ -182,6 +183,8 @@ __throw_exception(enum exception_type type,
 		exp.type = EXP_UNCATCHABLE;
 		exp.level = EXP_LV_UNCATCHABLE;
 	}
+	exp.throw_time_errno = errno;
+	errno = 0;
 #ifdef YAAVG_DEBUG
 	exp.file = file;
 	exp.func = func;

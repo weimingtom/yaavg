@@ -82,6 +82,7 @@ struct exception_t {
 	} u;
 	uint32_t timestamp;
 	enum exception_level level;
+	int throw_time_errno;
 #ifdef YAAVG_DEBUG
 	const char * file;
 	const char * func;
