@@ -171,7 +171,7 @@ __wrap_strdup(const char * S,
 	char * res = NULL;
 	res = strdup (S);
 	assert(res != NULL);
-	TRACE(MEMORY, "@q strdup(%s)@[%s:%d]=%p\n", S,
+	TRACE(MEMORY, "@q strdup(\"%s\")@[%s:%d]=%p\n", S,
 			func, line,
 			res);
 	strdup_counter ++;
@@ -242,7 +242,7 @@ sighandler_mem_stats(int signum ATTR_UNUSED)
 	VERBOSE(MEMORY, "this compilation doesn't "
 			"support memory status report\n");
 #else
-	MEM_MSG("------ malloc counters ------\n");
+	MEM_MSG("------ action counters ------\n");
 	MEM_MSG("malloc counter:\t\t%d\n", malloc_counter);
 	MEM_MSG("memalign counter:\t%d\n", memalign_counter);
 	MEM_MSG("calloc counter:\t\t%d\n", calloc_counter);

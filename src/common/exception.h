@@ -239,14 +239,14 @@ ATTR(format(printf, 3, 4))
 		throw_video_exception(lv, stamp, __dbg_info fmt)
 
 
-#define EAT_SMALL_EXP(e) do {		\
-		switch (e.level) { 			\
+#define EAT_SMALL_EXP(___e) do {		\
+		switch ((___e).level) { 			\
 			case EXP_LV_LOWEST:		\
 			case EXP_LV_TAINTED:	\
 				break;				\
 			default:				\
-				print_exception(&e);\
-				RETHROW(e);			\
+				print_exception(&(___e));\
+				RETHROW((___e));			\
 		}							\
 } while(0)
 
