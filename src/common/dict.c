@@ -609,12 +609,14 @@ __strdict_insert(struct dict_t * dict,
 	struct dict_entry_t e, oe;
 	uintptr_t flags = dict->private;
 
+	assert(key != NULL);
 	GET_DICT_DATA_FLAGS(e.data) = 0;
 	if (flags & STRDICT_FL_DUPKEY)
 		e.key = strdup(key);
 	else
 		e.key = (char*)key;
-	if (flags & STRDICT_FL_DUPDATA)
+
+	if ((flags & STRDICT_FL_DUPDATA) && (data.str != NULL))
 		e.data.str = strdup(data.str);
 	else
 		e.data = data;
