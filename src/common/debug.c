@@ -114,11 +114,13 @@ __wrap_malloc(size_t size,
 {
 	void * res;
 	res = malloc(size);
+	int saved_errno = errno;
 	assert(res != NULL);
 	TRACE(MEMORY, "@q malloc(%d)@[%s:%d]=%p\n", size,
 			func, line,
 			res);
 	malloc_counter ++;
+	errno = saved_errno;
 	return res;
 }
 
@@ -127,12 +129,14 @@ __wrap_memalign(size_t boundary, size_t size,
 		__dbg_info_param)
 {
 	void * res;
-	res = malloc(size);
+	res = memalign(boundary, size);
+	int saved_errno = errno;
 	assert(res != NULL);
 	TRACE(MEMORY, "@q memalign(%d, %d)@[%s:%d]=%p\n", boundary, size,
 			func, line,
 			res);
 	memalign_counter ++;
+	errno = saved_errno;
 	return res;
 }
 
@@ -141,12 +145,15 @@ void
 __wrap_free(void * ptr,
 		__dbg_info_param)
 {
+	int saved_errno = errno;
 	TRACE(MEMORY, "@q free(%p)@[%s:%d]\n", ptr,
 			func, line);
 	if (ptr != NULL) {
 		free(ptr);
+		saved_errno = errno;
 		free_counter ++;
 	}
+	errno = saved_errno;
 	return;
 }
 
@@ -156,11 +163,13 @@ __wrap_calloc(size_t count, size_t eltsize,
 {
 	void * res = NULL;
 	res = calloc (count, eltsize);
+	int saved_errno = errno;
 	assert(res != NULL);
 	TRACE(MEMORY, "@q calloc(%d, %d)@[%s:%d]=%p\n", count, eltsize,
 			func, line,
 			res);
 	calloc_counter ++;
+	errno = saved_errno;
 	return res;
 }
 
@@ -170,11 +179,13 @@ __wrap_strdup(const char * S,
 {
 	char * res = NULL;
 	res = strdup (S);
+	int saved_errno = errno;
 	assert(res != NULL);
 	TRACE(MEMORY, "@q strdup(\"%s\")@[%s:%d]=%p\n", S,
 			func, line,
 			res);
 	strdup_counter ++;
+	errno = saved_errno;
 	return res;
 }
 
@@ -185,6 +196,7 @@ __wrap_realloc(void * ptr, size_t newsize,
 {
 	void * res;
 	res = realloc(ptr, newsize);
+	int saved_errno = errno;
 	assert(res != NULL);
 	TRACE(MEMORY, "@q realloc(%p, %d)@[%s:%d]=%p\n", ptr, newsize,
 			func, line,
@@ -192,6 +204,7 @@ __wrap_realloc(void * ptr, size_t newsize,
 	if (ptr == NULL) {
 		malloc_counter ++;
 	}
+	errno = saved_errno;
 	return res;
 }
 
@@ -202,6 +215,7 @@ __wrap_fopen(const char * fn, const char * ot,
 	assert(fn != NULL);
 	assert(ot != NULL);
 	FILE * fp = fopen(fn, ot);
+	int saved_errno = errno;
 	if (fp != NULL) {
 		TRACE(FILE_STREAM, "@q fopen(%s, %s)@[%s:%d]=%p\n",
 				fn, ot,
@@ -209,6 +223,7 @@ __wrap_fopen(const char * fn, const char * ot,
 				fp);
 		fopen_counter ++;
 	}
+	errno = saved_errno;
 	return fp;
 }
 
@@ -218,11 +233,13 @@ __wrap_fclose(FILE * fp,
 {
 	assert(fp != NULL);
 	int res = fclose(fp);
+	int saved_errno = errno;
 	TRACE(FILE_STREAM, "@q fclose(%p)@[%s:%d]=%d\n",
 			fp,
 			func, line,
 			res);
 	fclose_counter ++;
+	errno = saved_errno;
 	return res;
 }
 
