@@ -154,9 +154,9 @@ check_extension(const char * conf_key, ...)
 void
 check_opengl_features(void)
 {
-	GL_vendor = strdup((char*)gl(GetString, GL_VENDOR));
-	GL_renderer = strdup((char*)gl(GetString, GL_RENDERER));
-	GL_version = strdup((char*)gl(GetString, GL_VERSION));
+	GL_vendor = xstrdup((char*)gl(GetString, GL_VENDOR));
+	GL_renderer = xstrdup((char*)gl(GetString, GL_RENDERER));
+	GL_version = xstrdup((char*)gl(GetString, GL_VERSION));
 	/* according to opengl spec, the version string of opengl and
 	 * glsl is 
 	 *
@@ -185,7 +185,7 @@ check_opengl_features(void)
 		WARNING(OPENGL, "Doesn't support glsl\n");
 		GL_glsl_version = NULL;
 	} else {
-		GL_glsl_version = strdup(tmp);
+		GL_glsl_version = xstrdup(tmp);
 
 		err = sscanf(GL_glsl_version, "%d.%d", &GLSL_major_version, &GLSL_minor_version);
 		assert(err == 2);

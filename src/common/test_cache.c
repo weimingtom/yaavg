@@ -2,6 +2,7 @@
 #include <common/debug.h>
 #include <common/exception.h>
 #include <common/cache.h>
+#include <common/mm.h>
 #include <stdio.h>
 #include <assert.h>
 #include <signal.h>
@@ -42,7 +43,7 @@ dummy_bitmap_load(const char * str)
 
 	WARNING(SYSTEM, "Load bitmap %s\n", str);
 
-	bitmap->ce.id = strdup(str);
+	bitmap->ce.id = xstrdup(str);
 	bitmap->ce.sz = sizeof(*bitmap);
 	bitmap->ce.destroy_arg = bitmap;
 	bitmap->ce.data = bitmap;

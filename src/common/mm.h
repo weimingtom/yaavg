@@ -6,11 +6,9 @@
 #ifndef YAAVG_MM_H
 #define YAAVG_MM_H
 
-#include <config.h>
 #include <common/defs.h>
 #include <common/debug.h>
 #include <common/exception.h>
-#include <common/list.h>
 
 #define xmalloc(___sz)	({	\
 		void * ___ptr;		\
@@ -25,7 +23,7 @@
 		___ptr = memalign((___boundary), (___sz));\
 		if (___ptr == NULL)	\
 			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
-			___ptr; \
+		___ptr; \
 		})
 
 
@@ -34,7 +32,7 @@
 		___ptr = realloc(___old_ptr, ___new_sz);\
 		if (___ptr == NULL)	\
 			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
-			___ptr; \
+		___ptr; \
 		})
 
 #define xcalloc(___count, ___eltsize)	({	\
@@ -42,7 +40,15 @@
 		___ptr = calloc((___count), (___eltsize));\
 		if (___ptr == NULL)	\
 			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
-			___ptr; \
+		___ptr; \
+		})
+
+#define xstrdup(___str) ({	\
+		char * ___ptr;	\
+		___ptr = strdup(___str);\
+		if (___ptr == NULL)	\
+			THROW_FATAL(EXP_OUT_OF_MEMORY, "out of memory");\
+		___ptr; \
 		})
 
 #define xfree(___ptr) do {	\
@@ -67,5 +73,5 @@ extern void
 generic_free(void * ptr);
 
 #endif
-// vim:ts=4:sw=4
+// vim:ts=4:sw=4:cino=l1,\:0
 

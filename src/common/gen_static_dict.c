@@ -47,7 +47,7 @@ main(int argc, char * argv[])
 
 	for (int i = 3; i < 3 + nr; i++) {
 		assert(argv[i] != NULL);
-		char * arg = strdup(argv[i]);
+		char * arg = xstrdup(argv[i]);
 		char * peq = strchr(arg, '=');
 		dict_data_t dt;
 		if (peq == NULL) {

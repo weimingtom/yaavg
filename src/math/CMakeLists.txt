@@ -22,6 +22,14 @@ SET(SRC
 
 ADD_LIBRARY(math STATIC ${SRC})
 
+# Cannot use SET_PROPERTY because DEBUG FLAGS contain O0 and it has higher
+# priority
+
+# SET_PROPERTY(SOURCE matrix.c matrix.c math.c
+# 	APPEND
+# 	PROPERTY COMPILE_FLAGS "-O3 -Wno-uninitialized"
+# 	)
+
 SET(CMAKE_C_FLAGS_DEBUG "-g -rdynamic -O3 -DYAAVG_DEBUG -Wno-uninitialized")
 SET(CMAKE_C_FLAGS_RELEASE "-O3 -Wno-uninitialized")
 
