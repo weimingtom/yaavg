@@ -12,6 +12,7 @@
 #define __EXCEPTION_H
 
 #include <config.h>
+#include <errno.h>
 #include <common/defs.h>
 #include <stdint.h>
 #include <setjmp.h>
@@ -276,11 +277,17 @@ ATTR(format(printf, 3, 4))
 
 
 #ifdef YAAVG_DEBUG
-# define RETHROW(e) throw_exception((e).type, (e).u.xval, (e).level, \
-		(e).file, (e).func, (e).line, "%s", (char*)&((e).msg))
+# define RETHROW(e) do {	\
+	errno = e.throw_time_errno; \
+	throw_exception((e).type, (e).u.xval, (e).level, \
+		(e).file, (e).func, (e).line, "%s", (char*)&((e).msg));	\
+} while(0)
 #else
-# define RETHROW(e) throw_exception((e).type, (e).u.xval, (e).level, \
-		"%s", (char*)&((e).msg))
+# define RETHROW(e) do { \
+	errno = e.throw_time_errno;\
+	throw_exception((e).type, (e).u.xval, (e).level, \
+		"%s", (char*)&((e).msg));\
+} while(0)
 #endif
 
 #define THROWS(...)

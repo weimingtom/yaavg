@@ -28,7 +28,7 @@ cleanup_opengl_features(void);
 #else
 # define GL_POP_ERROR() gl_pop_error_nodebug()
 #endif
-extern const char * glerrno_to_desc(GLenum errno);
+extern const char * glerrno_to_desc(GLenum gl_errno);
 # define GL_POP_THROW() do {GLenum ___err = GL_POP_ERROR();	\
 	if (___err != GL_NO_ERROR)								\
 		THROW_VIDEO_EXP(VIDEXP_RERENDER, timer_get_current(), \

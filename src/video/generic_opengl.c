@@ -42,10 +42,10 @@ bool_t GL_vertex_array_object = FALSE;
 int GL_max_vertex_attribs = 0;
 
 const char *
-glerrno_to_desc(GLenum errno)
+glerrno_to_desc(GLenum gl_errno)
 {
 	struct kvp {
-		GLenum errno;
+		GLenum gl_errno;
 		const char * desc;
 	};
 
@@ -63,8 +63,8 @@ glerrno_to_desc(GLenum errno)
 	};
 
 	struct kvp * ptr = tb;
-	while(ptr->errno != 0) {
-		if (ptr->errno == errno)
+	while(ptr->gl_errno != 0) {
+		if (ptr->gl_errno == gl_errno)
 			break;
 		ptr ++;
 	}
